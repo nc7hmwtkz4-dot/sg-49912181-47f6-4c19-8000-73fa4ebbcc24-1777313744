@@ -2,6 +2,20 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
+// ============================================
+// SUPABASE CLIENT CONFIGURATION
+// ============================================
+// CRITICAL: This client connects to your cloud database
+// - All user data (coins, sales, profiles) is stored here
+// - Data persists independently of app deployments
+// - Database is hosted on Supabase, not in your app
+//
+// Production Deployment:
+// - Ensure environment variables are set in Vercel
+// - Data will NOT be lost during redeployments
+// - Database remains intact across all deployments
+// ============================================
+
 // Read from environment variables instead of hardcoding tokens
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
