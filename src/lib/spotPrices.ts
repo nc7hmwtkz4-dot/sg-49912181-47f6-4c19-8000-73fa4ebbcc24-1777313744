@@ -7,6 +7,7 @@ export interface SpotPrices {
   platinum: number;
   palladium: number;
   lastUpdated: string;
+  timestamp: number;
 }
 
 // Fallback spot prices (approximate current market rates in CHF/gram)
@@ -15,7 +16,8 @@ const FALLBACK_PRICES: SpotPrices = {
   silver: 0.95,
   platinum: 30.20,
   palladium: 32.40,
-  lastUpdated: new Date().toISOString()
+  lastUpdated: new Date().toISOString(),
+  timestamp: Math.floor(Date.now() / 1000)
 };
 
 // Cache duration: 24 hours (86400000 milliseconds)

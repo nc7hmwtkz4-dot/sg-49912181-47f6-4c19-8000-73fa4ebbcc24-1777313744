@@ -6,6 +6,7 @@ export interface SpotPrices {
   platinum: number;
   palladium: number;
   lastUpdated: string;
+  timestamp: number;
 }
 
 // Fallback spot prices (approximate current market rates in CHF/gram)
@@ -14,7 +15,8 @@ const FALLBACK_PRICES: SpotPrices = {
   silver: 0.95,
   platinum: 30.20,
   palladium: 32.40,
-  lastUpdated: new Date().toISOString()
+  lastUpdated: new Date().toISOString(),
+  timestamp: Math.floor(Date.now() / 1000)
 };
 
 // Metal Price API configuration
@@ -64,7 +66,8 @@ export default async function handler(
       silver: data.rates.XAG ? (1 / data.rates.XAG) / TROY_OZ_TO_GRAMS : FALLBACK_PRICES.silver,
       platinum: data.rates.XPT ? (1 / data.rates.XPT) / TROY_OZ_TO_GRAMS : FALLBACK_PRICES.platinum,
       palladium: data.rates.XPD ? (1 / data.rates.XPD) / TROY_OZ_TO_GRAMS : FALLBACK_PRICES.palladium,
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date().toISOString(),
+      timestamp: data.timestamp || Math.floor(Date.now() / 1000)
     };
 
     // Validate that we got valid prices
