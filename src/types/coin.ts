@@ -22,10 +22,15 @@ export interface Coin {
 export interface Sale {
   id: string;
   coinId: string;
+  sku: string;
+  coinName: string;
   saleDate: string;
-  salePrice: number; // CHF
-  buyerInfo?: string;
-  notes?: string;
+  salePrice: number;
+  purchasePrice: number;
+  profit: number;
+  markupPercentage?: number;
+  buyerInfo: string;
+  notes: string;
 }
 
 export type SheldonGrade = 
@@ -61,7 +66,8 @@ export const SHELDON_GRADES: SheldonGrade[] = [
   "PF-66", "PF-67", "PF-68", "PF-69", "PF-70"
 ];
 
-export const COUNTRY_CODES: Record<string, string> = {
+export const COUNTRY_CODES: { [key: string]: string } = {
+  "us": "United States",
   "FR": "France",
   "US": "United States",
   "GB": "Great Britain",

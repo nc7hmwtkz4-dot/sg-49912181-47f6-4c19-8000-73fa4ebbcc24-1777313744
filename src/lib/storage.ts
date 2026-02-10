@@ -47,10 +47,21 @@ export const storageService = {
     localStorage.setItem(SALES_STORAGE_KEY, JSON.stringify(sales));
   },
 
-  addSale: (sale: Sale): void => {
+  addSale: (sale: Omit<Sale, "id">) => {
     const sales = storageService.getSales();
-    sales.push(sale);
-    storageService.saveSales(sales);
+    const newSale: Sale = {
+      ...sale,
+      id: storageService.generateId(),
+      sku: sale.sku || "",
+      coinName: sale.coinName || "",
+      purchasePrice: sale.purchasePrice || 0,
+      profit: sale.profit || 0
+    };
+    sales.push(newSale);
+    if (typeof window !== "undefined") {
+      localStorage.setItem(SALES_STORAGE_KEY, JSON.stringify(sales));
+    }
+    return newSale;
   },
 
   markCoinAsSold: (
@@ -60,22 +71,26 @@ export const storageService = {
     buyerInfo?: string,
     notes?: string
   ): void => {
+    const coins = storageService.getCoins();
+    const coin = coins.find(c => c.id === coinId);
+
     // Create sale record
-    const sale: Sale = {
-      id: storageService.generateId(),
+    storageService.addSale({
       coinId,
       saleDate,
       salePrice,
-      buyerInfo,
-      notes
-    };
-    storageService.addSale(sale);
+      buyerInfo: buyerInfo || "",
+      notes: notes || "",
+      sku: coin?.sku || "",
+      coinName: coin?.coinName || "",
+      purchasePrice: coin?.purchasePrice || 0,
+      profit: coin ? (salePrice - coin.purchasePrice) : 0
+    });
 
     // Mark coin as sold
-    const coins = storageService.getCoins();
     const index = coins.findIndex(c => c.id === coinId);
     if (index !== -1) {
-      coins[index] = { ...coins[index], isSold: true, saleId: sale.id };
+      coins[index] = { ...coins[index], isSold: true };
       storageService.saveCoins(coins);
     }
   },

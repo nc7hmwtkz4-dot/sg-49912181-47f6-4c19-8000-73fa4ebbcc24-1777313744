@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { SEO } from "@/components/SEO";
 import { Layout } from "@/components/Layout";
+import { storageService } from "@/lib/storage";
+import { spotPriceService } from "@/lib/spotPrices";
 import { userCoinService } from "@/services/userCoinService";
 import { userSalesService } from "@/services/userSalesService";
-import { spotPriceService } from "@/lib/spotPrices";
-import { Coin, Sale } from "@/types/coin";
+import { Coin, Sale, COUNTRY_CODES, SheldonGrade } from "@/types/coin";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,6 +27,68 @@ export default function Sales() {
   useEffect(() => {
     loadData();
   }, []);
+
+  const loadSales = async () => {
+    const { data, error } = await userSalesService.getUserSales();
+    
+    if (error) {
+      console.error("Error loading sales:", error);
+      return;
+    }
+
+    if (data) {
+      // Map database sales to frontend Sale type
+      const mappedSales: Sale[] = data.map(s => ({
+        id: s.id,
+        coinId: s.coin_id,
+        sku: s.sku || "", // Handle potentially missing legacy data
+        coinName: s.coin_name || "",
+        saleDate: s.sale_date,
+        salePrice: s.sale_price,
+        purchasePrice: s.purchase_price,
+        profit: s.profit,
+        markupPercentage: s.markup_percentage,
+        buyerInfo: s.buyer_info || "",
+        notes: s.notes || ""
+      }));
+      
+      setSales(mappedSales);
+    }
+  };
+
+  const loadCoins = async () => {
+    const { data, error } = await userCoinService.getUserCoins();
+    
+    if (error) {
+      console.error("Error loading coins:", error);
+      return;
+    }
+
+    if (data) {
+      // Map database coins to frontend Coin type
+      const mappedCoins: Coin[] = data.map(c => ({
+        id: c.id,
+        sku: `${c.country_code}-${c.km_number}`,
+        coinName: c.coin_name || "",
+        countryCode: c.country_code,
+        kmNumber: c.km_number,
+        year: c.year,
+        mintmark: c.mintmark || "",
+        metal: c.metal as "gold" | "silver" | "copper" | "platinum" | "palladium" | "other",
+        purity: c.purity,
+        weight: c.weight,
+        sheldonGrade: c.grade as SheldonGrade,
+        purchasePrice: c.purchase_price,
+        purchaseDate: c.purchase_date,
+        notes: c.notes || "",
+        obverseImageUrl: c.obverse_image_url || "",
+        reverseImageUrl: c.reverse_image_url || "",
+        isSold: c.is_sold
+      }));
+      
+      setCoins(mappedCoins);
+    }
+  };
 
   const loadData = async () => {
     const { data: coinsData } = await userCoinService.getUserCoins();
@@ -61,7 +124,12 @@ export default function Sales() {
         saleDate: s.sale_date,
         salePrice: s.sale_price,
         buyerInfo: s.buyer_info,
-        notes: s.notes
+        notes: s.notes,
+        sku: s.sku || "",
+        coinName: s.coin_name || "",
+        purchasePrice: s.purchase_price || 0,
+        profit: s.profit || 0,
+        markupPercentage: s.markup_percentage || 0
       }));
       setSales(mappedSales);
     }
@@ -128,6 +196,45 @@ export default function Sales() {
     const coin = getCoinById(sale.coinId);
     if (!coin || coin.purchasePrice === 0) return 0;
     return ((sale.salePrice - coin.purchasePrice) / coin.purchasePrice) * 100;
+  };
+
+  const handleDeleteSale = async (saleId: string) => {
+    if (!confirm("Are you sure you want to delete this sale record? This will also mark the coin as available again.")) {
+      return;
+    }
+
+    try {
+      const sale = sales.find(s => s.id === saleId);
+      if (!sale) return;
+
+      // 1. Delete the sale record
+      const { error: deleteError } = await userSalesService.deleteSale(saleId);
+      
+      if (deleteError) {
+        alert("Failed to delete sale. Please try again.");
+        console.error("Delete sale error:", deleteError);
+        return;
+      }
+
+      // 2. Mark coin as available again (not sold)
+      const { error: updateError } = await userCoinService.updateUserCoin(sale.coinId, {
+        is_sold: false
+      });
+
+      if (updateError) {
+        console.error("Failed to update coin status:", updateError);
+        // Continue anyway - sale is deleted, user can manually fix coin status if needed
+      }
+
+      // 3. Reload data
+      await loadSales();
+      await loadCoins();
+      
+      alert("Sale deleted successfully!");
+    } catch (err) {
+      console.error("Error deleting sale:", err);
+      alert("An unexpected error occurred. Please try again.");
+    }
   };
 
   const totalRevenue = sales.reduce((sum, sale) => sum + sale.salePrice, 0);

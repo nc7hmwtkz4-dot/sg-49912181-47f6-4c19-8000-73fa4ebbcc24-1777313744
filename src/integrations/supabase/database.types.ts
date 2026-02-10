@@ -180,6 +180,7 @@ export type Database = {
         Row: {
           buyer_info: string | null
           coin_id: string
+          coin_name: string | null
           created_at: string | null
           id: string
           markup_percentage: number
@@ -188,12 +189,14 @@ export type Database = {
           purchase_price: number
           sale_date: string
           sale_price: number
+          sku: string | null
           updated_at: string | null
           user_id: string
         }
         Insert: {
           buyer_info?: string | null
           coin_id: string
+          coin_name?: string | null
           created_at?: string | null
           id?: string
           markup_percentage: number
@@ -202,12 +205,14 @@ export type Database = {
           purchase_price: number
           sale_date: string
           sale_price: number
+          sku?: string | null
           updated_at?: string | null
           user_id: string
         }
         Update: {
           buyer_info?: string | null
           coin_id?: string
+          coin_name?: string | null
           created_at?: string | null
           id?: string
           markup_percentage?: number
@@ -216,6 +221,7 @@ export type Database = {
           purchase_price?: number
           sale_date?: string
           sale_price?: number
+          sku?: string | null
           updated_at?: string | null
           user_id?: string
         }

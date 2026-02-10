@@ -66,7 +66,11 @@ export default function Dashboard() {
         saleDate: s.sale_date,
         salePrice: s.sale_price,
         buyerInfo: s.buyer_info,
-        notes: s.notes
+        notes: s.notes,
+        sku: s.sku || "",
+        coinName: s.coin_name || "",
+        purchasePrice: s.purchase_price || 0,
+        profit: s.profit || 0
       }));
       setSales(mappedSales);
     }

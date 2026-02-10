@@ -374,17 +374,20 @@ export default function Collection() {
     if (!coin) return;
 
     try {
-      // 1. Create sale record
+      // Create sale record
       const { error: saleError } = await userSalesService.addSale({
-        coin_id: saleFormData.coinId,
+        coin_id: coin.id,
         sku: coin.sku,
-        coin_name: coin.coinName || "",
+        coin_name: coin.coinName,
         sale_date: saleFormData.saleDate,
-        sale_price: saleFormData.salePrice,
+        sale_price: Number(saleFormData.salePrice),
+        buyer_info: saleFormData.buyerInfo || "",
+        notes: saleFormData.notes || "",
         purchase_price: coin.purchasePrice,
-        profit: saleFormData.salePrice - coin.purchasePrice,
-        buyer_info: saleFormData.buyerInfo || null,
-        notes: saleFormData.notes || null
+        // Profit and markup will be calculated by DB trigger or service, 
+        // but passing 0 ensures type safety if required
+        profit: Number(saleFormData.salePrice) - coin.purchasePrice,
+        markup_percentage: ((Number(saleFormData.salePrice) - coin.purchasePrice) / coin.purchasePrice) * 100
       });
 
       if (saleError) {
