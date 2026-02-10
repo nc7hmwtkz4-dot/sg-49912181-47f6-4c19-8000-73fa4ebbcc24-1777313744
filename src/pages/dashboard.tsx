@@ -6,12 +6,13 @@ import { spotPriceService, SpotPrices } from "@/lib/spotPrices";
 import { Coin, Sale, COUNTRY_CODES } from "@/types/coin";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Coins, TrendingUp, DollarSign, Package, Globe, PieChart, Sparkles } from "lucide-react";
+import { Coins, TrendingUp, DollarSign, Package, Globe, PieChart, Sparkles, RefreshCw } from "lucide-react";
 
 export default function Dashboard() {
   const [coins, setCoins] = useState<Coin[]>([]);
   const [sales, setSales] = useState<Sale[]>([]);
   const [spotPrices, setSpotPrices] = useState<SpotPrices | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [stats, setStats] = useState({
     totalCoins: 0,
     bullionValue: 0,
@@ -36,13 +37,20 @@ export default function Dashboard() {
     setSales(loadedSales);
   };
 
-  const loadSpotPrices = async () => {
-    const prices = await spotPriceService.getSpotPrices();
+  const loadSpotPrices = async (forceRefresh = false) => {
+    setIsRefreshing(true);
+    const prices = await spotPriceService.getSpotPrices(forceRefresh);
     setSpotPrices(prices);
+    console.log("Loaded spot prices:", prices);
     // Recalculate stats when spot prices are loaded
     if (coins.length > 0) {
       calculateStats(coins, sales, prices);
     }
+    setIsRefreshing(false);
+  };
+
+  const handleForceRefresh = async () => {
+    await loadSpotPrices(true);
   };
 
   useEffect(() => {
@@ -52,12 +60,20 @@ export default function Dashboard() {
   }, [coins, sales, spotPrices]);
 
   const calculateBullionValue = (coin: Coin, prices: SpotPrices): number => {
-    return spotPriceService.calculateBullionValue(
+    const value = spotPriceService.calculateBullionValue(
       coin.metal,
       coin.weight,
       coin.purity,
       prices
     );
+    console.log(`Bullion value for ${coin.sku}:`, {
+      metal: coin.metal,
+      weight: coin.weight,
+      purity: coin.purity,
+      spotPrice: prices[coin.metal.toLowerCase() as keyof SpotPrices],
+      calculatedValue: value
+    });
+    return value;
   };
 
   const calculateStats = (coins: Coin[], sales: Sale[], prices: SpotPrices) => {
@@ -410,13 +426,25 @@ export default function Dashboard() {
         {spotPrices && (
           <Card className="border-0 shadow-lg bg-gradient-to-br from-brand-muted to-white dark:from-gray-800 dark:to-gray-900">
             <CardHeader>
-              <CardTitle className="text-xl flex items-center gap-2">
-                <Sparkles className="w-6 h-6 text-brand-primary" />
-                Swiss Bank Spot Prices
-              </CardTitle>
-              <CardDescription className="text-base">
-                Current precious metal prices in CHF per gram • Updated: {new Date(spotPrices.lastUpdated).toLocaleString('de-CH')}
-              </CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-xl flex items-center gap-2">
+                    <Sparkles className="w-6 h-6 text-brand-primary" />
+                    Swiss Bank Spot Prices
+                  </CardTitle>
+                  <CardDescription className="text-base">
+                    Current precious metal prices in CHF per gram • Updated: {new Date(spotPrices.lastUpdated).toLocaleString('de-CH')}
+                  </CardDescription>
+                </div>
+                <button
+                  onClick={handleForceRefresh}
+                  disabled={isRefreshing}
+                  className="flex items-center gap-2 px-4 py-2 bg-brand-primary text-white rounded-lg hover:bg-brand-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                  {isRefreshing ? 'Refreshing...' : 'Refresh Prices'}
+                </button>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6">

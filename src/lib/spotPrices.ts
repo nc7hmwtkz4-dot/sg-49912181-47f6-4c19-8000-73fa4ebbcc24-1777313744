@@ -20,15 +20,17 @@ const FALLBACK_PRICES: SpotPrices = {
 
 export const spotPriceService = {
   // Fetch current spot prices from GoldAvenue via our API route
-  async getSpotPrices(): Promise<SpotPrices> {
+  async getSpotPrices(forceRefresh = false): Promise<SpotPrices> {
     try {
       // Check localStorage for cached prices (valid for 15 minutes)
-      const cached = localStorage.getItem("numivault_spot_prices");
-      if (cached) {
-        const data = JSON.parse(cached);
-        const cacheAge = Date.now() - new Date(data.lastUpdated).getTime();
-        if (cacheAge < 900000) { // 15 minutes
-          return data;
+      if (!forceRefresh) {
+        const cached = localStorage.getItem("numivault_spot_prices");
+        if (cached) {
+          const data = JSON.parse(cached);
+          const cacheAge = Date.now() - new Date(data.lastUpdated).getTime();
+          if (cacheAge < 900000) { // 15 minutes
+            return data;
+          }
         }
       }
 
