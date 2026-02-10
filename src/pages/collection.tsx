@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useRouter } from "next/router";
 import { SEO } from "@/components/SEO";
 import { Layout } from "@/components/Layout";
 import { storageService } from "@/lib/storage";
@@ -13,8 +14,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Plus, Upload, DollarSign, ShoppingCart, Search, Package } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import { useRouter } from "next/navigation";
 
 export default function Collection() {
+  const router = useRouter();
   const [coins, setCoins] = useState<Coin[]>([]);
   const [filteredCoins, setFilteredCoins] = useState<Coin[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -464,11 +467,7 @@ export default function Collection() {
                         <Card 
                           key={sku} 
                           className="bg-slate-800/50 border-slate-700 hover:bg-slate-800 transition-colors cursor-pointer overflow-hidden group"
-                          onClick={() => {
-                            setEditingCoin(coin);
-                            setFormData(coin);
-                            setIsAddDialogOpen(true);
-                          }}
+                          onClick={() => router.push(`/coin/${encodeURIComponent(sku)}`)}
                         >
                           <div className="aspect-square relative bg-slate-900/50 overflow-hidden">
                             {coin.imageUrl ? (
