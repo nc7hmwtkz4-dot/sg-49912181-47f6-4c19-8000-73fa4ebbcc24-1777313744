@@ -9,7 +9,7 @@ export interface Coin {
   purity: number;
   weight: number;
   sheldonGrade: SheldonGrade;
-  purchasePrice: number;
+  purchasePrice: number; // CHF
   purchaseDate: string;
   notes?: string;
   imageUrl?: string;
@@ -21,7 +21,7 @@ export interface Sale {
   id: string;
   coinId: string;
   saleDate: string;
-  salePrice: number;
+  salePrice: number; // CHF
   buyerInfo?: string;
   notes?: string;
 }
@@ -38,12 +38,12 @@ export type SheldonGrade =
 
 export interface CollectionStats {
   totalCoins: number;
-  totalValue: number;
-  totalPurchaseValue: number;
-  totalSalesAmount: number;
-  totalProfit: number;
-  profitMargin: number;
-  bullionValue: number;
+  totalValue: number; // CHF - current market value
+  totalPurchaseValue: number; // CHF
+  totalSalesAmount: number; // CHF
+  totalProfit: number; // CHF
+  profitMargin: number; // percentage
+  bullionValue: number; // CHF - total bullion value based on spot prices
   coinsByCountry: Record<string, number>;
   coinsByMetal: Record<string, number>;
 }
