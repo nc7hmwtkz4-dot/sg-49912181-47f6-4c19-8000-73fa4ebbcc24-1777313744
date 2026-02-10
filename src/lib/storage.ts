@@ -53,11 +53,29 @@ export const storageService = {
     storageService.saveSales(sales);
   },
 
-  markCoinAsSold: (coinId: string, saleId: string): void => {
+  markCoinAsSold: (
+    coinId: string,
+    saleDate: string,
+    salePrice: number,
+    buyerInfo?: string,
+    notes?: string
+  ): void => {
+    // Create sale record
+    const sale: Sale = {
+      id: storageService.generateId(),
+      coinId,
+      saleDate,
+      salePrice,
+      buyerInfo,
+      notes
+    };
+    storageService.addSale(sale);
+
+    // Mark coin as sold
     const coins = storageService.getCoins();
     const index = coins.findIndex(c => c.id === coinId);
     if (index !== -1) {
-      coins[index] = { ...coins[index], isSold: true, saleId };
+      coins[index] = { ...coins[index], isSold: true, saleId: sale.id };
       storageService.saveCoins(coins);
     }
   },
