@@ -1,6 +1,7 @@
 export interface Coin {
   id: string;
   sku: string;
+  coinName: string; // e.g., "5 Francs - Léopold II petit..."
   countryCode: string;
   kmNumber: string;
   year: number;
