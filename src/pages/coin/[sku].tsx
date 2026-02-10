@@ -50,6 +50,7 @@ export default function CoinDetail() {
     notes?: string;
   }>({ coinId: "", saleDate: new Date().toISOString().split("T")[0], salePrice: 0 });
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<{ url: string; alt: string } | null>(null);
 
   useEffect(() => {
     if (sku) {
@@ -127,7 +128,8 @@ export default function CoinDetail() {
       purchaseDate: purchaseFormData.purchaseDate,
       purchasePrice: purchaseFormData.purchasePrice,
       notes: purchaseFormData.notes,
-      imageUrl: referenceCoin.imageUrl,
+      obverseImageUrl: referenceCoin.obverseImageUrl,
+      reverseImageUrl: referenceCoin.reverseImageUrl,
       isSold: false
     };
 
@@ -281,15 +283,41 @@ export default function CoinDetail() {
             {/* Coin Images */}
             <Card className="bg-slate-900 border-slate-800 overflow-hidden">
               <CardContent className="p-6">
-                <div className="flex items-start gap-6">
-                  {referenceCoin.imageUrl && (
-                    <img
-                      src={referenceCoin.imageUrl}
-                      alt={referenceCoin.coinName}
-                      className="w-48 h-48 object-cover rounded-lg border-2 border-amber-500/20 cursor-pointer hover:opacity-80 transition-opacity"
-                      onClick={() => setImageViewerOpen(true)}
-                      loading="lazy"
-                    />
+                <div className="flex flex-wrap items-start gap-6">
+                  {referenceCoin.obverseImageUrl && (
+                    <div className="space-y-2">
+                      <span className="text-sm text-slate-400">Obverse</span>
+                      <img
+                        src={referenceCoin.obverseImageUrl}
+                        alt={`${referenceCoin.coinName} - Obverse`}
+                        className="w-48 h-48 object-cover rounded-lg border-2 border-amber-500/20 cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={() => {
+                          setSelectedImage({ url: referenceCoin.obverseImageUrl!, alt: `${referenceCoin.coinName} - Obverse` });
+                          setImageViewerOpen(true);
+                        }}
+                        loading="lazy"
+                      />
+                    </div>
+                  )}
+                  {referenceCoin.reverseImageUrl && (
+                    <div className="space-y-2">
+                      <span className="text-sm text-slate-400">Reverse</span>
+                      <img
+                        src={referenceCoin.reverseImageUrl}
+                        alt={`${referenceCoin.coinName} - Reverse`}
+                        className="w-48 h-48 object-cover rounded-lg border-2 border-amber-500/20 cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={() => {
+                          setSelectedImage({ url: referenceCoin.reverseImageUrl!, alt: `${referenceCoin.coinName} - Reverse` });
+                          setImageViewerOpen(true);
+                        }}
+                        loading="lazy"
+                      />
+                    </div>
+                  )}
+                  {!referenceCoin.obverseImageUrl && !referenceCoin.reverseImageUrl && (
+                    <div className="w-48 h-48 bg-slate-800 rounded-lg flex items-center justify-center border-2 border-slate-700 border-dashed">
+                      <span className="text-slate-500">No images</span>
+                    </div>
                   )}
                 </div>
 
@@ -786,8 +814,8 @@ export default function CoinDetail() {
       <ImageViewer
         isOpen={imageViewerOpen}
         onClose={() => setImageViewerOpen(false)}
-        imageUrl={referenceCoin?.imageUrl || ""}
-        alt={referenceCoin?.coinName || ""}
+        imageUrl={selectedImage?.url || referenceCoin?.obverseImageUrl || referenceCoin?.reverseImageUrl || ""}
+        alt={selectedImage?.alt || referenceCoin?.coinName || ""}
       />
     </Layout>
   );

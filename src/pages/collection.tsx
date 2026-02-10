@@ -591,20 +591,42 @@ export default function Collection() {
                     </div>
 
                     <div className="col-span-2">
-                      <Label htmlFor="imageUpload" className="text-slate-300">Coin Image</Label>
+                      <Label htmlFor="obverseImageUpload" className="text-slate-300">Obverse Image (Front)</Label>
                       <div className="space-y-2">
                         <Input
-                          id="imageUpload"
+                          id="obverseImageUpload"
                           type="file"
                           accept="image/*"
-                          onChange={handleImageChange}
+                          onChange={handleObverseImageChange}
                           className="bg-slate-800 border-slate-700 text-white"
                         />
-                        {imagePreview && (
+                        {(obverseImagePreview || formData.obverseImageUrl) && (
                           <div className="mt-2">
                             <img 
-                              src={imagePreview} 
-                              alt="Preview" 
+                              src={obverseImagePreview || formData.obverseImageUrl} 
+                              alt="Obverse Preview" 
+                              className="w-32 h-32 object-cover rounded-lg border-2 border-slate-700"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="col-span-2">
+                      <Label htmlFor="reverseImageUpload" className="text-slate-300">Reverse Image (Back)</Label>
+                      <div className="space-y-2">
+                        <Input
+                          id="reverseImageUpload"
+                          type="file"
+                          accept="image/*"
+                          onChange={handleReverseImageChange}
+                          className="bg-slate-800 border-slate-700 text-white"
+                        />
+                        {(reverseImagePreview || formData.reverseImageUrl) && (
+                          <div className="mt-2">
+                            <img 
+                              src={reverseImagePreview || formData.reverseImageUrl} 
+                              alt="Reverse Preview" 
                               className="w-32 h-32 object-cover rounded-lg border-2 border-slate-700"
                             />
                           </div>
@@ -717,18 +739,38 @@ export default function Collection() {
                           className="bg-slate-800/50 border-slate-700 hover:bg-slate-800 transition-colors overflow-hidden group"
                         >
                           <div 
-                            className="aspect-square relative bg-slate-900/50 overflow-hidden cursor-pointer"
+                            className="aspect-square relative bg-slate-900/50 overflow-hidden cursor-pointer grid grid-cols-2 gap-1 p-1"
                             onClick={() => router.push(`/coin/${encodeURIComponent(sku)}`)}
                           >
-                            {coin.imageUrl ? (
-                              <img 
-                                src={coin.imageUrl} 
-                                alt={coin.coinName || sku}
-                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                loading="lazy"
-                              />
+                            {coin.obverseImageUrl || coin.reverseImageUrl ? (
+                              <>
+                                {coin.obverseImageUrl ? (
+                                  <img 
+                                    src={coin.obverseImageUrl} 
+                                    alt={`${coin.coinName || sku} - Obverse`}
+                                    className="w-full h-full object-cover rounded group-hover:scale-105 transition-transform duration-300"
+                                    loading="lazy"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center bg-slate-800/50 rounded">
+                                    <Package className="w-8 h-8 text-slate-700" />
+                                  </div>
+                                )}
+                                {coin.reverseImageUrl ? (
+                                  <img 
+                                    src={coin.reverseImageUrl} 
+                                    alt={`${coin.coinName || sku} - Reverse`}
+                                    className="w-full h-full object-cover rounded group-hover:scale-105 transition-transform duration-300"
+                                    loading="lazy"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center bg-slate-800/50 rounded">
+                                    <Package className="w-8 h-8 text-slate-700" />
+                                  </div>
+                                )}
+                              </>
                             ) : (
-                              <div className="w-full h-full flex items-center justify-center">
+                              <div className="col-span-2 w-full h-full flex items-center justify-center">
                                 <Package className="w-16 h-16 text-slate-700" />
                               </div>
                             )}
@@ -776,6 +818,19 @@ export default function Collection() {
                             </div>
 
                             <div className="flex gap-2 pt-3 border-t border-slate-700">
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                className="flex-1 border-slate-600 text-slate-300 hover:bg-slate-700"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingCoin(coin);
+                                  setFormData(coin);
+                                  setIsAddDialogOpen(true);
+                                }}
+                              >
+                                Edit
+                              </Button>
                               <Button 
                                 size="sm" 
                                 variant="outline" 
