@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { SEO } from "@/components/SEO";
 import { Layout } from "@/components/Layout";
 import { storageService } from "@/lib/storage";
+import { spotPriceService } from "@/lib/spotPrices";
 import { Coin, Sale } from "@/types/coin";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, TrendingUp, TrendingDown } from "lucide-react";
+import { Plus, TrendingUp, TrendingDown, DollarSign } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 
 export default function Sales() {
@@ -98,12 +99,14 @@ export default function Sales() {
         description="Track your coin sales and profit margins"
       />
 
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
+      <div className="space-y-8">
+        <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
-            <h1 className="text-4xl font-bold text-amber-700 dark:text-amber-400">Sales Records</h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-2">
-              {sales.length} total sales • ${totalProfit.toFixed(2)} profit
+            <h1 className="text-5xl font-bold bg-gradient-to-r from-brand-primary to-brand-secondary bg-clip-text text-transparent mb-2">
+              Sales Records
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400 text-lg">
+              {sales.length} total sales • {spotPriceService.formatCHF(totalProfit)} profit
             </p>
           </div>
 
@@ -112,19 +115,22 @@ export default function Sales() {
             if (!open) resetForm();
           }}>
             <DialogTrigger asChild>
-              <Button className="bg-amber-600 hover:bg-amber-700" disabled={availableCoins.length === 0}>
+              <Button 
+                className="bg-gradient-to-r from-brand-primary to-brand-secondary hover:opacity-90 shadow-lg" 
+                disabled={availableCoins.length === 0}
+              >
                 <Plus className="w-4 h-4 mr-2" />
                 Record Sale
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Record New Sale</DialogTitle>
+                <DialogTitle className="text-2xl">Record New Sale</DialogTitle>
               </DialogHeader>
               
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
-                  <Label htmlFor="coin">Select Coin *</Label>
+                  <Label htmlFor="coin" className="text-sm font-medium">Select Coin *</Label>
                   <Select 
                     value={selectedCoinId} 
                     onValueChange={setSelectedCoinId}
@@ -135,7 +141,7 @@ export default function Sales() {
                     <SelectContent className="max-h-60">
                       {availableCoins.map(coin => (
                         <SelectItem key={coin.id} value={coin.id}>
-                          {coin.sku} - {coin.year} ({coin.mintmark || "No mintmark"}) - Grade {coin.sheldonGrade} - Purchased at ${coin.purchasePrice.toFixed(2)}
+                          {coin.sku} - {coin.year} ({coin.mintmark || "No mintmark"}) - Grade {coin.sheldonGrade} - Purchased at {spotPriceService.formatCHF(coin.purchasePrice)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -144,7 +150,7 @@ export default function Sales() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="saleDate">Sale Date *</Label>
+                    <Label htmlFor="saleDate" className="text-sm font-medium">Sale Date *</Label>
                     <Input
                       id="saleDate"
                       type="date"
@@ -155,7 +161,7 @@ export default function Sales() {
                   </div>
 
                   <div>
-                    <Label htmlFor="salePrice">Sale Price ($) *</Label>
+                    <Label htmlFor="salePrice" className="text-sm font-medium">Sale Price (CHF) *</Label>
                     <Input
                       id="salePrice"
                       type="number"
@@ -169,16 +175,18 @@ export default function Sales() {
                 </div>
 
                 {selectedCoinId && (
-                  <Card className="bg-amber-50 dark:bg-gray-800 border-amber-200 dark:border-amber-900">
-                    <CardContent className="pt-4">
-                      <div className="text-sm space-y-1">
-                        <p className="font-medium">Purchase Price: ${getCoinById(selectedCoinId)?.purchasePrice.toFixed(2)}</p>
+                  <Card className="bg-gradient-to-br from-brand-muted to-white dark:from-gray-800 dark:to-gray-900 border-brand-primary/20">
+                    <CardContent className="pt-6">
+                      <div className="space-y-2">
+                        <p className="font-medium text-gray-700 dark:text-gray-300">
+                          Purchase Price: {spotPriceService.formatCHF(getCoinById(selectedCoinId)?.purchasePrice || 0)}
+                        </p>
                         {formData.salePrice && (
                           <>
                             <p className={`font-medium ${(formData.salePrice - (getCoinById(selectedCoinId)?.purchasePrice || 0)) >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
-                              Profit: ${(formData.salePrice - (getCoinById(selectedCoinId)?.purchasePrice || 0)).toFixed(2)}
+                              Profit: {spotPriceService.formatCHF(formData.salePrice - (getCoinById(selectedCoinId)?.purchasePrice || 0))}
                             </p>
-                            <p className="font-medium text-blue-600 dark:text-blue-400">
+                            <p className="font-medium text-brand-primary">
                               Markup: {(((formData.salePrice - (getCoinById(selectedCoinId)?.purchasePrice || 0)) / (getCoinById(selectedCoinId)?.purchasePrice || 1)) * 100).toFixed(2)}%
                             </p>
                           </>
@@ -189,7 +197,7 @@ export default function Sales() {
                 )}
 
                 <div>
-                  <Label htmlFor="buyerInfo">Buyer Information</Label>
+                  <Label htmlFor="buyerInfo" className="text-sm font-medium">Buyer Information</Label>
                   <Input
                     id="buyerInfo"
                     value={formData.buyerInfo || ""}
@@ -199,7 +207,7 @@ export default function Sales() {
                 </div>
 
                 <div>
-                  <Label htmlFor="notes">Notes</Label>
+                  <Label htmlFor="notes" className="text-sm font-medium">Notes</Label>
                   <Textarea
                     id="notes"
                     value={formData.notes || ""}
@@ -209,11 +217,11 @@ export default function Sales() {
                   />
                 </div>
 
-                <div className="flex gap-2 justify-end">
+                <div className="flex gap-2 justify-end pt-4 border-t">
                   <Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)}>
                     Cancel
                   </Button>
-                  <Button type="submit" className="bg-amber-600 hover:bg-amber-700">
+                  <Button type="submit" className="bg-gradient-to-r from-brand-primary to-brand-secondary hover:opacity-90">
                     Record Sale
                   </Button>
                 </div>
@@ -223,106 +231,149 @@ export default function Sales() {
         </div>
 
         <div className="grid md:grid-cols-4 gap-4">
-          <Card className="border-2 border-green-200 dark:border-green-900">
+          <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950 dark:to-emerald-950">
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Revenue</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                  Total Revenue
+                </CardTitle>
+                <DollarSign className="w-5 h-5 text-green-600 dark:text-green-400" />
+              </div>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold text-green-600 dark:text-green-400">${totalRevenue.toFixed(2)}</p>
+              <p className="text-3xl font-bold text-green-600 dark:text-green-400">
+                {spotPriceService.formatCHF(totalRevenue)}
+              </p>
             </CardContent>
           </Card>
 
-          <Card className="border-2 border-blue-200 dark:border-blue-900">
+          <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950">
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Profit</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                  Total Profit
+                </CardTitle>
+                <TrendingUp className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              </div>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">${totalProfit.toFixed(2)}</p>
+              <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
+                {spotPriceService.formatCHF(totalProfit)}
+              </p>
             </CardContent>
           </Card>
 
-          <Card className="border-2 border-purple-200 dark:border-purple-900">
+          <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow bg-gradient-to-br from-purple-50 to-fuchsia-50 dark:from-purple-950 dark:to-fuchsia-950">
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Average Markup</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                  Average Markup
+                </CardTitle>
+                <TrendingUp className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+              </div>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">{averageMarkup.toFixed(2)}%</p>
+              <p className="text-3xl font-bold text-purple-600 dark:text-purple-400">
+                {averageMarkup.toFixed(2)}%
+              </p>
             </CardContent>
           </Card>
 
-          <Card className="border-2 border-amber-200 dark:border-amber-900">
+          <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-950 dark:to-amber-950">
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Sales Count</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                  Sales Count
+                </CardTitle>
+                <DollarSign className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+              </div>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{sales.length}</p>
+              <p className="text-3xl font-bold text-orange-600 dark:text-orange-400">
+                {sales.length}
+              </p>
             </CardContent>
           </Card>
         </div>
 
-        <Card className="border-2 border-amber-200 dark:border-amber-900">
+        <Card className="border-0 shadow-lg">
           <CardHeader>
-            <CardTitle>Sales History</CardTitle>
-            <CardDescription>Complete record of all coin sales</CardDescription>
+            <CardTitle className="text-2xl">Sales History</CardTitle>
+            <CardDescription className="text-base">Complete record of all coin sales in CHF</CardDescription>
           </CardHeader>
           <CardContent>
             {sales.length > 0 ? (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Coin</TableHead>
-                    <TableHead>Purchase Price</TableHead>
-                    <TableHead>Sale Price</TableHead>
-                    <TableHead>Profit</TableHead>
-                    <TableHead>Markup</TableHead>
-                    <TableHead>Buyer</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {sales.map(sale => {
-                    const coin = getCoinById(sale.coinId);
-                    const profit = calculateProfit(sale);
-                    const markup = calculateMarkup(sale);
-                    
-                    return (
-                      <TableRow key={sale.id}>
-                        <TableCell>{new Date(sale.saleDate).toLocaleDateString()}</TableCell>
-                        <TableCell className="font-medium">
-                          {coin ? `${coin.sku} - ${coin.year}${coin.mintmark ? ` (${coin.mintmark})` : ""}` : "Unknown"}
-                          <br />
-                          <span className="text-xs text-gray-500">{coin?.sheldonGrade}</span>
-                        </TableCell>
-                        <TableCell>${coin?.purchasePrice.toFixed(2)}</TableCell>
-                        <TableCell className="font-medium">${sale.salePrice.toFixed(2)}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            {profit >= 0 ? (
-                              <TrendingUp className="w-4 h-4 text-green-600" />
-                            ) : (
-                              <TrendingDown className="w-4 h-4 text-red-600" />
-                            )}
-                            <span className={profit >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}>
-                              ${Math.abs(profit).toFixed(2)}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={markup >= 0 ? "default" : "destructive"} className={markup >= 0 ? "bg-blue-600" : ""}>
-                            {markup >= 0 ? "+" : ""}{markup.toFixed(2)}%
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-sm">{sale.buyerInfo || "-"}</TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="font-semibold">Date</TableHead>
+                      <TableHead className="font-semibold">Coin</TableHead>
+                      <TableHead className="font-semibold">Purchase Price</TableHead>
+                      <TableHead className="font-semibold">Sale Price</TableHead>
+                      <TableHead className="font-semibold">Profit</TableHead>
+                      <TableHead className="font-semibold">Markup</TableHead>
+                      <TableHead className="font-semibold">Buyer</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {sales.map(sale => {
+                      const coin = getCoinById(sale.coinId);
+                      const profit = calculateProfit(sale);
+                      const markup = calculateMarkup(sale);
+                      
+                      return (
+                        <TableRow key={sale.id} className="hover:bg-brand-muted/30">
+                          <TableCell className="font-medium">
+                            {new Date(sale.saleDate).toLocaleDateString('de-CH')}
+                          </TableCell>
+                          <TableCell>
+                            <div className="font-medium">{coin ? `${coin.sku}` : "Unknown"}</div>
+                            <div className="text-sm text-gray-500">
+                              {coin ? `${coin.year}${coin.mintmark ? ` (${coin.mintmark})` : ""} • ${coin.sheldonGrade}` : ""}
+                            </div>
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            {spotPriceService.formatCHF(coin?.purchasePrice || 0)}
+                          </TableCell>
+                          <TableCell className="font-medium text-brand-primary">
+                            {spotPriceService.formatCHF(sale.salePrice)}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              {profit >= 0 ? (
+                                <TrendingUp className="w-4 h-4 text-green-600" />
+                              ) : (
+                                <TrendingDown className="w-4 h-4 text-red-600" />
+                              )}
+                              <span className={profit >= 0 ? "text-green-600 dark:text-green-400 font-medium" : "text-red-600 dark:text-red-400 font-medium"}>
+                                {spotPriceService.formatCHF(Math.abs(profit))}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge 
+                              variant={markup >= 0 ? "default" : "destructive"} 
+                              className={markup >= 0 ? "bg-gradient-to-r from-brand-primary to-brand-secondary" : ""}
+                            >
+                              {markup >= 0 ? "+" : ""}{markup.toFixed(2)}%
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-sm">
+                            {sale.buyerInfo || "-"}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
             ) : (
-              <div className="text-center py-12">
-                <p className="text-gray-500 dark:text-gray-400 mb-4">No sales recorded yet</p>
+              <div className="text-center py-16">
+                <TrendingUp className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-500 dark:text-gray-400 text-lg mb-4">No sales recorded yet</p>
                 {availableCoins.length > 0 ? (
-                  <Button onClick={() => setIsAddDialogOpen(true)} className="bg-amber-600 hover:bg-amber-700">
+                  <Button onClick={() => setIsAddDialogOpen(true)} className="bg-gradient-to-r from-brand-primary to-brand-secondary hover:opacity-90">
                     <Plus className="w-4 h-4 mr-2" />
                     Record Your First Sale
                   </Button>

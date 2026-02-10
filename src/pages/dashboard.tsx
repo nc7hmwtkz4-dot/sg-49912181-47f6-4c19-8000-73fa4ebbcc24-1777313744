@@ -2,24 +2,16 @@ import { useState, useEffect } from "react";
 import { SEO } from "@/components/SEO";
 import { Layout } from "@/components/Layout";
 import { storageService } from "@/lib/storage";
+import { spotPriceService, SpotPrices } from "@/lib/spotPrices";
 import { Coin, Sale, COUNTRY_CODES } from "@/types/coin";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Coins, TrendingUp, DollarSign, Package, Globe, PieChart } from "lucide-react";
-
-// Metal spot prices (USD per troy ounce) - In production, these would come from an API
-const SPOT_PRICES = {
-  gold: 2000,
-  silver: 25,
-  platinum: 950,
-  palladium: 1000,
-  copper: 0.0035,
-  other: 0
-};
+import { Coins, TrendingUp, DollarSign, Package, Globe, PieChart, Sparkles } from "lucide-react";
 
 export default function Dashboard() {
   const [coins, setCoins] = useState<Coin[]>([]);
   const [sales, setSales] = useState<Sale[]>([]);
+  const [spotPrices, setSpotPrices] = useState<SpotPrices | null>(null);
   const [stats, setStats] = useState({
     totalCoins: 0,
     bullionValue: 0,
@@ -34,6 +26,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     loadData();
+    loadSpotPrices();
   }, []);
 
   const loadData = () => {
@@ -41,22 +34,39 @@ export default function Dashboard() {
     const loadedSales = storageService.getSales();
     setCoins(loadedCoins);
     setSales(loadedSales);
-    calculateStats(loadedCoins, loadedSales);
   };
 
-  const calculateBullionValue = (coin: Coin): number => {
-    const troyOunces = coin.weight / 31.1035; // Convert grams to troy ounces
-    const pureMetalOunces = troyOunces * (coin.purity / 100);
-    return pureMetalOunces * SPOT_PRICES[coin.metal];
+  const loadSpotPrices = async () => {
+    const prices = await spotPriceService.getSpotPrices();
+    setSpotPrices(prices);
+    // Recalculate stats when spot prices are loaded
+    if (coins.length > 0) {
+      calculateStats(coins, sales, prices);
+    }
   };
 
-  const calculateStats = (coins: Coin[], sales: Sale[]) => {
+  useEffect(() => {
+    if (spotPrices) {
+      calculateStats(coins, sales, spotPrices);
+    }
+  }, [coins, sales, spotPrices]);
+
+  const calculateBullionValue = (coin: Coin, prices: SpotPrices): number => {
+    return spotPriceService.calculateBullionValue(
+      coin.metal,
+      coin.weight,
+      coin.purity,
+      prices
+    );
+  };
+
+  const calculateStats = (coins: Coin[], sales: Sale[], prices: SpotPrices) => {
     const totalCoins = coins.length;
     const unsoldCoins = coins.filter(c => !c.isSold).length;
     
     const bullionValue = coins
       .filter(c => !c.isSold)
-      .reduce((sum, coin) => sum + calculateBullionValue(coin), 0);
+      .reduce((sum, coin) => sum + calculateBullionValue(coin, prices), 0);
     
     const totalPurchaseValue = coins.reduce((sum, coin) => sum + coin.purchasePrice, 0);
     
@@ -105,87 +115,89 @@ export default function Dashboard() {
         description="Analytics and statistics for your coin collection"
       />
 
-      <div className="space-y-6">
+      <div className="space-y-8">
         <div>
-          <h1 className="text-4xl font-bold text-amber-700 dark:text-amber-400">Dashboard</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">
-            Complete overview of your numismatic portfolio
+          <h1 className="text-5xl font-bold bg-gradient-to-r from-brand-primary to-brand-secondary bg-clip-text text-transparent mb-2">
+            Dashboard
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 text-lg">
+            Complete overview of your numismatic portfolio in Swiss Francs
           </p>
         </div>
 
         {/* Primary Stats */}
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="border-2 border-amber-200 dark:border-amber-900">
+          <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
                   Total Coins
                 </CardTitle>
-                <Package className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                <Package className="w-5 h-5 text-brand-primary" />
               </div>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold text-amber-700 dark:text-amber-400">
+              <p className="text-4xl font-bold text-brand-primary mb-1">
                 {stats.totalCoins}
               </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
                 {stats.unsoldCoins} available
               </p>
             </CardContent>
           </Card>
 
-          <Card className="border-2 border-blue-200 dark:border-blue-900">
+          <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950 dark:to-emerald-950">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
                   Bullion Value
                 </CardTitle>
-                <Coins className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                <Coins className="w-5 h-5 text-green-600 dark:text-green-400" />
               </div>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold text-blue-700 dark:text-blue-400">
-                ${stats.bullionValue.toFixed(2)}
+              <p className="text-4xl font-bold text-green-600 dark:text-green-400 mb-1">
+                {spotPrices ? spotPriceService.formatCHF(stats.bullionValue) : "Loading..."}
               </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
                 Unsold coins only
               </p>
             </CardContent>
           </Card>
 
-          <Card className="border-2 border-green-200 dark:border-green-900">
+          <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 bg-gradient-to-br from-purple-50 to-fuchsia-50 dark:from-purple-950 dark:to-fuchsia-950">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
                   Total Profit
                 </CardTitle>
-                <TrendingUp className="w-4 h-4 text-green-600 dark:text-green-400" />
+                <TrendingUp className="w-5 h-5 text-purple-600 dark:text-purple-400" />
               </div>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold text-green-700 dark:text-green-400">
-                ${stats.totalProfit.toFixed(2)}
+              <p className="text-4xl font-bold text-purple-600 dark:text-purple-400 mb-1">
+                {spotPriceService.formatCHF(stats.totalProfit)}
               </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
                 {stats.profitMargin.toFixed(2)}% margin
               </p>
             </CardContent>
           </Card>
 
-          <Card className="border-2 border-purple-200 dark:border-purple-900">
+          <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-950 dark:to-amber-950">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
                   Sales Revenue
                 </CardTitle>
-                <DollarSign className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                <DollarSign className="w-5 h-5 text-orange-600 dark:text-orange-400" />
               </div>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold text-purple-700 dark:text-purple-400">
-                ${stats.totalSalesAmount.toFixed(2)}
+              <p className="text-4xl font-bold text-orange-600 dark:text-orange-400 mb-1">
+                {spotPriceService.formatCHF(stats.totalSalesAmount)}
               </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
                 {sales.length} transactions
               </p>
             </CardContent>
@@ -194,16 +206,16 @@ export default function Dashboard() {
 
         {/* Financial Overview */}
         <div className="grid md:grid-cols-3 gap-4">
-          <Card className="border-2 border-amber-200 dark:border-amber-900">
+          <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow">
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
-                <DollarSign className="w-5 h-5" />
+                <DollarSign className="w-5 h-5 text-brand-primary" />
                 Purchase Investment
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold text-gray-700 dark:text-gray-300">
-                ${stats.totalPurchaseValue.toFixed(2)}
+              <p className="text-3xl font-bold text-gray-700 dark:text-gray-300">
+                {spotPriceService.formatCHF(stats.totalPurchaseValue)}
               </p>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
                 Total capital invested in collection
@@ -211,16 +223,16 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          <Card className="border-2 border-amber-200 dark:border-amber-900">
+          <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow">
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
-                <Coins className="w-5 h-5" />
+                <Coins className="w-5 h-5 text-brand-primary" />
                 Current Portfolio
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold text-gray-700 dark:text-gray-300">
-                ${(stats.bullionValue).toFixed(2)}
+              <p className="text-3xl font-bold text-gray-700 dark:text-gray-300">
+                {spotPrices ? spotPriceService.formatCHF(stats.bullionValue) : "Loading..."}
               </p>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
                 Bullion value of unsold coins
@@ -228,16 +240,16 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          <Card className="border-2 border-amber-200 dark:border-amber-900">
+          <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow">
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
-                <TrendingUp className="w-5 h-5" />
+                <TrendingUp className="w-5 h-5 text-brand-primary" />
                 Realized Gains
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                ${stats.totalProfit.toFixed(2)}
+              <p className="text-3xl font-bold text-green-600 dark:text-green-400">
+                {spotPriceService.formatCHF(stats.totalProfit)}
               </p>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
                 Profit from completed sales
@@ -248,13 +260,13 @@ export default function Dashboard() {
 
         <div className="grid lg:grid-cols-2 gap-6">
           {/* Country Distribution */}
-          <Card className="border-2 border-amber-200 dark:border-amber-900">
+          <Card className="border-0 shadow-lg">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Globe className="w-5 h-5" />
+              <CardTitle className="text-xl flex items-center gap-2">
+                <Globe className="w-6 h-6 text-brand-primary" />
                 Collection by Country
               </CardTitle>
-              <CardDescription>Geographic distribution of your coins</CardDescription>
+              <CardDescription className="text-base">Geographic distribution of your coins</CardDescription>
             </CardHeader>
             <CardContent>
               {topCountries.length > 0 ? (
@@ -262,7 +274,7 @@ export default function Dashboard() {
                   {topCountries.map(([code, count]) => (
                     <div key={code} className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <Badge variant="outline" className="text-sm font-medium w-12 justify-center">
+                        <Badge variant="outline" className="text-sm font-medium w-12 justify-center border-brand-primary text-brand-primary">
                           {code}
                         </Badge>
                         <span className="text-sm font-medium">
@@ -270,13 +282,13 @@ export default function Dashboard() {
                         </span>
                       </div>
                       <div className="flex items-center gap-3">
-                        <div className="w-32 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                        <div className="w-32 bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
                           <div 
-                            className="bg-amber-600 h-2 rounded-full"
+                            className="bg-gradient-to-r from-brand-primary to-brand-secondary h-2.5 rounded-full transition-all"
                             style={{ width: `${(count / stats.totalCoins) * 100}%` }}
                           />
                         </div>
-                        <span className="text-sm font-bold w-12 text-right">
+                        <span className="text-sm font-bold w-12 text-right text-brand-primary">
                           {count}
                         </span>
                       </div>
@@ -289,21 +301,22 @@ export default function Dashboard() {
                   )}
                 </div>
               ) : (
-                <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-                  No coins in collection yet
-                </p>
+                <div className="text-center py-12">
+                  <Globe className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500 dark:text-gray-400">No coins in collection yet</p>
+                </div>
               )}
             </CardContent>
           </Card>
 
           {/* Metal Distribution */}
-          <Card className="border-2 border-amber-200 dark:border-amber-900">
+          <Card className="border-0 shadow-lg">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <PieChart className="w-5 h-5" />
+              <CardTitle className="text-xl flex items-center gap-2">
+                <PieChart className="w-6 h-6 text-brand-primary" />
                 Collection by Metal
               </CardTitle>
-              <CardDescription>Breakdown by precious metal type</CardDescription>
+              <CardDescription className="text-base">Breakdown by precious metal type</CardDescription>
             </CardHeader>
             <CardContent>
               {Object.keys(stats.coinsByMetal).length > 0 ? (
@@ -312,30 +325,39 @@ export default function Dashboard() {
                     .sort(([, a], [, b]) => b - a)
                     .map(([metal, count]) => {
                       const colors = {
-                        gold: "bg-yellow-500",
-                        silver: "bg-gray-400",
-                        platinum: "bg-blue-400",
-                        palladium: "bg-gray-500",
-                        copper: "bg-orange-600",
-                        other: "bg-gray-600"
+                        gold: "bg-gradient-to-r from-yellow-500 to-amber-600",
+                        silver: "bg-gradient-to-r from-gray-300 to-gray-500",
+                        platinum: "bg-gradient-to-r from-blue-400 to-indigo-500",
+                        palladium: "bg-gradient-to-r from-gray-400 to-gray-600",
+                        copper: "bg-gradient-to-r from-orange-500 to-red-600",
+                        other: "bg-gradient-to-r from-gray-500 to-gray-700"
+                      };
+                      
+                      const iconColors = {
+                        gold: "text-yellow-600",
+                        silver: "text-gray-500",
+                        platinum: "text-blue-500",
+                        palladium: "text-gray-600",
+                        copper: "text-orange-600",
+                        other: "text-gray-600"
                       };
                       
                       return (
                         <div key={metal} className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
-                            <div className={`w-4 h-4 rounded ${colors[metal as keyof typeof colors]}`} />
+                            <Sparkles className={`w-5 h-5 ${iconColors[metal as keyof typeof iconColors]}`} />
                             <span className="text-sm font-medium capitalize">
                               {metal}
                             </span>
                           </div>
                           <div className="flex items-center gap-3">
-                            <div className="w-32 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                            <div className="w-32 bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
                               <div 
-                                className={`${colors[metal as keyof typeof colors]} h-2 rounded-full`}
+                                className={`${colors[metal as keyof typeof colors]} h-2.5 rounded-full transition-all`}
                                 style={{ width: `${(count / stats.totalCoins) * 100}%` }}
                               />
                             </div>
-                            <span className="text-sm font-bold w-12 text-right">
+                            <span className="text-sm font-bold w-12 text-right text-brand-primary">
                               {count}
                             </span>
                           </div>
@@ -344,37 +366,38 @@ export default function Dashboard() {
                     })}
                 </div>
               ) : (
-                <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-                  No coins in collection yet
-                </p>
+                <div className="text-center py-12">
+                  <PieChart className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500 dark:text-gray-400">No coins in collection yet</p>
+                </div>
               )}
             </CardContent>
           </Card>
         </div>
 
         {/* World Map Placeholder */}
-        <Card className="border-2 border-amber-200 dark:border-amber-900">
+        <Card className="border-0 shadow-lg">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Globe className="w-5 h-5" />
+            <CardTitle className="text-xl flex items-center gap-2">
+              <Globe className="w-6 h-6 text-brand-primary" />
               World Distribution Map
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-base">
               Visual representation of your collection across the globe
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="bg-gradient-to-br from-blue-100 to-blue-50 dark:from-gray-800 dark:to-gray-900 rounded-lg p-8 text-center">
-              <Globe className="w-16 h-16 mx-auto text-blue-600 dark:text-blue-400 mb-4" />
-              <p className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <div className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-800 dark:via-gray-900 dark:to-indigo-950 rounded-xl p-12 text-center border-2 border-dashed border-brand-primary/30">
+              <Globe className="w-20 h-20 mx-auto text-brand-primary mb-4" />
+              <p className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-2">
                 Interactive World Map
               </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              <p className="text-base text-gray-600 dark:text-gray-400 mb-6">
                 Visualize your collection of {stats.totalCoins} coins across {Object.keys(stats.coinsByCountry).length} countries
               </p>
               <div className="flex flex-wrap gap-2 justify-center">
                 {Object.entries(stats.coinsByCountry).map(([code, count]) => (
-                  <Badge key={code} variant="secondary" className="text-xs">
+                  <Badge key={code} className="bg-gradient-to-r from-brand-primary to-brand-secondary text-white">
                     {code}: {count}
                   </Badge>
                 ))}
@@ -383,39 +406,52 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Spot Prices Reference */}
-        <Card className="border-2 border-amber-200 dark:border-amber-900">
-          <CardHeader>
-            <CardTitle className="text-sm">Current Spot Prices (Reference)</CardTitle>
-            <CardDescription className="text-xs">
-              Used for bullion value calculations
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
-              <div>
-                <p className="text-xs text-gray-600 dark:text-gray-400">Gold</p>
-                <p className="text-sm font-bold text-yellow-600">${SPOT_PRICES.gold}/oz</p>
+        {/* Swiss Bank Spot Prices */}
+        {spotPrices && (
+          <Card className="border-0 shadow-lg bg-gradient-to-br from-brand-muted to-white dark:from-gray-800 dark:to-gray-900">
+            <CardHeader>
+              <CardTitle className="text-xl flex items-center gap-2">
+                <Sparkles className="w-6 h-6 text-brand-primary" />
+                Swiss Bank Spot Prices
+              </CardTitle>
+              <CardDescription className="text-base">
+                Current precious metal prices in CHF per gram • Updated: {new Date(spotPrices.lastUpdated).toLocaleString('de-CH')}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                <div className="text-center p-4 bg-gradient-to-br from-yellow-50 to-amber-50 dark:from-yellow-950 dark:to-amber-950 rounded-xl border border-yellow-200 dark:border-yellow-900">
+                  <Sparkles className="w-8 h-8 text-yellow-600 mx-auto mb-2" />
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Gold</p>
+                  <p className="text-2xl font-bold text-yellow-600">
+                    {spotPriceService.formatPricePerGram(spotPrices.gold)}
+                  </p>
+                </div>
+                <div className="text-center p-4 bg-gradient-to-br from-gray-50 to-slate-50 dark:from-gray-900 dark:to-slate-950 rounded-xl border border-gray-300 dark:border-gray-700">
+                  <Sparkles className="w-8 h-8 text-gray-500 mx-auto mb-2" />
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Silver</p>
+                  <p className="text-2xl font-bold text-gray-600">
+                    {spotPriceService.formatPricePerGram(spotPrices.silver)}
+                  </p>
+                </div>
+                <div className="text-center p-4 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 rounded-xl border border-blue-200 dark:border-blue-900">
+                  <Sparkles className="w-8 h-8 text-blue-500 mx-auto mb-2" />
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Platinum</p>
+                  <p className="text-2xl font-bold text-blue-600">
+                    {spotPriceService.formatPricePerGram(spotPrices.platinum)}
+                  </p>
+                </div>
+                <div className="text-center p-4 bg-gradient-to-br from-gray-100 to-slate-100 dark:from-gray-800 dark:to-slate-900 rounded-xl border border-gray-400 dark:border-gray-600">
+                  <Sparkles className="w-8 h-8 text-gray-600 mx-auto mb-2" />
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Palladium</p>
+                  <p className="text-2xl font-bold text-gray-700 dark:text-gray-300">
+                    {spotPriceService.formatPricePerGram(spotPrices.palladium)}
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-xs text-gray-600 dark:text-gray-400">Silver</p>
-                <p className="text-sm font-bold text-gray-500">${SPOT_PRICES.silver}/oz</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-600 dark:text-gray-400">Platinum</p>
-                <p className="text-sm font-bold text-blue-600">${SPOT_PRICES.platinum}/oz</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-600 dark:text-gray-400">Palladium</p>
-                <p className="text-sm font-bold text-gray-600">${SPOT_PRICES.palladium}/oz</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-600 dark:text-gray-400">Copper</p>
-                <p className="text-sm font-bold text-orange-600">${(SPOT_PRICES.copper * 1000).toFixed(2)}/kg</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </Layout>
   );
