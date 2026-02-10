@@ -36,8 +36,40 @@ export default function Dashboard() {
     const { data: coinsData } = await userCoinService.getUserCoins();
     const { data: salesData } = await userSalesService.getUserSales();
     
-    if (coinsData) setCoins(coinsData);
-    if (salesData) setSales(salesData);
+    if (coinsData) {
+      const mappedCoins: Coin[] = coinsData.map((c: any) => ({
+        id: c.id,
+        sku: c.sku,
+        coinName: c.coin_name,
+        countryCode: c.country_code,
+        kmNumber: c.km_number,
+        year: c.year,
+        mintmark: c.mintmark,
+        metal: c.metal,
+        purity: c.purity,
+        weight: c.weight,
+        sheldonGrade: c.sheldon_grade,
+        purchasePrice: c.purchase_price,
+        purchaseDate: c.purchase_date,
+        notes: c.notes,
+        obverseImageUrl: c.obverse_image_url,
+        reverseImageUrl: c.reverse_image_url,
+        isSold: c.is_sold
+      }));
+      setCoins(mappedCoins);
+    }
+
+    if (salesData) {
+      const mappedSales: Sale[] = salesData.map((s: any) => ({
+        id: s.id,
+        coinId: s.coin_id,
+        saleDate: s.sale_date,
+        salePrice: s.sale_price,
+        buyerInfo: s.buyer_info,
+        notes: s.notes
+      }));
+      setSales(mappedSales);
+    }
   };
 
   const loadSpotPrices = async (forceRefresh = false) => {
