@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { SEO } from "@/components/SEO";
 import { Layout } from "@/components/Layout";
-import { storageService } from "@/lib/storage";
+import { userCoinService } from "@/services/userCoinService";
+import { userSalesService } from "@/services/userSalesService";
 import { spotPriceService } from "@/lib/spotPrices";
 import { imageService } from "@/services/imageService";
 import { Coin, COUNTRY_CODES, SHELDON_GRADES, SheldonGrade } from "@/types/coin";
@@ -60,6 +61,20 @@ export default function CoinDetail() {
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState<{ url: string; alt: string } | null>(null);
 
+  const getCoinById = (coinId: string): Coin | undefined => {
+    return coins.find(c => c.id === coinId);
+  };
+
+  const [salesData, setSalesData] = useState<any[]>([]);
+
+  useEffect(() => {
+    const loadSalesData = async () => {
+      const { data } = await userSalesService.getUserSales();
+      if (data) setSalesData(data);
+    };
+    loadSalesData();
+  }, [coins]);
+
   useEffect(() => {
     if (sku) {
       loadCoins();
@@ -67,10 +82,30 @@ export default function CoinDetail() {
     }
   }, [sku]);
 
-  const loadCoins = () => {
-    const allCoins = storageService.getCoins();
-    const skuCoins = allCoins.filter(c => c.sku === sku);
-    setCoins(skuCoins);
+  const loadCoins = async () => {
+    const { data } = await userCoinService.getCoinsBySKU(sku as string);
+    if (data) {
+      const mappedCoins: Coin[] = data.map((c: any) => ({
+        id: c.id,
+        sku: c.sku,
+        coinName: c.coin_name,
+        countryCode: c.country_code,
+        kmNumber: c.km_number,
+        year: c.year,
+        mintmark: c.mintmark,
+        metal: c.metal,
+        purity: c.purity,
+        weight: c.weight,
+        sheldonGrade: c.sheldon_grade,
+        purchasePrice: c.purchase_price,
+        purchaseDate: c.purchase_date,
+        notes: c.notes,
+        obverseImageUrl: c.obverse_image_url,
+        reverseImageUrl: c.reverse_image_url,
+        isSold: c.is_sold
+      }));
+      setCoins(mappedCoins);
+    }
   };
 
   const loadSpotPrices = async () => {
@@ -126,25 +161,32 @@ export default function CoinDetail() {
       
       // Upload obverse image if changed
       if (obverseImageFile) {
-        obverseImageUrl = await imageService.uploadImage(obverseImageFile);
+        const result = await imageService.uploadImage(obverseImageFile);
+        obverseImageUrl = result.url;
       }
 
       // Upload reverse image if changed
       if (reverseImageFile) {
-        reverseImageUrl = await imageService.uploadImage(reverseImageFile);
+        const result = await imageService.uploadImage(reverseImageFile);
+        reverseImageUrl = result.url;
       }
 
-      const newSKU = storageService.generateSKU(editingCoin.countryCode, editingCoin.kmNumber);
+      const newSKU = `${editingCoin.countryCode}-${editingCoin.kmNumber}`;
       
       // Update all coins with this SKU
-      coins.forEach(coin => {
-        storageService.updateCoin(coin.id, {
-          ...editingCoin,
+      for (const coin of coins) {
+        await userCoinService.updateUserCoin(coin.id, {
+          coin_name: editingCoin.coinName,
+          country_code: editingCoin.countryCode,
+          km_number: editingCoin.kmNumber,
+          metal: editingCoin.metal,
+          purity: editingCoin.purity,
+          weight: editingCoin.weight,
           sku: newSKU,
-          obverseImageUrl,
-          reverseImageUrl
+          obverse_image_url: obverseImageUrl,
+          reverse_image_url: reverseImageUrl
         });
-      });
+      }
 
       setIsEditDialogOpen(false);
       setEditingCoin(null);
@@ -163,7 +205,7 @@ export default function CoinDetail() {
     }
   };
 
-  const handleAddPurchase = (e: React.FormEvent) => {
+  const handleAddPurchase = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!purchaseFormData.year || !purchaseFormData.purchasePrice || !purchaseFormData.purchaseDate) {
@@ -171,27 +213,26 @@ export default function CoinDetail() {
       return;
     }
 
-    const newCoin: Coin = {
-      id: storageService.generateId(),
+    const newCoin = {
       sku: referenceCoin.sku,
-      coinName: referenceCoin.coinName,
-      countryCode: referenceCoin.countryCode,
-      kmNumber: referenceCoin.kmNumber,
+      coin_name: referenceCoin.coinName,
+      country_code: referenceCoin.countryCode,
+      km_number: referenceCoin.kmNumber,
       metal: referenceCoin.metal,
       purity: referenceCoin.purity,
       weight: referenceCoin.weight,
       year: purchaseFormData.year,
       mintmark: purchaseFormData.mintmark,
-      sheldonGrade: purchaseFormData.sheldonGrade,
-      purchaseDate: purchaseFormData.purchaseDate,
-      purchasePrice: purchaseFormData.purchasePrice,
+      sheldon_grade: purchaseFormData.sheldonGrade,
+      purchase_date: purchaseFormData.purchaseDate,
+      purchase_price: purchaseFormData.purchasePrice,
       notes: purchaseFormData.notes,
-      obverseImageUrl: referenceCoin.obverseImageUrl,
-      reverseImageUrl: referenceCoin.reverseImageUrl,
-      isSold: false
+      obverse_image_url: referenceCoin.obverseImageUrl,
+      reverse_image_url: referenceCoin.reverseImageUrl,
+      is_sold: false
     };
 
-    storageService.addCoin(newCoin);
+    await userCoinService.addUserCoin(newCoin);
     loadCoins();
     setIsAddPurchaseOpen(false);
     setPurchaseFormData({
@@ -226,7 +267,7 @@ export default function CoinDetail() {
     setIsSaleDialogOpen(true);
   };
 
-  const handleSaleSubmit = (e: React.FormEvent) => {
+  const handleSaleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!saleFormData.coinId || !saleFormData.saleDate || !saleFormData.salePrice) {
@@ -235,36 +276,32 @@ export default function CoinDetail() {
     }
 
     const sale = {
-      id: storageService.generateId(),
-      coinId: saleFormData.coinId,
-      saleDate: saleFormData.saleDate,
-      salePrice: saleFormData.salePrice,
-      buyerInfo: saleFormData.buyerInfo,
-      notes: saleFormData.notes
+      coin_id: saleFormData.coinId,
+      sale_date: saleFormData.saleDate,
+      sale_price: saleFormData.salePrice,
+      buyer_info: saleFormData.buyerInfo || "",
+      notes: saleFormData.notes || "",
+      purchase_price: 0,
+      markup_percentage: 0,
+      profit: 0
     };
 
-    storageService.addSale(sale);
-    storageService.markCoinAsSold(
-      saleFormData.coinId,
-      saleFormData.saleDate,
-      saleFormData.salePrice,
-      saleFormData.buyerInfo,
-      saleFormData.notes
-    );
+    await userSalesService.addSale(sale);
+    await userCoinService.updateUserCoin(saleFormData.coinId, { is_sold: true });
     
     loadCoins();
     setIsSaleDialogOpen(false);
     setSaleFormData({ coinId: "", saleDate: new Date().toISOString().split("T")[0], salePrice: 0 });
   };
 
-  const handleDeleteCoin = (coinId: string) => {
+  const handleDeleteCoin = async (coinId: string) => {
     if (confirm("Are you sure you want to delete this coin?")) {
-      storageService.deleteCoin(coinId);
+      await userCoinService.deleteUserCoin(coinId);
       loadCoins();
       
       // If no coins left with this SKU, redirect back to collection
-      const remainingCoins = storageService.getCoins().filter(c => c.sku === sku);
-      if (remainingCoins.length === 0) {
+      const { data: remainingCoins } = await userCoinService.getCoinsBySKU(sku as string);
+      if (!remainingCoins || remainingCoins.length === 0) {
         router.push("/collection");
       }
     }
@@ -293,8 +330,8 @@ export default function CoinDetail() {
   const soldCoins = coins.filter(c => c.isSold);
   const soldCount = soldCoins.length;
   const totalSoldAmount = soldCoins.reduce((sum, c) => {
-    const sale = storageService.getSales().find(s => s.id === c.saleId);
-    return sum + (sale?.salePrice || 0);
+    const sale = salesData.find(s => s.coin_id === c.id);
+    return sum + (sale?.sale_price || 0);
   }, 0);
   const soldCost = soldCoins.reduce((sum, c) => sum + c.purchasePrice, 0);
   const totalProfit = totalSoldAmount - soldCost;
@@ -497,7 +534,7 @@ export default function CoinDetail() {
                 </TableHeader>
                 <TableBody>
                   {coins.map(coin => {
-                    const sale = coin.saleId ? storageService.getSales().find(s => s.id === coin.saleId) : null;
+                    const sale = salesData.find(s => s.coin_id === coin.id);
                     return (
                       <TableRow key={coin.id} className="border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50">
                         <TableCell className="text-slate-900 dark:text-white font-medium">{coin.year}</TableCell>
@@ -536,15 +573,17 @@ export default function CoinDetail() {
                         <TableCell className="text-slate-600 dark:text-slate-400">
                           {sale ? (
                             <div className="text-sm">
-                              <div>{spotPriceService.formatCHF(sale.salePrice)}</div>
+                              <div>{spotPriceService.formatCHF(sale.sale_price)}</div>
                               <div className="text-xs text-slate-500">
-                                {new Date(sale.saleDate).toLocaleDateString('en-US', { 
+                                {new Date(sale.sale_date).toLocaleDateString('en-US', { 
                                   year: 'numeric', 
                                   month: 'short', 
                                   day: 'numeric' 
                                 })}
                               </div>
                             </div>
+                          ) : coin.isSold ? (
+                            <div className="text-sm text-slate-500">Sale info unavailable</div>
                           ) : (
                             "-"
                           )}

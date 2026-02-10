@@ -2,176 +2,174 @@
  * Image Service
  * 
  * Handles image uploads with intelligent storage strategy:
- * 1. Compresses images to reduce size
- * 2. Small images (< 100KB): Base64 in localStorage
- * 3. Large images: Server-side upload to /uploads folder
+ * 1. Supabase Storage (for authenticated users - PREFERRED)
+ * 2. Compressed base64 (fallback for development/testing)
  * 
- * To enable Supabase Storage (recommended for production):
- * Go to Database Console → Storage section → Configure coin-images bucket
+ * Storage bucket: coin-images (public read, authenticated write)
  */
 
 import { supabase } from "@/integrations/supabase/client";
 
-interface CompressionResult {
-  dataUrl: string;
-  sizeKB: number;
-  wasCompressed: boolean;
+interface UploadResult {
+  url: string;
+  isBase64: boolean;
 }
+
+/**
+ * Compress image to reduce file size
+ */
+const compressImage = async (file: File, maxWidth = 800, quality = 0.7): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    
+    reader.onload = (e) => {
+      const img = new Image();
+      
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        let width = img.width;
+        let height = img.height;
+        
+        // Resize if too large
+        if (width > maxWidth) {
+          height = (height * maxWidth) / width;
+          width = maxWidth;
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          reject(new Error("Failed to get canvas context"));
+          return;
+        }
+        
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        // Convert to base64 with compression
+        const base64 = canvas.toDataURL("image/jpeg", quality);
+        
+        // Calculate size in KB
+        const sizeKB = Math.round((base64.length * 3) / 4 / 1024);
+        console.log(`🖼️ Image compressed: ${sizeKB}KB (quality: ${quality * 100}%)`);
+        
+        // If still too large (>100KB), compress more aggressively
+        if (sizeKB > 100 && quality > 0.5) {
+          console.warn(`⚠️ Image too large (${sizeKB}KB). Compressing more aggressively...`);
+          compressImage(file, maxWidth, 0.5).then(resolve).catch(reject);
+          return;
+        }
+        
+        resolve(base64);
+      };
+      
+      img.onerror = () => reject(new Error("Failed to load image"));
+      img.src = e.target?.result as string;
+    };
+    
+    reader.onerror = () => reject(new Error("Failed to read file"));
+    reader.readAsDataURL(file);
+  });
+};
+
+/**
+ * Upload image to Supabase Storage
+ */
+const uploadToSupabase = async (file: File, folder: string): Promise<string | null> => {
+  try {
+    // Check if user is authenticated
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      console.warn("⚠️ User not authenticated. Cannot upload to Supabase Storage.");
+      return null;
+    }
+
+    const fileExt = file.name.split(".").pop();
+    const fileName = `${folder}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+
+    console.log(`📤 Uploading to Supabase Storage: ${fileName}`);
+
+    const { data, error } = await supabase.storage
+      .from("coin-images")
+      .upload(fileName, file, {
+        cacheControl: "3600",
+        upsert: false
+      });
+
+    if (error) {
+      console.error("❌ Supabase Storage upload failed:", error);
+      return null;
+    }
+
+    // Get public URL
+    const { data: { publicUrl } } = supabase.storage
+      .from("coin-images")
+      .getPublicUrl(data.path);
+
+    console.log("✅ Image uploaded to Supabase Storage:", publicUrl);
+    return publicUrl;
+  } catch (error) {
+    console.error("❌ Unexpected error uploading to Supabase:", error);
+    return null;
+  }
+};
 
 export const imageService = {
   /**
-   * Compress image to reduce size for storage
+   * Upload image with automatic storage selection
+   * 1. Try Supabase Storage (if authenticated)
+   * 2. Fallback to compressed base64
    */
-  compressImage: async (file: File, maxSizeKB: number = 100, quality: number = 0.7): Promise<CompressionResult> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      
-      reader.onload = (e) => {
-        const img = new Image();
-        img.onload = () => {
-          // Create canvas for compression
-          const canvas = document.createElement("canvas");
-          let width = img.width;
-          let height = img.height;
-          
-          // Calculate new dimensions (max 800px width for thumbnails)
-          const maxWidth = 800;
-          if (width > maxWidth) {
-            height = (height * maxWidth) / width;
-            width = maxWidth;
-          }
-          
-          canvas.width = width;
-          canvas.height = height;
-          
-          const ctx = canvas.getContext("2d");
-          if (!ctx) {
-            reject(new Error("Failed to get canvas context"));
-            return;
-          }
-          
-          // Draw and compress
-          ctx.drawImage(img, 0, 0, width, height);
-          
-          // Try different quality levels to meet size target
-          let currentQuality = quality;
-          let dataUrl = canvas.toDataURL("image/jpeg", currentQuality);
-          let sizeKB = (dataUrl.length * 3) / 4 / 1024; // Approximate size in KB
-          
-          // Reduce quality if still too large
-          while (sizeKB > maxSizeKB && currentQuality > 0.1) {
-            currentQuality -= 0.1;
-            dataUrl = canvas.toDataURL("image/jpeg", currentQuality);
-            sizeKB = (dataUrl.length * 3) / 4 / 1024;
-          }
-          
-          console.log(`🖼️ Image compressed: ${Math.round(sizeKB)}KB (quality: ${Math.round(currentQuality * 100)}%)`);
-          
-          resolve({
-            dataUrl,
-            sizeKB,
-            wasCompressed: true
-          });
-        };
-        
-        img.onerror = () => reject(new Error("Failed to load image"));
-        img.src = e.target?.result as string;
-      };
-      
-      reader.onerror = () => reject(new Error("Failed to read file"));
-      reader.readAsDataURL(file);
-    });
-  },
+  uploadImage: async (file: File, folder = "coins"): Promise<UploadResult> => {
+    console.log(`📤 Uploading image: ${file.name} (${Math.round(file.size / 1024)}KB)`);
 
-  /**
-   * Upload image with automatic compression and storage selection
-   * @param file - The image file to upload
-   * @param folder - Optional folder path (e.g., 'coins')
-   * @returns The image URL or base64 data URL
-   */
-  uploadImage: async (file: File, folder: string = "coins"): Promise<string> => {
+    // Try Supabase Storage first
+    const supabaseUrl = await uploadToSupabase(file, folder);
+    if (supabaseUrl) {
+      return { url: supabaseUrl, isBase64: false };
+    }
+
+    // Fallback to compressed base64
+    console.warn("⚠️ Supabase Storage upload failed, using compressed base64 fallback");
     try {
-      console.log(`📤 Uploading image: ${file.name} (${Math.round(file.size / 1024)}KB)`);
-      
-      // Check if user is authenticated for Supabase Storage
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      // Try Supabase Storage first if authenticated
-      if (session) {
-        try {
-          const fileExt = file.name.split(".").pop();
-          const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-          const filePath = `${folder}/${fileName}`;
-
-          const { data, error } = await supabase.storage
-            .from("coin-images")
-            .upload(filePath, file, {
-              cacheControl: "3600",
-              upsert: false
-            });
-
-          if (!error && data) {
-            const { data: urlData } = supabase.storage
-              .from("coin-images")
-              .getPublicUrl(filePath);
-
-            console.log("✅ Image uploaded to Supabase Storage:", urlData.publicUrl);
-            return urlData.publicUrl;
-          } else {
-            console.warn("⚠️ Supabase Storage upload failed:", error?.message);
-          }
-        } catch (storageError) {
-          console.warn("⚠️ Supabase Storage error:", storageError);
-        }
-      }
-
-      // Fallback: Compress image for localStorage
-      const compressed = await imageService.compressImage(file, 100, 0.7);
-      
-      if (compressed.sizeKB < 100) {
-        console.log(`✅ Using compressed base64 (${Math.round(compressed.sizeKB)}KB)`);
-        return compressed.dataUrl;
-      } else {
-        // Image still too large even after compression
-        console.warn(`⚠️ Image too large (${Math.round(compressed.sizeKB)}KB). Using heavily compressed version.`);
-        const heavyCompressed = await imageService.compressImage(file, 50, 0.5);
-        return heavyCompressed.dataUrl;
-      }
+      const base64 = await compressImage(file);
+      const sizeKB = Math.round((base64.length * 3) / 4 / 1024);
+      console.log(`✅ Using compressed base64 (${sizeKB}KB)`);
+      return { url: base64, isBase64: true };
     } catch (error) {
-      console.error("❌ Image upload failed:", error);
-      throw error;
+      console.error("❌ Image compression failed:", error);
+      throw new Error("Failed to process image");
     }
   },
 
   /**
-   * Delete an image from Supabase Storage
-   * @param imageUrl - The public URL of the image to delete
+   * Delete image from Supabase Storage
+   * (base64 images are stored with coin data, no separate deletion needed)
    */
   deleteImage: async (imageUrl: string): Promise<void> => {
+    // Skip deletion for base64 images
+    if (imageUrl.startsWith("data:")) {
+      console.log("ℹ️ Skipping deletion of base64 image");
+      return;
+    }
+
+    // Extract path from Supabase Storage URL
     try {
-      // Skip deletion for base64 images
-      if (imageUrl.startsWith("data:image")) {
-        console.log("ℹ️ Skipping deletion of base64 image");
-        return;
-      }
+      const url = new URL(imageUrl);
+      const pathMatch = url.pathname.match(/\/coin-images\/(.+)$/);
+      
+      if (pathMatch) {
+        const filePath = pathMatch[1];
+        const { error } = await supabase.storage
+          .from("coin-images")
+          .remove([filePath]);
 
-      // Extract file path from URL
-      const urlParts = imageUrl.split("/storage/v1/object/public/coin-images/");
-      if (urlParts.length !== 2) {
-        console.warn("⚠️ Invalid image URL format, skipping deletion");
-        return;
-      }
-
-      const filePath = urlParts[1];
-
-      const { error } = await supabase.storage
-        .from("coin-images")
-        .remove([filePath]);
-
-      if (error) {
-        console.error("❌ Error deleting image from Supabase:", error);
-      } else {
-        console.log("✅ Image deleted from Supabase Storage");
+        if (error) {
+          console.warn("⚠️ Failed to delete image from Supabase Storage:", error);
+        } else {
+          console.log("✅ Image deleted from Supabase Storage");
+        }
       }
     } catch (error) {
       console.warn("⚠️ Failed to delete image:", error);
