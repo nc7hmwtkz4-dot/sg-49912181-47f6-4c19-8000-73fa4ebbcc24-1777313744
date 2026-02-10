@@ -1,5 +1,5 @@
-// Swiss precious metal spot prices service
-// Fetches from GoldAvenue (Swiss-based precious metals platform) via API route
+// Metal price service using Metal Price API
+// Caches prices for 24 hours to limit API calls to 1 per day
 
 export interface SpotPrices {
   gold: number;    // CHF per gram
@@ -18,23 +18,33 @@ const FALLBACK_PRICES: SpotPrices = {
   lastUpdated: new Date().toISOString()
 };
 
+// Cache duration: 24 hours (86400000 milliseconds)
+const CACHE_DURATION_MS = 24 * 60 * 60 * 1000;
+
 export const spotPriceService = {
-  // Fetch current spot prices from GoldAvenue via our API route
+  // Fetch current spot prices from Metal Price API via our API route
+  // Cached for 24 hours to limit API calls
   async getSpotPrices(forceRefresh = false): Promise<SpotPrices> {
     try {
-      // Check localStorage for cached prices (valid for 15 minutes)
+      // Check localStorage for cached prices (valid for 24 hours)
       if (!forceRefresh) {
         const cached = localStorage.getItem("numivault_spot_prices");
         if (cached) {
           const data = JSON.parse(cached);
           const cacheAge = Date.now() - new Date(data.lastUpdated).getTime();
-          if (cacheAge < 900000) { // 15 minutes
+          
+          // Return cached data if less than 24 hours old
+          if (cacheAge < CACHE_DURATION_MS) {
+            console.log(`Using cached spot prices (age: ${Math.round(cacheAge / 3600000)} hours)`);
             return data;
           }
+          
+          console.log("Cache expired, fetching fresh prices...");
         }
       }
 
-      // Fetch from our API route which scrapes GoldAvenue
+      // Fetch from our API route which calls Metal Price API
+      console.log("Fetching spot prices from Metal Price API...");
       const response = await fetch('/api/spot-prices');
 
       if (!response.ok) {
@@ -43,20 +53,30 @@ export const spotPriceService = {
 
       const prices: SpotPrices = await response.json();
 
-      // Cache the prices
+      // Cache the prices for 24 hours
       localStorage.setItem("numivault_spot_prices", JSON.stringify(prices));
+      console.log("Spot prices cached successfully");
       
       return prices;
     } catch (error) {
       console.error("Error fetching spot prices:", error);
       
-      // Use fallback prices
+      // Check if we have any cached prices (even if expired)
+      const cached = localStorage.getItem("numivault_spot_prices");
+      if (cached) {
+        const data = JSON.parse(cached);
+        console.log("Using expired cache as fallback");
+        return data;
+      }
+      
+      // Use fallback prices as last resort
       const fallbackPrices = {
         ...FALLBACK_PRICES,
         lastUpdated: new Date().toISOString()
       };
       
       localStorage.setItem("numivault_spot_prices", JSON.stringify(fallbackPrices));
+      console.log("Using fallback prices");
       return fallbackPrices;
     }
   },
@@ -105,5 +125,33 @@ export const spotPriceService = {
   // Format price per gram
   formatPricePerGram(price: number): string {
     return `${this.formatCHF(price)}/g`;
+  },
+
+  // Get cache age in hours (for display purposes)
+  getCacheAge(): number | null {
+    try {
+      const cached = localStorage.getItem("numivault_spot_prices");
+      if (!cached) return null;
+      
+      const data = JSON.parse(cached);
+      const ageMs = Date.now() - new Date(data.lastUpdated).getTime();
+      return Math.round(ageMs / 3600000); // Convert to hours
+    } catch {
+      return null;
+    }
+  },
+
+  // Check if cache is still valid
+  isCacheValid(): boolean {
+    try {
+      const cached = localStorage.getItem("numivault_spot_prices");
+      if (!cached) return false;
+      
+      const data = JSON.parse(cached);
+      const cacheAge = Date.now() - new Date(data.lastUpdated).getTime();
+      return cacheAge < CACHE_DURATION_MS;
+    } catch {
+      return false;
+    }
   }
 };

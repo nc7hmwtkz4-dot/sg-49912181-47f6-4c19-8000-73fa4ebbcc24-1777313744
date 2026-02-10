@@ -4,6 +4,7 @@ import { SEO } from "@/components/SEO";
 import { Layout } from "@/components/Layout";
 import { storageService } from "@/lib/storage";
 import { spotPriceService } from "@/lib/spotPrices";
+import { imageService } from "@/services/imageService";
 import { Coin, COUNTRY_CODES, SHELDON_GRADES, SheldonGrade } from "@/types/coin";
 import { ImageViewer } from "@/components/ImageViewer";
 import { Button } from "@/components/ui/button";
@@ -49,6 +50,13 @@ export default function CoinDetail() {
     buyerInfo?: string;
     notes?: string;
   }>({ coinId: "", saleDate: new Date().toISOString().split("T")[0], salePrice: 0 });
+  
+  // Image upload state
+  const [obverseImageFile, setObverseImageFile] = useState<File | null>(null);
+  const [reverseImageFile, setReverseImageFile] = useState<File | null>(null);
+  const [obverseImagePreview, setObverseImagePreview] = useState<string>("");
+  const [reverseImagePreview, setReverseImagePreview] = useState<string>("");
+  
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState<{ url: string; alt: string } | null>(null);
 
@@ -70,13 +78,41 @@ export default function CoinDetail() {
     setSpotPrices(prices);
   };
 
+  const handleObverseImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setObverseImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setObverseImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleReverseImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setReverseImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setReverseImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleEditClick = () => {
     const referenceCoin = coins[0];
     setEditingCoin(referenceCoin);
+    setObverseImagePreview(referenceCoin.obverseImageUrl || "");
+    setReverseImagePreview(referenceCoin.reverseImageUrl || "");
+    setObverseImageFile(null);
+    setReverseImageFile(null);
     setIsEditDialogOpen(true);
   };
 
-  const handleEditSubmit = (e: React.FormEvent) => {
+  const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!editingCoin || !editingCoin.coinName || !editingCoin.kmNumber) {
@@ -84,24 +120,46 @@ export default function CoinDetail() {
       return;
     }
 
-    const newSKU = storageService.generateSKU(editingCoin.countryCode, editingCoin.kmNumber);
-    
-    // Update all coins with this SKU
-    coins.forEach(coin => {
-      storageService.updateCoin(coin.id, {
-        ...editingCoin,
-        sku: newSKU
-      });
-    });
+    try {
+      let obverseImageUrl = editingCoin.obverseImageUrl || "";
+      let reverseImageUrl = editingCoin.reverseImageUrl || "";
+      
+      // Upload obverse image if changed
+      if (obverseImageFile) {
+        obverseImageUrl = await imageService.uploadImage(obverseImageFile);
+      }
 
-    setIsEditDialogOpen(false);
-    setEditingCoin(null);
-    
-    // Navigate to new SKU page if SKU changed
-    if (newSKU !== sku) {
-      router.push(`/coin/${encodeURIComponent(newSKU)}`);
-    } else {
-      loadCoins();
+      // Upload reverse image if changed
+      if (reverseImageFile) {
+        reverseImageUrl = await imageService.uploadImage(reverseImageFile);
+      }
+
+      const newSKU = storageService.generateSKU(editingCoin.countryCode, editingCoin.kmNumber);
+      
+      // Update all coins with this SKU
+      coins.forEach(coin => {
+        storageService.updateCoin(coin.id, {
+          ...editingCoin,
+          sku: newSKU,
+          obverseImageUrl,
+          reverseImageUrl
+        });
+      });
+
+      setIsEditDialogOpen(false);
+      setEditingCoin(null);
+      setObverseImageFile(null);
+      setReverseImageFile(null);
+      
+      // Navigate to new SKU page if SKU changed
+      if (newSKU !== sku) {
+        router.push(`/coin/${encodeURIComponent(newSKU)}`);
+      } else {
+        loadCoins();
+      }
+    } catch (error) {
+      console.error("Error updating coin:", error);
+      alert("Failed to update coin. Please try again.");
     }
   };
 
@@ -612,6 +670,52 @@ export default function CoinDetail() {
                   className="bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
                   required
                 />
+              </div>
+            </div>
+
+            <div className="col-span-2 grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="editObverseImage" className="text-slate-700 dark:text-slate-300">Obverse Image (Front)</Label>
+                <div className="space-y-2 mt-1">
+                  <Input
+                    id="editObverseImage"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleObverseImageChange}
+                    className="bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
+                  />
+                  {obverseImagePreview && (
+                    <div className="mt-2">
+                      <img 
+                        src={obverseImagePreview} 
+                        alt="Obverse Preview" 
+                        className="w-full h-32 object-cover rounded-lg border border-slate-300 dark:border-slate-700"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="editReverseImage" className="text-slate-700 dark:text-slate-300">Reverse Image (Back)</Label>
+                <div className="space-y-2 mt-1">
+                  <Input
+                    id="editReverseImage"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleReverseImageChange}
+                    className="bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
+                  />
+                  {reverseImagePreview && (
+                    <div className="mt-2">
+                      <img 
+                        src={reverseImagePreview} 
+                        alt="Reverse Preview" 
+                        className="w-full h-32 object-cover rounded-lg border border-slate-300 dark:border-slate-700"
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 

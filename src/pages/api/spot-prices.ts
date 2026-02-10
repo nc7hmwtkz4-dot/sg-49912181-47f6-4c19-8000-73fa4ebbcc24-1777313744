@@ -1,5 +1,4 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import * as cheerio from "cheerio";
 
 export interface SpotPrices {
   gold: number;    // CHF per gram
@@ -18,6 +17,13 @@ const FALLBACK_PRICES: SpotPrices = {
   lastUpdated: new Date().toISOString()
 };
 
+// Metal Price API configuration
+const API_KEY = "a4c341c9c8b69969cba65382941825cf";
+const API_URL = "https://api.metalpriceapi.com/v1/latest";
+
+// Troy ounce to gram conversion (1 troy oz = 31.1035 grams)
+const TROY_OZ_TO_GRAMS = 31.1035;
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<SpotPrices>
@@ -27,91 +33,51 @@ export default async function handler(
   }
 
   try {
-    // Fetch from GoldAvenue
-    const response = await fetch("https://www.goldavenue.com/fr/cours-or/chf", {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8",
-      },
-    });
+    // Fetch from Metal Price API
+    const response = await fetch(
+      `${API_URL}?api_key=${API_KEY}&base=CHF&currencies=XAU,XAG,XPT,XPD`,
+      {
+        headers: {
+          "Accept": "application/json",
+        },
+      }
+    );
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
-    const html = await response.text();
-    const $ = cheerio.load(html);
+    const data = await response.json();
 
-    // Parse the prices from the page
-    // GoldAvenue displays prices per gram in CHF
+    // Check if API request was successful
+    if (!data.success || !data.rates) {
+      throw new Error("Invalid API response");
+    }
+
+    // Metal Price API returns prices as: 1 CHF = X troy ounces of metal
+    // We need: 1 gram of metal = Y CHF
+    // Conversion: (1 / rate) * TROY_OZ_TO_GRAMS = CHF per troy oz
+    // Then: CHF per troy oz / TROY_OZ_TO_GRAMS = CHF per gram
+
     const prices: SpotPrices = {
-      gold: 0,
-      silver: 0,
-      platinum: 0,
-      palladium: 0,
+      gold: data.rates.XAU ? (1 / data.rates.XAU) / TROY_OZ_TO_GRAMS : FALLBACK_PRICES.gold,
+      silver: data.rates.XAG ? (1 / data.rates.XAG) / TROY_OZ_TO_GRAMS : FALLBACK_PRICES.silver,
+      platinum: data.rates.XPT ? (1 / data.rates.XPT) / TROY_OZ_TO_GRAMS : FALLBACK_PRICES.platinum,
+      palladium: data.rates.XPD ? (1 / data.rates.XPD) / TROY_OZ_TO_GRAMS : FALLBACK_PRICES.palladium,
       lastUpdated: new Date().toISOString()
     };
 
-    // Try to find price elements
-    // GoldAvenue typically shows prices in a table or specific div structure
-    $(".price, .spot-price, [data-metal]").each((_, element) => {
-      const text = $(element).text().trim();
-      const priceMatch = text.match(/(\d+[\.,]\d+)/);
-      
-      if (priceMatch) {
-        const price = parseFloat(priceMatch[1].replace(",", "."));
-        const metalText = $(element).closest("tr, .metal-row, .price-row").text().toLowerCase();
-        
-        if (metalText.includes("or") || metalText.includes("gold")) {
-          prices.gold = price;
-        } else if (metalText.includes("argent") || metalText.includes("silver")) {
-          prices.silver = price;
-        } else if (metalText.includes("platine") || metalText.includes("platinum")) {
-          prices.platinum = price;
-        } else if (metalText.includes("palladium")) {
-          prices.palladium = price;
-        }
-      }
-    });
-
-    // Alternative: Look for specific price elements by structure
-    if (prices.gold === 0) {
-      // Try finding by common class patterns
-      const goldPrice = $("[class*='gold'], [class*='or']").find(".price, .amount, .value").first().text();
-      const goldMatch = goldPrice.match(/(\d+[\.,]\d+)/);
-      if (goldMatch) prices.gold = parseFloat(goldMatch[1].replace(",", "."));
-    }
-
-    if (prices.silver === 0) {
-      const silverPrice = $("[class*='silver'], [class*='argent']").find(".price, .amount, .value").first().text();
-      const silverMatch = silverPrice.match(/(\d+[\.,]\d+)/);
-      if (silverMatch) prices.silver = parseFloat(silverMatch[1].replace(",", "."));
-    }
-
-    if (prices.platinum === 0) {
-      const platinumPrice = $("[class*='platinum'], [class*='platine']").find(".price, .amount, .value").first().text();
-      const platinumMatch = platinumPrice.match(/(\d+[\.,]\d+)/);
-      if (platinumMatch) prices.platinum = parseFloat(platinumMatch[1].replace(",", "."));
-    }
-
-    if (prices.palladium === 0) {
-      const palladiumPrice = $("[class*='palladium']").find(".price, .amount, .value").first().text();
-      const palladiumMatch = palladiumPrice.match(/(\d+[\.,]\d+)/);
-      if (palladiumMatch) prices.palladium = parseFloat(palladiumMatch[1].replace(",", "."));
-    }
-
-    // Validate that we got at least gold and silver prices
+    // Validate that we got valid prices
     if (prices.gold > 0 && prices.silver > 0) {
       return res.status(200).json(prices);
     }
 
-    // If parsing failed, use fallback
-    console.warn("Failed to parse prices from GoldAvenue, using fallback");
+    // If prices are invalid, use fallback
+    console.warn("Invalid prices from Metal Price API, using fallback");
     return res.status(200).json(FALLBACK_PRICES);
 
   } catch (error) {
-    console.error("Error fetching spot prices from GoldAvenue:", error);
+    console.error("Error fetching spot prices from Metal Price API:", error);
     return res.status(200).json(FALLBACK_PRICES);
   }
 }

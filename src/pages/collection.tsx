@@ -264,7 +264,8 @@ export default function Collection() {
       purchasePrice: purchaseFormData.purchasePrice,
       purchaseDate: purchaseFormData.purchaseDate,
       notes: purchaseFormData.notes,
-      imageUrl: referenceCoin.imageUrl,
+      obverseImageUrl: referenceCoin.obverseImageUrl,
+      reverseImageUrl: referenceCoin.reverseImageUrl,
       isSold: false
     };
 
