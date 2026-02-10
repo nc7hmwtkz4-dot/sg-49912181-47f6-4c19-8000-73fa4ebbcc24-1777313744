@@ -1,4 +1,4 @@
- 
+/* eslint-disable @typescript-eslint/no-empty-object-type */
 export type Json =
   | string
   | number
@@ -15,6 +15,57 @@ export type Database = {
   }
   public: {
     Tables: {
+      coins_reference: {
+        Row: {
+          country_code: string
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          diameter: number | null
+          id: string
+          image_url: string | null
+          km_number: string
+          metal: string
+          name: string | null
+          purity: number
+          sku: string
+          updated_at: string | null
+          weight: number
+        }
+        Insert: {
+          country_code: string
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          diameter?: number | null
+          id?: string
+          image_url?: string | null
+          km_number: string
+          metal: string
+          name?: string | null
+          purity: number
+          sku: string
+          updated_at?: string | null
+          weight: number
+        }
+        Update: {
+          country_code?: string
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          diameter?: number | null
+          id?: string
+          image_url?: string | null
+          km_number?: string
+          metal?: string
+          name?: string | null
+          purity?: number
+          sku?: string
+          updated_at?: string | null
+          weight?: number
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -41,6 +92,133 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      user_coins: {
+        Row: {
+          country_code: string
+          created_at: string | null
+          grade: string
+          id: string
+          image_url: string | null
+          is_sold: boolean | null
+          km_number: string
+          metal: string
+          mintmark: string | null
+          notes: string | null
+          purchase_date: string
+          purchase_price: number
+          purity: number
+          reference_coin_id: string | null
+          sku: string
+          updated_at: string | null
+          user_id: string
+          weight: number
+          year: number
+        }
+        Insert: {
+          country_code: string
+          created_at?: string | null
+          grade: string
+          id?: string
+          image_url?: string | null
+          is_sold?: boolean | null
+          km_number: string
+          metal: string
+          mintmark?: string | null
+          notes?: string | null
+          purchase_date: string
+          purchase_price: number
+          purity: number
+          reference_coin_id?: string | null
+          sku: string
+          updated_at?: string | null
+          user_id: string
+          weight: number
+          year: number
+        }
+        Update: {
+          country_code?: string
+          created_at?: string | null
+          grade?: string
+          id?: string
+          image_url?: string | null
+          is_sold?: boolean | null
+          km_number?: string
+          metal?: string
+          mintmark?: string | null
+          notes?: string | null
+          purchase_date?: string
+          purchase_price?: number
+          purity?: number
+          reference_coin_id?: string | null
+          sku?: string
+          updated_at?: string | null
+          user_id?: string
+          weight?: number
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_coins_reference_coin_id_fkey"
+            columns: ["reference_coin_id"]
+            isOneToOne: false
+            referencedRelation: "coins_reference"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_sales: {
+        Row: {
+          buyer_info: string | null
+          coin_id: string
+          created_at: string | null
+          id: string
+          markup_percentage: number
+          notes: string | null
+          profit: number
+          purchase_price: number
+          sale_date: string
+          sale_price: number
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          buyer_info?: string | null
+          coin_id: string
+          created_at?: string | null
+          id?: string
+          markup_percentage: number
+          notes?: string | null
+          profit: number
+          purchase_price: number
+          sale_date: string
+          sale_price: number
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          buyer_info?: string | null
+          coin_id?: string
+          created_at?: string | null
+          id?: string
+          markup_percentage?: number
+          notes?: string | null
+          profit?: number
+          purchase_price?: number
+          sale_date?: string
+          sale_price?: number
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_sales_coin_id_fkey"
+            columns: ["coin_id"]
+            isOneToOne: false
+            referencedRelation: "user_coins"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
