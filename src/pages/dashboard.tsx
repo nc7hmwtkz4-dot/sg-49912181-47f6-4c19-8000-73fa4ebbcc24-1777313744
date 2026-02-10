@@ -16,14 +16,14 @@ export default function Dashboard() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [stats, setStats] = useState({
     totalCoins: 0,
-    bullionValue: 0,
-    totalPurchaseValue: 0,
-    totalSalesAmount: 0,
+    totalUnsold: 0,
+    totalSold: 0,
+    totalBullionValue: 0,
+    totalCost: 0,
     totalProfit: 0,
     profitMargin: 0,
-    coinsByCountry: {} as Record<string, number>,
-    coinsByMetal: {} as Record<string, number>,
-    unsoldCoins: 0
+    countryDistribution: [] as { country: string; count: number; percentage: number }[],
+    metalDistribution: [] as { metal: string; count: number; percentage: number }[]
   });
 
   useEffect(() => {
@@ -79,13 +79,13 @@ export default function Dashboard() {
 
   const calculateStats = (coins: Coin[], sales: Sale[], prices: SpotPrices) => {
     const totalCoins = coins.length;
-    const unsoldCoins = coins.filter(c => !c.isSold).length;
+    const unsoldCoins = coins.filter(c => !c.isSold);
+    const totalUnsold = unsoldCoins.length;
+    const totalSold = coins.filter(c => c.isSold).length;
     
-    const bullionValue = coins
-      .filter(c => !c.isSold)
-      .reduce((sum, coin) => sum + calculateBullionValue(coin, prices), 0);
+    const totalBullionValue = unsoldCoins.reduce((sum, coin) => sum + calculateBullionValue(coin, prices), 0);
     
-    const totalPurchaseValue = coins.reduce((sum, coin) => sum + coin.purchasePrice, 0);
+    const totalCost = coins.reduce((sum, coin) => sum + coin.purchasePrice, 0);
     
     const totalSalesAmount = sales.reduce((sum, sale) => sum + sale.salePrice, 0);
     
@@ -98,32 +98,47 @@ export default function Dashboard() {
       ? ((totalProfit / totalSalesAmount) * 100) 
       : 0;
     
+    // Calculate distributions
     const coinsByCountry = coins.reduce((acc, coin) => {
       acc[coin.countryCode] = (acc[coin.countryCode] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
+
+    const countryDistribution = Object.entries(coinsByCountry)
+      .map(([code, count]) => ({
+        country: COUNTRY_CODES[code] || code,
+        count,
+        percentage: (count / totalCoins) * 100
+      }))
+      .sort((a, b) => b.count - a.count);
     
     const coinsByMetal = coins.reduce((acc, coin) => {
       acc[coin.metal] = (acc[coin.metal] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
 
+    const metalDistribution = Object.entries(coinsByMetal)
+      .map(([metal, count]) => ({
+        metal,
+        count,
+        percentage: (count / totalCoins) * 100
+      }))
+      .sort((a, b) => b.count - a.count);
+
     setStats({
       totalCoins,
-      bullionValue,
-      totalPurchaseValue,
-      totalSalesAmount,
+      totalUnsold,
+      totalSold,
+      totalBullionValue,
+      totalCost,
       totalProfit,
       profitMargin,
-      coinsByCountry,
-      coinsByMetal,
-      unsoldCoins
+      countryDistribution,
+      metalDistribution
     });
   };
 
-  const topCountries = Object.entries(stats.coinsByCountry)
-    .sort(([, a], [, b]) => b - a)
-    .slice(0, 5);
+  const topCountries = stats.countryDistribution.slice(0, 5);
 
   // Prepare data for treemap
   const mapData = Object.entries(stats.coinsByCountry).map(([code, count]) => ({
@@ -204,307 +219,138 @@ export default function Dashboard() {
           </p>
         </div>
 
-        {/* Primary Stats */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                  Total Coins
-                </CardTitle>
-                <Package className="w-5 h-5 text-brand-primary" />
-              </div>
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <Card className="glass-card">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Coins</CardTitle>
+              <Package className="w-4 h-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <p className="text-4xl font-bold text-brand-primary mb-1">
-                {stats.totalCoins}
-              </p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                {stats.unsoldCoins} available
+              <div className="text-2xl font-bold text-foreground">{stats.totalCoins}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {stats.totalUnsold} available • {stats.totalSold} sold
               </p>
             </CardContent>
           </Card>
 
-          <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950 dark:to-emerald-950">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                  Bullion Value
-                </CardTitle>
-                <Coins className="w-5 h-5 text-green-600 dark:text-green-400" />
-              </div>
+          <Card className="glass-card">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Collection Value</CardTitle>
+              <TrendingUp className="w-4 h-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <p className="text-4xl font-bold text-green-600 dark:text-green-400 mb-1">
-                {spotPrices ? spotPriceService.formatCHF(stats.bullionValue) : "Loading..."}
-              </p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Unsold coins only
+              <div className="text-2xl font-bold text-foreground">
+                {spotPriceService.formatCHF(stats.totalBullionValue)}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Current bullion value
               </p>
             </CardContent>
           </Card>
 
-          <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 bg-gradient-to-br from-purple-50 to-fuchsia-50 dark:from-purple-950 dark:to-fuchsia-950">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                  Total Profit
-                </CardTitle>
-                <TrendingUp className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-              </div>
+          <Card className="glass-card">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Investment</CardTitle>
+              <DollarSign className="w-4 h-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <p className="text-4xl font-bold text-purple-600 dark:text-purple-400 mb-1">
+              <div className="text-2xl font-bold text-foreground">
+                {spotPriceService.formatCHF(stats.totalCost)}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Purchase cost basis
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="glass-card">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Profit</CardTitle>
+              <TrendingUp className="w-4 h-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className={`text-2xl font-bold ${stats.totalProfit >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
                 {spotPriceService.formatCHF(stats.totalProfit)}
-              </p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                {stats.profitMargin.toFixed(2)}% margin
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-950 dark:to-amber-950">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                  Sales Revenue
-                </CardTitle>
-                <DollarSign className="w-5 h-5 text-orange-600 dark:text-orange-400" />
               </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-4xl font-bold text-orange-600 dark:text-orange-400 mb-1">
-                {spotPriceService.formatCHF(stats.totalSalesAmount)}
-              </p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                {sales.length} transactions
+              <p className="text-xs text-muted-foreground mt-1">
+                {stats.profitMargin.toFixed(1)}% margin
               </p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Financial Overview */}
-        <div className="grid md:grid-cols-3 gap-4">
-          <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow">
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <DollarSign className="w-5 h-5 text-brand-primary" />
-                Purchase Investment
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold text-gray-700 dark:text-gray-300">
-                {spotPriceService.formatCHF(stats.totalPurchaseValue)}
-              </p>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-                Total capital invested in collection
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow">
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Coins className="w-5 h-5 text-brand-primary" />
-                Current Portfolio
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold text-gray-700 dark:text-gray-300">
-                {spotPrices ? spotPriceService.formatCHF(stats.bullionValue) : "Loading..."}
-              </p>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-                Bullion value of unsold coins
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow">
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <TrendingUp className="w-5 h-5 text-brand-primary" />
-                Realized Gains
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold text-green-600 dark:text-green-400">
-                {spotPriceService.formatCHF(stats.totalProfit)}
-              </p>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-                Profit from completed sales
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="grid lg:grid-cols-2 gap-6">
+        {/* Charts Row */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Country Distribution */}
-          <Card className="border-0 shadow-lg">
+          <Card className="glass-card">
             <CardHeader>
-              <CardTitle className="text-xl flex items-center gap-2">
-                <Globe className="w-6 h-6 text-brand-primary" />
-                Collection by Country
-              </CardTitle>
-              <CardDescription className="text-base">Geographic distribution of your coins</CardDescription>
+              <CardTitle className="text-foreground">Distribution by Country</CardTitle>
+              <CardDescription className="text-muted-foreground">Number of coins per country</CardDescription>
             </CardHeader>
             <CardContent>
-              {topCountries.length > 0 ? (
-                <div className="space-y-4">
-                  {topCountries.map(([code, count]) => (
-                    <div key={code} className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <Badge variant="outline" className="text-sm font-medium w-12 justify-center border-brand-primary text-brand-primary">
-                          {code}
-                        </Badge>
-                        <span className="text-sm font-medium">
-                          {COUNTRY_CODES[code] || code}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <div className="w-32 bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
-                          <div 
-                            className="bg-gradient-to-r from-brand-primary to-brand-secondary h-2.5 rounded-full transition-all"
-                            style={{ width: `${(count / stats.totalCoins) * 100}%` }}
-                          />
-                        </div>
-                        <span className="text-sm font-bold w-12 text-right text-brand-primary">
-                          {count}
-                        </span>
-                      </div>
+              <div className="space-y-4">
+                {stats.countryDistribution.map(({ country, count, percentage }) => (
+                  <div key={country} className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="font-medium text-foreground">{country}</span>
+                      <span className="text-muted-foreground">{count} coins ({percentage.toFixed(1)}%)</span>
                     </div>
-                  ))}
-                  {Object.keys(stats.coinsByCountry).length > 5 && (
-                    <p className="text-xs text-gray-500 dark:text-gray-400 text-center pt-2">
-                      +{Object.keys(stats.coinsByCountry).length - 5} more countries
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <div className="text-center py-12">
-                  <Globe className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-500 dark:text-gray-400">No coins in collection yet</p>
-                </div>
-              )}
+                    <div className="w-full bg-muted rounded-full h-2">
+                      <div 
+                        className="bg-gradient-to-r from-primary to-accent h-2 rounded-full transition-all duration-500"
+                        style={{ width: `${percentage}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
 
-          {/* Metal Distribution */}
-          <Card className="border-0 shadow-lg">
+          {/* Metal Composition */}
+          <Card className="glass-card">
             <CardHeader>
-              <CardTitle className="text-xl flex items-center gap-2">
-                <PieChart className="w-6 h-6 text-brand-primary" />
-                Collection by Metal
-              </CardTitle>
-              <CardDescription className="text-base">Breakdown by precious metal type</CardDescription>
+              <CardTitle className="text-foreground">Metal Composition</CardTitle>
+              <CardDescription className="text-muted-foreground">Breakdown by precious metal</CardDescription>
             </CardHeader>
             <CardContent>
-              {Object.keys(stats.coinsByMetal).length > 0 ? (
-                <div className="space-y-4">
-                  {Object.entries(stats.coinsByMetal)
-                    .sort(([, a], [, b]) => b - a)
-                    .map(([metal, count]) => {
-                      const colors = {
-                        gold: "bg-gradient-to-r from-yellow-500 to-amber-600",
-                        silver: "bg-gradient-to-r from-gray-300 to-gray-500",
-                        platinum: "bg-gradient-to-r from-blue-400 to-indigo-500",
-                        palladium: "bg-gradient-to-r from-gray-400 to-gray-600",
-                        copper: "bg-gradient-to-r from-orange-500 to-red-600",
-                        other: "bg-gradient-to-r from-gray-500 to-gray-700"
-                      };
-                      
-                      const iconColors = {
-                        gold: "text-yellow-600",
-                        silver: "text-gray-500",
-                        platinum: "text-blue-500",
-                        palladium: "text-gray-600",
-                        copper: "text-orange-600",
-                        other: "text-gray-600"
-                      };
-                      
-                      return (
-                        <div key={metal} className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <Sparkles className={`w-5 h-5 ${iconColors[metal as keyof typeof iconColors]}`} />
-                            <span className="text-sm font-medium capitalize">
-                              {metal}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <div className="w-32 bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
-                              <div 
-                                className={`${colors[metal as keyof typeof colors]} h-2.5 rounded-full transition-all`}
-                                style={{ width: `${(count / stats.totalCoins) * 100}%` }}
-                              />
-                            </div>
-                            <span className="text-sm font-bold w-12 text-right text-brand-primary">
-                              {count}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                </div>
-              ) : (
-                <div className="text-center py-12">
-                  <PieChart className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-500 dark:text-gray-400">No coins in collection yet</p>
-                </div>
-              )}
+              <div className="space-y-4">
+                {stats.metalDistribution.map(({ metal, count, percentage }) => (
+                  <div key={metal} className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="font-medium text-foreground capitalize">{metal}</span>
+                      <span className="text-muted-foreground">{count} coins ({percentage.toFixed(1)}%)</span>
+                    </div>
+                    <div className="w-full bg-muted rounded-full h-2">
+                      <div 
+                        className="bg-gradient-to-r from-secondary to-primary h-2 rounded-full transition-all duration-500"
+                        style={{ width: `${percentage}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Interactive World Map */}
-        <Card className="border-0 shadow-lg">
+        {/* World Map Placeholder */}
+        <Card className="glass-card">
           <CardHeader>
-            <CardTitle className="text-xl flex items-center gap-2">
-              <Globe className="w-6 h-6 text-brand-primary" />
-              World Distribution Map
-            </CardTitle>
-            <CardDescription className="text-base">
-              Interactive visualization of your {stats.totalCoins} coins across {Object.keys(stats.coinsByCountry).length} countries
-            </CardDescription>
+            <CardTitle className="text-foreground">Global Collection Map</CardTitle>
+            <CardDescription className="text-muted-foreground">Visual representation of coins by country</CardDescription>
           </CardHeader>
           <CardContent>
-            {mapData.length > 0 ? (
-              <div className="w-full h-[500px] bg-gradient-to-br from-slate-50 to-blue-50 dark:from-gray-900 dark:to-slate-950 rounded-xl p-4 border border-brand-primary/20">
-                <ResponsiveContainer width="100%" height="100%">
-                  <Treemap
-                    data={mapData}
-                    dataKey="size"
-                    aspectRatio={4 / 3}
-                    stroke="#fff"
-                    content={<CustomTreemapContent />}
-                  >
-                    <Tooltip 
-                      content={({ payload }) => {
-                        if (payload && payload.length > 0) {
-                          const data = payload[0].payload;
-                          return (
-                            <div className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
-                              <p className="font-bold text-brand-primary">{data.name}</p>
-                              <p className="text-sm text-gray-600 dark:text-gray-400">{data.fullName}</p>
-                              <p className="text-sm font-semibold mt-1">{data.size} {data.size === 1 ? 'coin' : 'coins'}</p>
-                            </div>
-                          );
-                        }
-                        return null;
-                      }}
-                    />
-                  </Treemap>
-                </ResponsiveContainer>
-              </div>
-            ) : (
-              <div className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-800 dark:via-gray-900 dark:to-indigo-950 rounded-xl p-12 text-center border-2 border-dashed border-brand-primary/30">
-                <Globe className="w-20 h-20 mx-auto text-brand-primary mb-4" />
-                <p className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                  No Collection Data Yet
-                </p>
-                <p className="text-base text-gray-600 dark:text-gray-400">
-                  Add coins to your collection to see the interactive world map
+            <div className="aspect-video bg-muted/50 rounded-lg flex items-center justify-center border-2 border-dashed border-border">
+              <div className="text-center space-y-2">
+                <Globe className="w-12 h-12 text-muted-foreground mx-auto" />
+                <p className="text-sm text-muted-foreground">Interactive world map coming soon</p>
+                <p className="text-xs text-muted-foreground">
+                  Visualize your collection distribution across {stats.countryDistribution.length} countries
                 </p>
               </div>
-            )}
+            </div>
           </CardContent>
         </Card>
 
