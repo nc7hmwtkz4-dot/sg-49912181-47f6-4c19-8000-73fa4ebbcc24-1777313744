@@ -5,6 +5,8 @@ import { Layout } from "@/components/Layout";
 import { storageService } from "@/lib/storage";
 import { spotPriceService } from "@/lib/spotPrices";
 import { imageService } from "@/services/imageService";
+import { userCoinService } from "@/services/userCoinService";
+import { userSalesService } from "@/services/userSalesService";
 import { Coin, COUNTRY_CODES, SHELDON_GRADES, SheldonGrade } from "@/types/coin";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -106,10 +108,39 @@ export default function Collection() {
     setFilteredCoins(filtered);
   }, [searchTerm, countryFilter, metalFilter, coins]);
 
-  const loadCoins = () => {
-    const loadedCoins = storageService.getCoins();
-    setCoins(loadedCoins);
-    setFilteredCoins(loadedCoins);
+  const loadCoins = async () => {
+    const { data, error } = await userCoinService.getUserCoins();
+    
+    if (error) {
+      console.error("Error loading coins:", error);
+      return;
+    }
+
+    if (data) {
+      // Map database coins to frontend Coin type
+      const mappedCoins: Coin[] = data.map(c => ({
+        id: c.id,
+        sku: `${c.country_code}-${c.km_number}`,
+        coinName: c.coin_name || "",
+        countryCode: c.country_code,
+        kmNumber: c.km_number,
+        year: c.year,
+        mintmark: c.mintmark || "",
+        metal: c.metal as "gold" | "silver" | "copper" | "platinum" | "palladium" | "other",
+        purity: c.purity,
+        weight: c.weight,
+        sheldonGrade: c.grade as SheldonGrade,
+        purchasePrice: c.purchase_price,
+        purchaseDate: c.purchase_date,
+        notes: c.notes || "",
+        obverseImageUrl: c.obverse_image_url || "",
+        reverseImageUrl: c.reverse_image_url || "",
+        isSold: c.is_sold
+      }));
+      
+      setCoins(mappedCoins);
+      setFilteredCoins(mappedCoins);
+    }
   };
 
   const loadSpotPrices = async () => {
@@ -331,7 +362,7 @@ export default function Collection() {
     }
   };
 
-  const handleRecordSale = (e: React.FormEvent) => {
+  const handleRecordSale = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!saleFormData.coinId) {
@@ -342,25 +373,53 @@ export default function Collection() {
     const coin = coins.find(c => c.id === saleFormData.coinId);
     if (!coin) return;
 
-    storageService.markCoinAsSold(
-      saleFormData.coinId,
-      saleFormData.saleDate,
-      saleFormData.salePrice,
-      saleFormData.buyerInfo,
-      saleFormData.notes
-    );
+    try {
+      // 1. Create sale record
+      const { error: saleError } = await userSalesService.addSale({
+        coin_id: saleFormData.coinId,
+        sku: coin.sku,
+        coin_name: coin.coinName || "",
+        sale_date: saleFormData.saleDate,
+        sale_price: saleFormData.salePrice,
+        purchase_price: coin.purchasePrice,
+        profit: saleFormData.salePrice - coin.purchasePrice,
+        buyer_info: saleFormData.buyerInfo || null,
+        notes: saleFormData.notes || null
+      });
 
-    loadCoins();
-    setIsSaleDialogOpen(false);
-    setSaleFormData({
-      coinId: "",
-      saleDate: new Date().toISOString().split("T")[0],
-      salePrice: 0,
-      buyerInfo: "",
-      notes: ""
-    });
-    setSelectedCoinForSale("");
-    setAvailableCoinsForSale([]);
+      if (saleError) {
+        alert("Failed to record sale. Please try again.");
+        console.error("Sale error:", saleError);
+        return;
+      }
+
+      // 2. Mark coin as sold
+      const { error: updateError } = await userCoinService.updateUserCoin(saleFormData.coinId, {
+        is_sold: true
+      });
+
+      if (updateError) {
+        alert("Failed to update coin status. Please try again.");
+        console.error("Update error:", updateError);
+        return;
+      }
+
+      // 3. Reload coins and close dialog
+      await loadCoins();
+      setIsSaleDialogOpen(false);
+      setSaleFormData({
+        coinId: "",
+        saleDate: new Date().toISOString().split("T")[0],
+        salePrice: 0,
+        buyerInfo: "",
+        notes: ""
+      });
+      setSelectedCoinForSale("");
+      setAvailableCoinsForSale([]);
+    } catch (err) {
+      console.error("Error recording sale:", err);
+      alert("An unexpected error occurred. Please try again.");
+    }
   };
 
   const handleImageClick = (imageUrl: string, coinName: string) => {
