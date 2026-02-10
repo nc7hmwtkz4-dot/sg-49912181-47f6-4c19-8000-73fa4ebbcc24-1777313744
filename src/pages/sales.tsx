@@ -4,7 +4,7 @@ import { Layout } from "@/components/Layout";
 import { spotPriceService } from "@/lib/spotPrices";
 import { userCoinService } from "@/services/userCoinService";
 import { userSalesService } from "@/services/userSalesService";
-import { Coin, COUNTRY_CODES, Sale } from "@/types/coin";
+import { Coin, COUNTRY_CODES, Sale, SheldonGrade } from "@/types/coin";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
