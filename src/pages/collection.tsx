@@ -4,6 +4,7 @@ import { SEO } from "@/components/SEO";
 import { Layout } from "@/components/Layout";
 import { storageService } from "@/lib/storage";
 import { spotPriceService } from "@/lib/spotPrices";
+import { imageService } from "@/services/imageService";
 import { Coin, COUNTRY_CODES, SHELDON_GRADES } from "@/types/coin";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -86,7 +87,7 @@ export default function Collection() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.countryCode || !formData.kmNumber || !formData.year || 
@@ -97,33 +98,45 @@ export default function Collection() {
       return;
     }
 
-    if (editingCoin) {
-      storageService.updateCoin(editingCoin.id, formData);
-    } else {
-      const newCoin: Coin = {
-        id: storageService.generateId(),
-        sku: storageService.generateSKU(formData.countryCode, formData.kmNumber),
-        coinName: formData.coinName,
-        countryCode: formData.countryCode,
-        kmNumber: formData.kmNumber,
-        year: formData.year,
-        mintmark: formData.mintmark || "",
-        metal: formData.metal as "gold" | "silver" | "copper" | "platinum" | "palladium" | "other",
-        purity: formData.purity,
-        weight: formData.weight,
-        sheldonGrade: formData.sheldonGrade,
-        purchasePrice: formData.purchasePrice,
-        purchaseDate: formData.purchaseDate,
-        notes: formData.notes,
-        imageUrl: imagePreview,
-        isSold: false
-      };
-      storageService.addCoin(newCoin);
-    }
+    try {
+      let imageUrl = formData.imageUrl || "";
+      
+      // Upload image to Supabase Storage if a new file is selected
+      if (imageFile) {
+        imageUrl = await imageService.uploadImage(imageFile);
+      }
 
-    loadCoins();
-    resetForm();
-    setIsAddDialogOpen(false);
+      if (editingCoin) {
+        storageService.updateCoin(editingCoin.id, { ...formData, imageUrl });
+      } else {
+        const newCoin: Coin = {
+          id: storageService.generateId(),
+          sku: storageService.generateSKU(formData.countryCode, formData.kmNumber),
+          coinName: formData.coinName,
+          countryCode: formData.countryCode,
+          kmNumber: formData.kmNumber,
+          year: formData.year,
+          mintmark: formData.mintmark || "",
+          metal: formData.metal as "gold" | "silver" | "copper" | "platinum" | "palladium" | "other",
+          purity: formData.purity,
+          weight: formData.weight,
+          sheldonGrade: formData.sheldonGrade,
+          purchasePrice: formData.purchasePrice,
+          purchaseDate: formData.purchaseDate,
+          notes: formData.notes,
+          imageUrl: imageUrl,
+          isSold: false
+        };
+        storageService.addCoin(newCoin);
+      }
+
+      loadCoins();
+      resetForm();
+      setIsAddDialogOpen(false);
+    } catch (error) {
+      console.error("Error saving coin:", error);
+      alert("Failed to save coin. Please try again.");
+    }
   };
 
   const resetForm = () => {
