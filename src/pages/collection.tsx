@@ -2,7 +2,6 @@ import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/router";
 import { SEO } from "@/components/SEO";
 import { Layout } from "@/components/Layout";
-import { storageService } from "@/lib/storage";
 import { spotPriceService } from "@/lib/spotPrices";
 import { imageService } from "@/services/imageService";
 import { userCoinService } from "@/services/userCoinService";
@@ -200,31 +199,60 @@ export default function Collection() {
       }
 
       if (editingCoin) {
-        storageService.updateCoin(editingCoin.id, { ...formData, obverseImageUrl, reverseImageUrl });
+        // Update existing coin
+        const { error } = await userCoinService.updateUserCoin(editingCoin.id, {
+          coin_name: formData.coinName,
+          country_code: formData.countryCode,
+          km_number: formData.kmNumber!,
+          year: formData.year!,
+          mintmark: formData.mintmark || null,
+          metal: formData.metal!,
+          purity: formData.purity!,
+          weight: formData.weight!,
+          grade: formData.sheldonGrade!,
+          purchase_price: formData.purchasePrice!,
+          purchase_date: formData.purchaseDate!,
+          notes: formData.notes || null,
+          obverse_image_url: obverseImageUrl || null,
+          reverse_image_url: reverseImageUrl || null
+        });
+
+        if (error) {
+          alert("Failed to update coin. Please try again.");
+          console.error("Update error:", error);
+          return;
+        }
       } else {
-        const newCoin: Coin = {
-          id: storageService.generateId(),
-          sku: storageService.generateSKU(formData.countryCode, formData.kmNumber),
-          coinName: formData.coinName,
-          countryCode: formData.countryCode,
-          kmNumber: formData.kmNumber,
-          year: formData.year,
-          mintmark: formData.mintmark || "",
-          metal: formData.metal as "gold" | "silver" | "copper" | "platinum" | "palladium" | "other",
-          purity: formData.purity,
-          weight: formData.weight,
-          sheldonGrade: formData.sheldonGrade,
-          purchasePrice: formData.purchasePrice,
-          purchaseDate: formData.purchaseDate,
-          notes: formData.notes,
-          obverseImageUrl: obverseImageUrl,
-          reverseImageUrl: reverseImageUrl,
-          isSold: false
-        };
-        storageService.addCoin(newCoin);
+        // Add new coin
+        const sku = `${formData.countryCode}-${formData.kmNumber}`;
+        
+        const { error } = await userCoinService.addUserCoin({
+          sku,
+          coin_name: formData.coinName,
+          country_code: formData.countryCode,
+          km_number: formData.kmNumber!,
+          year: formData.year!,
+          mintmark: formData.mintmark || null,
+          metal: formData.metal!,
+          purity: formData.purity!,
+          weight: formData.weight!,
+          grade: formData.sheldonGrade!,
+          purchase_price: formData.purchasePrice!,
+          purchase_date: formData.purchaseDate!,
+          notes: formData.notes || null,
+          obverse_image_url: obverseImageUrl || null,
+          reverse_image_url: reverseImageUrl || null,
+          is_sold: false
+        });
+
+        if (error) {
+          alert("Failed to add coin. Please try again.");
+          console.error("Add error:", error);
+          return;
+        }
       }
 
-      loadCoins();
+      await loadCoins();
       resetForm();
       setIsAddDialogOpen(false);
     } catch (error) {
@@ -275,44 +303,54 @@ export default function Collection() {
     setIsAddPurchaseOpen(true);
   };
 
-  const handleAddPurchase = (e: React.FormEvent) => {
+  const handleAddPurchase = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const skuCoins = coins.filter(c => c.sku === selectedSKU);
     if (skuCoins.length === 0) return;
 
     const referenceCoin = skuCoins[0];
-    const newCoin: Coin = {
-      id: storageService.generateId(),
-      sku: selectedSKU,
-      coinName: referenceCoin.coinName,
-      countryCode: referenceCoin.countryCode,
-      kmNumber: referenceCoin.kmNumber,
-      year: purchaseFormData.year,
-      mintmark: purchaseFormData.mintmark,
-      metal: referenceCoin.metal,
-      purity: referenceCoin.purity,
-      weight: referenceCoin.weight,
-      sheldonGrade: purchaseFormData.sheldonGrade,
-      purchasePrice: purchaseFormData.purchasePrice,
-      purchaseDate: purchaseFormData.purchaseDate,
-      notes: purchaseFormData.notes,
-      obverseImageUrl: referenceCoin.obverseImageUrl,
-      reverseImageUrl: referenceCoin.reverseImageUrl,
-      isSold: false
-    };
 
-    storageService.addCoin(newCoin);
-    loadCoins();
-    setIsAddPurchaseOpen(false);
-    setPurchaseFormData({
-      year: new Date().getFullYear(),
-      mintmark: "",
-      sheldonGrade: "MS-63",
-      purchaseDate: new Date().toISOString().split("T")[0],
-      purchasePrice: 0,
-      notes: ""
-    });
+    try {
+      const { error } = await userCoinService.addUserCoin({
+        sku: selectedSKU,
+        coin_name: referenceCoin.coinName,
+        country_code: referenceCoin.countryCode,
+        km_number: referenceCoin.kmNumber,
+        year: purchaseFormData.year,
+        mintmark: purchaseFormData.mintmark || null,
+        metal: referenceCoin.metal,
+        purity: referenceCoin.purity,
+        weight: referenceCoin.weight,
+        grade: purchaseFormData.sheldonGrade,
+        purchase_price: purchaseFormData.purchasePrice,
+        purchase_date: purchaseFormData.purchaseDate,
+        notes: purchaseFormData.notes || null,
+        obverse_image_url: referenceCoin.obverseImageUrl || null,
+        reverse_image_url: referenceCoin.reverseImageUrl || null,
+        is_sold: false
+      });
+
+      if (error) {
+        alert("Failed to add purchase. Please try again.");
+        console.error("Add purchase error:", error);
+        return;
+      }
+
+      await loadCoins();
+      setIsAddPurchaseOpen(false);
+      setPurchaseFormData({
+        year: new Date().getFullYear(),
+        mintmark: "",
+        sheldonGrade: "MS-63",
+        purchaseDate: new Date().toISOString().split("T")[0],
+        purchasePrice: 0,
+        notes: ""
+      });
+    } catch (err) {
+      console.error("Error adding purchase:", err);
+      alert("An unexpected error occurred. Please try again.");
+    }
   };
 
   // Handle Record Sale
