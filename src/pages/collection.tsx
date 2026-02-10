@@ -5,7 +5,7 @@ import { Layout } from "@/components/Layout";
 import { storageService } from "@/lib/storage";
 import { spotPriceService } from "@/lib/spotPrices";
 import { imageService } from "@/services/imageService";
-import { Coin, COUNTRY_CODES, SHELDON_GRADES } from "@/types/coin";
+import { Coin, COUNTRY_CODES, SHELDON_GRADES, SheldonGrade } from "@/types/coin";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,6 +33,43 @@ export default function Collection() {
     metal: "silver",
     purity: 90,
     sheldonGrade: "MS-63"
+  });
+
+  // Purchase dialog state
+  const [isAddPurchaseOpen, setIsAddPurchaseOpen] = useState(false);
+  const [selectedSKU, setSelectedSKU] = useState<string>("");
+  const [purchaseFormData, setPurchaseFormData] = useState<{
+    year: number;
+    mintmark: string;
+    sheldonGrade: SheldonGrade;
+    purchaseDate: string;
+    purchasePrice: number;
+    notes: string;
+  }>({
+    year: new Date().getFullYear(),
+    mintmark: "",
+    sheldonGrade: "MS-63",
+    purchaseDate: new Date().toISOString().split("T")[0],
+    purchasePrice: 0,
+    notes: ""
+  });
+
+  // Sale dialog state
+  const [isSaleDialogOpen, setIsSaleDialogOpen] = useState(false);
+  const [selectedCoinForSale, setSelectedCoinForSale] = useState<Coin | null>(null);
+  const [availableCoinsForSale, setAvailableCoinsForSale] = useState<Coin[]>([]);
+  const [saleFormData, setSaleFormData] = useState<{
+    coinId: string;
+    saleDate: string;
+    salePrice: number;
+    buyerInfo: string;
+    notes: string;
+  }>({
+    coinId: "",
+    saleDate: new Date().toISOString().split("T")[0],
+    salePrice: 0,
+    buyerInfo: "",
+    notes: ""
   });
 
   useEffect(() => {
@@ -161,6 +198,142 @@ export default function Collection() {
     );
   };
 
+  // Handle Add Purchase
+  const handleOpenAddPurchase = (sku: string) => {
+    const skuCoins = coins.filter(c => c.sku === sku);
+    if (skuCoins.length === 0) return;
+
+    const referenceCoin = skuCoins[0];
+    setSelectedSKU(sku);
+    setPurchaseFormData({
+      year: referenceCoin.year,
+      mintmark: referenceCoin.mintmark || "",
+      sheldonGrade: referenceCoin.sheldonGrade,
+      purchaseDate: new Date().toISOString().split("T")[0],
+      purchasePrice: referenceCoin.purchasePrice,
+      notes: ""
+    });
+    setIsAddPurchaseOpen(true);
+  };
+
+  const handleAddPurchase = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const skuCoins = coins.filter(c => c.sku === selectedSKU);
+    if (skuCoins.length === 0) return;
+
+    const referenceCoin = skuCoins[0];
+    const newCoin: Coin = {
+      id: storageService.generateId(),
+      sku: selectedSKU,
+      coinName: referenceCoin.coinName,
+      countryCode: referenceCoin.countryCode,
+      kmNumber: referenceCoin.kmNumber,
+      year: purchaseFormData.year,
+      mintmark: purchaseFormData.mintmark,
+      metal: referenceCoin.metal,
+      purity: referenceCoin.purity,
+      weight: referenceCoin.weight,
+      sheldonGrade: purchaseFormData.sheldonGrade,
+      purchasePrice: purchaseFormData.purchasePrice,
+      purchaseDate: purchaseFormData.purchaseDate,
+      notes: purchaseFormData.notes,
+      imageUrl: referenceCoin.imageUrl,
+      isSold: false
+    };
+
+    storageService.addCoin(newCoin);
+    loadCoins();
+    setIsAddPurchaseOpen(false);
+    setPurchaseFormData({
+      year: new Date().getFullYear(),
+      mintmark: "",
+      sheldonGrade: "MS-63",
+      purchaseDate: new Date().toISOString().split("T")[0],
+      purchasePrice: 0,
+      notes: ""
+    });
+  };
+
+  // Handle Record Sale
+  const handleOpenRecordSale = (sku: string) => {
+    const skuCoins = coins.filter(c => c.sku === sku && !c.isSold);
+    if (skuCoins.length === 0) {
+      alert("No available coins to sell for this SKU");
+      return;
+    }
+
+    setSelectedSKU(sku);
+    setAvailableCoinsForSale(skuCoins);
+    
+    if (skuCoins.length === 1) {
+      const coin = skuCoins[0];
+      setSaleFormData({
+        coinId: coin.id,
+        saleDate: new Date().toISOString().split("T")[0],
+        salePrice: calculateBullionValue(coin),
+        buyerInfo: "",
+        notes: ""
+      });
+      setSelectedCoinForSale(coin);
+    } else {
+      setSaleFormData({
+        coinId: "",
+        saleDate: new Date().toISOString().split("T")[0],
+        salePrice: 0,
+        buyerInfo: "",
+        notes: ""
+      });
+      setSelectedCoinForSale(null);
+    }
+    
+    setIsSaleDialogOpen(true);
+  };
+
+  const handleCoinSelection = (coinId: string) => {
+    const coin = availableCoinsForSale.find(c => c.id === coinId);
+    if (coin) {
+      setSelectedCoinForSale(coin);
+      setSaleFormData({
+        ...saleFormData,
+        coinId: coinId,
+        salePrice: calculateBullionValue(coin)
+      });
+    }
+  };
+
+  const handleRecordSale = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!saleFormData.coinId) {
+      alert("Please select a coin to sell");
+      return;
+    }
+
+    const coin = coins.find(c => c.id === saleFormData.coinId);
+    if (!coin) return;
+
+    storageService.markCoinAsSold(
+      saleFormData.coinId,
+      saleFormData.saleDate,
+      saleFormData.salePrice,
+      saleFormData.buyerInfo,
+      saleFormData.notes
+    );
+
+    loadCoins();
+    setIsSaleDialogOpen(false);
+    setSaleFormData({
+      coinId: "",
+      saleDate: new Date().toISOString().split("T")[0],
+      salePrice: 0,
+      buyerInfo: "",
+      notes: ""
+    });
+    setSelectedCoinForSale(null);
+    setAvailableCoinsForSale([]);
+  };
+
   // Group coins by SKU
   const groupedCoins = filteredCoins.reduce((acc, coin) => {
     if (!acc[coin.sku]) {
@@ -195,14 +368,6 @@ export default function Collection() {
             <Button variant="outline" className="border-slate-600 text-slate-300 hover:bg-slate-800">
               <Upload className="w-4 h-4 mr-2" />
               Import CSV
-            </Button>
-            <Button variant="outline" className="border-slate-600 text-slate-300 hover:bg-slate-800">
-              <DollarSign className="w-4 h-4 mr-2" />
-              Record Sale
-            </Button>
-            <Button variant="outline" className="border-slate-600 text-slate-300 hover:bg-slate-800">
-              <ShoppingCart className="w-4 h-4 mr-2" />
-              Record Purchase
             </Button>
             
             <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
@@ -499,16 +664,19 @@ export default function Collection() {
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     {countryCoins.map(({ sku, coins: skuCoins }) => {
                       const coin = skuCoins[0];
-                      const totalBullionValue = skuCoins.reduce((sum, c) => sum + calculateBullionValue(c), 0);
-                      const totalCost = skuCoins.reduce((sum, c) => sum + c.purchasePrice, 0);
+                      const unsoldCoins = skuCoins.filter(c => !c.isSold);
+                      const totalBullionValue = unsoldCoins.reduce((sum, c) => sum + calculateBullionValue(c), 0);
+                      const totalCost = unsoldCoins.reduce((sum, c) => sum + c.purchasePrice, 0);
 
                       return (
                         <Card 
                           key={sku} 
-                          className="bg-slate-800/50 border-slate-700 hover:bg-slate-800 transition-colors cursor-pointer overflow-hidden group"
-                          onClick={() => router.push(`/coin/${encodeURIComponent(sku)}`)}
+                          className="bg-slate-800/50 border-slate-700 hover:bg-slate-800 transition-colors overflow-hidden group"
                         >
-                          <div className="aspect-square relative bg-slate-900/50 overflow-hidden">
+                          <div 
+                            className="aspect-square relative bg-slate-900/50 overflow-hidden cursor-pointer"
+                            onClick={() => router.push(`/coin/${encodeURIComponent(sku)}`)}
+                          >
                             {coin.imageUrl ? (
                               <img 
                                 src={coin.imageUrl} 
@@ -531,31 +699,64 @@ export default function Collection() {
                           </div>
                           
                           <CardContent className="p-4 space-y-2">
-                            <h3 className="text-white font-semibold line-clamp-2 min-h-[3rem]">
-                              {coin.coinName || `${COUNTRY_CODES[coin.countryCode]} Coin`}
-                            </h3>
-                            <p className="text-slate-400 text-sm font-mono">
-                              {sku}
-                            </p>
-                            
-                            <div className="flex items-center gap-2 pt-2">
-                              <Package className="w-4 h-4 text-slate-500" />
-                              <span className="text-slate-400 text-sm">
-                                {skuCoins.length} coin{skuCoins.length > 1 ? 's' : ''}
-                              </span>
+                            <div 
+                              className="cursor-pointer"
+                              onClick={() => router.push(`/coin/${encodeURIComponent(sku)}`)}
+                            >
+                              <h3 className="text-white font-semibold line-clamp-2 min-h-[3rem]">
+                                {coin.coinName || `${COUNTRY_CODES[coin.countryCode]} Coin`}
+                              </h3>
+                              <p className="text-slate-400 text-sm font-mono">
+                                {sku}
+                              </p>
+                              
+                              <div className="flex items-center gap-2 pt-2">
+                                <Package className="w-4 h-4 text-slate-500" />
+                                <span className="text-slate-400 text-sm">
+                                  {unsoldCoins.length} in collection
+                                </span>
+                              </div>
+
+                              <div className="pt-3 border-t border-slate-700 space-y-1">
+                                <div className="flex justify-between items-center">
+                                  <span className="text-xl font-bold text-white">
+                                    {spotPriceService.formatCHF(totalBullionValue)}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between items-center text-sm">
+                                  <span className="text-slate-500">
+                                    {spotPriceService.formatCHF(totalCost)} cost
+                                  </span>
+                                </div>
+                              </div>
                             </div>
 
-                            <div className="pt-3 border-t border-slate-700 space-y-1">
-                              <div className="flex justify-between items-center">
-                                <span className="text-xl font-bold text-white">
-                                  {spotPriceService.formatCHF(totalBullionValue)}
-                                </span>
-                              </div>
-                              <div className="flex justify-between items-center text-sm">
-                                <span className="text-slate-500">
-                                  {spotPriceService.formatCHF(totalCost)} cost
-                                </span>
-                              </div>
+                            <div className="flex gap-2 pt-3 border-t border-slate-700">
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                className="flex-1 border-slate-600 text-slate-300 hover:bg-slate-700"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenAddPurchase(sku);
+                                }}
+                              >
+                                <Plus className="w-3 h-3 mr-1" />
+                                Purchase
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                className="flex-1 border-slate-600 text-slate-300 hover:bg-slate-700"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenRecordSale(sku);
+                                }}
+                                disabled={unsoldCoins.length === 0}
+                              >
+                                <DollarSign className="w-3 h-3 mr-1" />
+                                Sale
+                              </Button>
                             </div>
                           </CardContent>
                         </Card>
@@ -586,6 +787,219 @@ export default function Collection() {
           )}
         </div>
       </div>
+
+      {/* Add Purchase Dialog */}
+      <Dialog open={isAddPurchaseOpen} onOpenChange={setIsAddPurchaseOpen}>
+        <DialogContent className="max-w-lg bg-slate-900 border-slate-700">
+          <DialogHeader>
+            <DialogTitle className="text-2xl text-white">
+              Add Purchase - {selectedSKU}
+            </DialogTitle>
+          </DialogHeader>
+          
+          <form onSubmit={handleAddPurchase} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="purchaseYear" className="text-slate-300">Year *</Label>
+                <Input
+                  id="purchaseYear"
+                  type="number"
+                  value={purchaseFormData.year}
+                  onChange={(e) => setPurchaseFormData({...purchaseFormData, year: parseInt(e.target.value)})}
+                  className="bg-slate-800 border-slate-700 text-white"
+                  required
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="purchaseMintmark" className="text-slate-300">Mintmark</Label>
+                <Input
+                  id="purchaseMintmark"
+                  value={purchaseFormData.mintmark}
+                  onChange={(e) => setPurchaseFormData({...purchaseFormData, mintmark: e.target.value})}
+                  placeholder="e.g., D, S, P"
+                  className="bg-slate-800 border-slate-700 text-white"
+                />
+              </div>
+
+              <div className="col-span-2">
+                <Label htmlFor="purchaseSheldonGrade" className="text-slate-300">Sheldon Grade *</Label>
+                <Select 
+                  value={purchaseFormData.sheldonGrade} 
+                  onValueChange={(value) => setPurchaseFormData({...purchaseFormData, sheldonGrade: value as SheldonGrade})}
+                >
+                  <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-slate-800 border-slate-700 max-h-60">
+                    {SHELDON_GRADES.map(grade => (
+                      <SelectItem key={grade} value={grade} className="text-white">{grade}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="purchasePurchaseDate" className="text-slate-300">Purchase Date *</Label>
+                <Input
+                  id="purchasePurchaseDate"
+                  type="date"
+                  value={purchaseFormData.purchaseDate}
+                  onChange={(e) => setPurchaseFormData({...purchaseFormData, purchaseDate: e.target.value})}
+                  className="bg-slate-800 border-slate-700 text-white"
+                  required
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="purchasePurchasePrice" className="text-slate-300">Purchase Price (CHF) *</Label>
+                <Input
+                  id="purchasePurchasePrice"
+                  type="number"
+                  step="0.01"
+                  value={purchaseFormData.purchasePrice}
+                  onChange={(e) => setPurchaseFormData({...purchaseFormData, purchasePrice: parseFloat(e.target.value)})}
+                  className="bg-slate-800 border-slate-700 text-white"
+                  required
+                />
+              </div>
+
+              <div className="col-span-2">
+                <Label htmlFor="purchaseNotes" className="text-slate-300">Notes</Label>
+                <Textarea
+                  id="purchaseNotes"
+                  value={purchaseFormData.notes}
+                  onChange={(e) => setPurchaseFormData({...purchaseFormData, notes: e.target.value})}
+                  placeholder="Additional information"
+                  rows={3}
+                  className="bg-slate-800 border-slate-700 text-white"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-2 justify-end pt-4 border-t border-slate-700">
+              <Button type="button" variant="outline" onClick={() => setIsAddPurchaseOpen(false)} className="border-slate-600 text-slate-300">
+                Cancel
+              </Button>
+              <Button type="submit" className="bg-white text-slate-900 hover:bg-slate-100">
+                Add Purchase
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Record Sale Dialog */}
+      <Dialog open={isSaleDialogOpen} onOpenChange={setIsSaleDialogOpen}>
+        <DialogContent className="max-w-lg bg-slate-900 border-slate-700">
+          <DialogHeader>
+            <DialogTitle className="text-2xl text-white">
+              Record Sale - {selectedSKU}
+            </DialogTitle>
+          </DialogHeader>
+          
+          <form onSubmit={handleRecordSale} className="space-y-4">
+            {availableCoinsForSale.length > 1 && (
+              <div>
+                <Label htmlFor="saleCoinId" className="text-slate-300">Select Coin *</Label>
+                <Select 
+                  value={saleFormData.coinId} 
+                  onValueChange={handleCoinSelection}
+                >
+                  <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
+                    <SelectValue placeholder="Select a coin to sell" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-slate-800 border-slate-700 max-h-60">
+                    {availableCoinsForSale.map(coin => (
+                      <SelectItem key={coin.id} value={coin.id} className="text-white">
+                        {coin.year} {coin.mintmark && `(${coin.mintmark})`} - {coin.sheldonGrade} - {spotPriceService.formatCHF(coin.purchasePrice)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="saleSaleDate" className="text-slate-300">Sale Date *</Label>
+                <Input
+                  id="saleSaleDate"
+                  type="date"
+                  value={saleFormData.saleDate}
+                  onChange={(e) => setSaleFormData({...saleFormData, saleDate: e.target.value})}
+                  className="bg-slate-800 border-slate-700 text-white"
+                  required
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="saleSalePrice" className="text-slate-300">Sale Price (CHF) *</Label>
+                <Input
+                  id="saleSalePrice"
+                  type="number"
+                  step="0.01"
+                  value={saleFormData.salePrice}
+                  onChange={(e) => setSaleFormData({...saleFormData, salePrice: parseFloat(e.target.value)})}
+                  className="bg-slate-800 border-slate-700 text-white"
+                  required
+                />
+              </div>
+
+              <div className="col-span-2">
+                <Label htmlFor="saleBuyerInfo" className="text-slate-300">Buyer Information</Label>
+                <Input
+                  id="saleBuyerInfo"
+                  value={saleFormData.buyerInfo}
+                  onChange={(e) => setSaleFormData({...saleFormData, buyerInfo: e.target.value})}
+                  placeholder="Optional buyer details"
+                  className="bg-slate-800 border-slate-700 text-white"
+                />
+              </div>
+
+              <div className="col-span-2">
+                <Label htmlFor="saleNotes" className="text-slate-300">Notes</Label>
+                <Textarea
+                  id="saleNotes"
+                  value={saleFormData.notes}
+                  onChange={(e) => setSaleFormData({...saleFormData, notes: e.target.value})}
+                  placeholder="Additional information"
+                  rows={3}
+                  className="bg-slate-800 border-slate-700 text-white"
+                />
+              </div>
+            </div>
+
+            {selectedCoinForSale && (
+              <div className="p-4 bg-slate-800 rounded-lg border border-slate-700 space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-400">Purchase Price:</span>
+                  <span className="text-white font-medium">{spotPriceService.formatCHF(selectedCoinForSale.purchasePrice)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-400">Sale Price:</span>
+                  <span className="text-white font-medium">{spotPriceService.formatCHF(saleFormData.salePrice)}</span>
+                </div>
+                <div className="flex justify-between text-sm pt-2 border-t border-slate-700">
+                  <span className="text-slate-400">Profit:</span>
+                  <span className={`font-bold ${saleFormData.salePrice - selectedCoinForSale.purchasePrice >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    {spotPriceService.formatCHF(saleFormData.salePrice - selectedCoinForSale.purchasePrice)}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-2 justify-end pt-4 border-t border-slate-700">
+              <Button type="button" variant="outline" onClick={() => setIsSaleDialogOpen(false)} className="border-slate-600 text-slate-300">
+                Cancel
+              </Button>
+              <Button type="submit" className="bg-white text-slate-900 hover:bg-slate-100">
+                Record Sale
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 }
