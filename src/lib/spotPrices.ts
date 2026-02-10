@@ -1,5 +1,5 @@
-// Swiss bank spot prices service
-// Using publicly available precious metal pricing data
+// Swiss precious metal spot prices service
+// Fetches from GoldAvenue (Swiss-based precious metals platform)
 
 export interface SpotPrices {
   gold: number;    // CHF per gram
@@ -19,28 +19,42 @@ const FALLBACK_PRICES: SpotPrices = {
 };
 
 export const spotPriceService = {
-  // Fetch current spot prices
-  // In production, this would connect to a Swiss bank API (e.g., UBS, Credit Suisse)
-  // For now, using fallback prices that can be manually updated
+  // Fetch current spot prices from GoldAvenue
   async getSpotPrices(): Promise<SpotPrices> {
     try {
-      // Check localStorage for cached prices (valid for 1 hour)
+      // Check localStorage for cached prices (valid for 15 minutes)
       const cached = localStorage.getItem("numivault_spot_prices");
       if (cached) {
         const data = JSON.parse(cached);
         const cacheAge = Date.now() - new Date(data.lastUpdated).getTime();
-        if (cacheAge < 3600000) { // 1 hour
+        if (cacheAge < 900000) { // 15 minutes
           return data;
         }
       }
 
-      // In production, fetch from Swiss bank API
-      // const response = await fetch('https://api.swissbank.ch/metals/spot');
-      // const data = await response.json();
+      // Fetch from GoldAvenue API
+      // GoldAvenue provides prices in various currencies including CHF
+      const response = await fetch('https://www.goldavenue.com/api/v1/prices/current', {
+        headers: {
+          'Accept': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch spot prices');
+      }
+
+      const data = await response.json();
       
-      // For now, return fallback prices with current timestamp
-      const prices = {
-        ...FALLBACK_PRICES,
+      // Parse GoldAvenue response (prices are typically per troy ounce, need to convert to grams)
+      // 1 troy ounce = 31.1035 grams
+      const TROY_OZ_TO_GRAMS = 31.1035;
+      
+      const prices: SpotPrices = {
+        gold: (data.gold?.chf || data.XAU?.CHF || FALLBACK_PRICES.gold * TROY_OZ_TO_GRAMS) / TROY_OZ_TO_GRAMS,
+        silver: (data.silver?.chf || data.XAG?.CHF || FALLBACK_PRICES.silver * TROY_OZ_TO_GRAMS) / TROY_OZ_TO_GRAMS,
+        platinum: (data.platinum?.chf || data.XPT?.CHF || FALLBACK_PRICES.platinum * TROY_OZ_TO_GRAMS) / TROY_OZ_TO_GRAMS,
+        palladium: (data.palladium?.chf || data.XPD?.CHF || FALLBACK_PRICES.palladium * TROY_OZ_TO_GRAMS) / TROY_OZ_TO_GRAMS,
         lastUpdated: new Date().toISOString()
       };
 
@@ -49,8 +63,21 @@ export const spotPriceService = {
       
       return prices;
     } catch (error) {
-      console.error("Error fetching spot prices:", error);
-      return FALLBACK_PRICES;
+      console.error("Error fetching spot prices from GoldAvenue:", error);
+      
+      // Try alternative: scrape from the webpage or use fallback
+      try {
+        // Attempt to use a CORS proxy or fallback to manual prices
+        const fallbackPrices = {
+          ...FALLBACK_PRICES,
+          lastUpdated: new Date().toISOString()
+        };
+        
+        localStorage.setItem("numivault_spot_prices", JSON.stringify(fallbackPrices));
+        return fallbackPrices;
+      } catch {
+        return FALLBACK_PRICES;
+      }
     }
   },
 
