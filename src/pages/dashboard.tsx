@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { SEO } from "@/components/SEO";
 import { Layout } from "@/components/Layout";
-import { storageService } from "@/lib/storage";
+import { userCoinService } from "@/services/userCoinService";
+import { userSalesService } from "@/services/userSalesService";
 import { spotPriceService, SpotPrices } from "@/lib/spotPrices";
 import { Coin, Sale, COUNTRY_CODES } from "@/types/coin";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,11 +32,12 @@ export default function Dashboard() {
     loadSpotPrices();
   }, []);
 
-  const loadData = () => {
-    const loadedCoins = storageService.getCoins();
-    const loadedSales = storageService.getSales();
-    setCoins(loadedCoins);
-    setSales(loadedSales);
+  const loadData = async () => {
+    const { data: coinsData } = await userCoinService.getUserCoins();
+    const { data: salesData } = await userSalesService.getUserSales();
+    
+    if (coinsData) setCoins(coinsData);
+    if (salesData) setSales(salesData);
   };
 
   const loadSpotPrices = async (forceRefresh = false) => {

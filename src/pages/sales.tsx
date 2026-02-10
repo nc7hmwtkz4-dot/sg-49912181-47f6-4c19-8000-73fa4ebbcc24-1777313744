@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { SEO } from "@/components/SEO";
 import { Layout } from "@/components/Layout";
-import { storageService } from "@/lib/storage";
+import { userCoinService } from "@/services/userCoinService";
+import { userSalesService } from "@/services/userSalesService";
 import { spotPriceService } from "@/lib/spotPrices";
 import { Coin, Sale } from "@/types/coin";
 import { Button } from "@/components/ui/button";
@@ -26,16 +27,17 @@ export default function Sales() {
     loadData();
   }, []);
 
-  const loadData = () => {
-    const loadedCoins = storageService.getCoins();
-    const loadedSales = storageService.getSales();
-    setCoins(loadedCoins);
-    setSales(loadedSales);
+  const loadData = async () => {
+    const { data: coinsData } = await userCoinService.getUserCoins();
+    const { data: salesData } = await userSalesService.getUserSales();
+    
+    if (coinsData) setCoins(coinsData);
+    if (salesData) setSales(salesData);
   };
 
   const availableCoins = coins.filter(coin => !coin.isSold);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!selectedCoinId || !formData.saleDate || !formData.salePrice) {
@@ -43,22 +45,29 @@ export default function Sales() {
       return;
     }
 
-    const newSale: Sale = {
-      id: storageService.generateId(),
-      coinId: selectedCoinId,
-      saleDate: formData.saleDate,
-      salePrice: formData.salePrice,
-      buyerInfo: formData.buyerInfo,
+    const newSale = {
+      coin_id: selectedCoinId,
+      sale_date: formData.saleDate,
+      sale_price: formData.salePrice,
+      buyer_info: formData.buyerInfo,
       notes: formData.notes
     };
 
-    storageService.addSale(newSale);
-    storageService.updateCoin(selectedCoinId, { 
-      isSold: true, 
-      saleId: newSale.id 
-    });
+    const { error: saleError } = await userSalesService.addSale(newSale);
+    if (saleError) {
+      alert(`Failed to record sale: ${saleError.message}`);
+      return;
+    }
 
-    loadData();
+    const { error: updateError } = await userCoinService.updateUserCoin(selectedCoinId, { 
+      is_sold: true
+    });
+    if (updateError) {
+      alert(`Failed to mark coin as sold: ${updateError.message}`);
+      return;
+    }
+
+    await loadData();
     resetForm();
     setIsAddDialogOpen(false);
   };
