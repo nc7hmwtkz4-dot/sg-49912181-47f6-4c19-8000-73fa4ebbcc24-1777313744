@@ -25,6 +25,8 @@ export default function Collection() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingCoin, setEditingCoin] = useState<Coin | null>(null);
   const [spotPrices, setSpotPrices] = useState<any>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>("");
   const [formData, setFormData] = useState<Partial<Coin>>({
     countryCode: "US",
     metal: "silver",
@@ -72,6 +74,18 @@ export default function Collection() {
     setSpotPrices(prices);
   };
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -101,7 +115,7 @@ export default function Collection() {
         purchasePrice: formData.purchasePrice,
         purchaseDate: formData.purchaseDate,
         notes: formData.notes,
-        imageUrl: formData.imageUrl,
+        imageUrl: imagePreview,
         isSold: false
       };
       storageService.addCoin(newCoin);
@@ -120,6 +134,8 @@ export default function Collection() {
       sheldonGrade: "MS-63"
     });
     setEditingCoin(null);
+    setImageFile(null);
+    setImagePreview("");
   };
 
   const calculateBullionValue = (coin: Coin): number => {
@@ -232,7 +248,7 @@ export default function Collection() {
                         id="kmNumber"
                         value={formData.kmNumber || ""}
                         onChange={(e) => setFormData({...formData, kmNumber: e.target.value})}
-                        placeholder="e.g., 24"
+                        placeholder="e.g., 24 or 35.2"
                         className="bg-slate-800 border-slate-700 text-white"
                         required
                       />
@@ -354,14 +370,25 @@ export default function Collection() {
                     </div>
 
                     <div className="col-span-2">
-                      <Label htmlFor="imageUrl" className="text-slate-300">Image URL</Label>
-                      <Input
-                        id="imageUrl"
-                        value={formData.imageUrl || ""}
-                        onChange={(e) => setFormData({...formData, imageUrl: e.target.value})}
-                        placeholder="https://example.com/coin.jpg"
-                        className="bg-slate-800 border-slate-700 text-white"
-                      />
+                      <Label htmlFor="imageUpload" className="text-slate-300">Coin Image</Label>
+                      <div className="space-y-2">
+                        <Input
+                          id="imageUpload"
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageChange}
+                          className="bg-slate-800 border-slate-700 text-white"
+                        />
+                        {imagePreview && (
+                          <div className="mt-2">
+                            <img 
+                              src={imagePreview} 
+                              alt="Preview" 
+                              className="w-32 h-32 object-cover rounded-lg border-2 border-slate-700"
+                            />
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     <div className="col-span-2">

@@ -4,17 +4,17 @@ import { SEO } from "@/components/SEO";
 import { Layout } from "@/components/Layout";
 import { storageService } from "@/lib/storage";
 import { spotPriceService } from "@/lib/spotPrices";
-import { Coin, COUNTRY_CODES } from "@/types/coin";
+import { Coin, COUNTRY_CODES, SHELDON_GRADES } from "@/types/coin";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Edit, Plus, DollarSign, Trash2, ArrowLeft } from "lucide-react";
+import { Edit, Plus, DollarSign, Trash2, ArrowLeft, Upload } from "lucide-react";
 import Link from "next/link";
 
 export default function CoinDetail() {
@@ -50,6 +50,41 @@ export default function CoinDetail() {
   const loadSpotPrices = async () => {
     const prices = await spotPriceService.getSpotPrices();
     setSpotPrices(prices);
+  };
+
+  const handleEditClick = () => {
+    const referenceCoin = coins[0];
+    setEditingCoin(referenceCoin);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleEditSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!editingCoin || !editingCoin.coinName || !editingCoin.kmNumber) {
+      alert("Please fill in all required fields");
+      return;
+    }
+
+    const newSKU = storageService.generateSKU(editingCoin.countryCode, editingCoin.kmNumber);
+    
+    // Update all coins with this SKU
+    coins.forEach(coin => {
+      storageService.updateCoin(coin.id, {
+        ...editingCoin,
+        sku: newSKU
+      });
+    });
+
+    setIsEditDialogOpen(false);
+    setEditingCoin(null);
+    
+    // Navigate to new SKU page if SKU changed
+    if (newSKU !== sku) {
+      router.push(`/coin/${encodeURIComponent(newSKU)}`);
+    } else {
+      loadCoins();
+    }
   };
 
   const calculateBullionValue = (coin: Coin): number => {
@@ -165,7 +200,10 @@ export default function CoinDetail() {
             </p>
           </div>
 
-          <Button className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100">
+          <Button 
+            className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100"
+            onClick={handleEditClick}
+          >
             <Edit className="w-4 h-4 mr-2" />
             Edit
           </Button>
@@ -378,6 +416,127 @@ export default function CoinDetail() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Edit Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+          <DialogHeader>
+            <DialogTitle className="text-2xl text-slate-900 dark:text-white">Edit SKU Information</DialogTitle>
+          </DialogHeader>
+          
+          <form onSubmit={handleEditSubmit} className="space-y-6">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="col-span-2">
+                <Label htmlFor="coinName" className="text-slate-700 dark:text-slate-300">Coin Name *</Label>
+                <Input
+                  id="coinName"
+                  value={editingCoin?.coinName || ""}
+                  onChange={(e) => setEditingCoin(editingCoin ? {...editingCoin, coinName: e.target.value} : null)}
+                  placeholder="e.g., 5 Francs - Léopold II petit..."
+                  className="bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
+                  required
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="countryCode" className="text-slate-700 dark:text-slate-300">Country Code *</Label>
+                <Select 
+                  value={editingCoin?.countryCode} 
+                  onValueChange={(value) => setEditingCoin(editingCoin ? {...editingCoin, countryCode: value} : null)}
+                >
+                  <SelectTrigger className="bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-700 max-h-60">
+                    {Object.entries(COUNTRY_CODES).map(([code, name]) => (
+                      <SelectItem key={code} value={code} className="text-slate-900 dark:text-white">
+                        {code} - {name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="kmNumber" className="text-slate-700 dark:text-slate-300">KM Number *</Label>
+                <Input
+                  id="kmNumber"
+                  value={editingCoin?.kmNumber || ""}
+                  onChange={(e) => setEditingCoin(editingCoin ? {...editingCoin, kmNumber: e.target.value} : null)}
+                  placeholder="e.g., 24 or 35.2"
+                  className="bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
+                  required
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="metal" className="text-slate-700 dark:text-slate-300">Metal *</Label>
+                <Select 
+                  value={editingCoin?.metal} 
+                  onValueChange={(value) => setEditingCoin(editingCoin ? {...editingCoin, metal: value as any} : null)}
+                >
+                  <SelectTrigger className="bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-700">
+                    <SelectItem value="gold" className="text-slate-900 dark:text-white">Gold</SelectItem>
+                    <SelectItem value="silver" className="text-slate-900 dark:text-white">Silver</SelectItem>
+                    <SelectItem value="copper" className="text-slate-900 dark:text-white">Copper</SelectItem>
+                    <SelectItem value="platinum" className="text-slate-900 dark:text-white">Platinum</SelectItem>
+                    <SelectItem value="palladium" className="text-slate-900 dark:text-white">Palladium</SelectItem>
+                    <SelectItem value="other" className="text-slate-900 dark:text-white">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="purity" className="text-slate-700 dark:text-slate-300">Purity (%) *</Label>
+                <Input
+                  id="purity"
+                  type="number"
+                  step="0.01"
+                  value={editingCoin?.purity || ""}
+                  onChange={(e) => setEditingCoin(editingCoin ? {...editingCoin, purity: parseFloat(e.target.value)} : null)}
+                  placeholder="e.g., 90"
+                  className="bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
+                  required
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="weight" className="text-slate-700 dark:text-slate-300">Weight (grams) *</Label>
+                <Input
+                  id="weight"
+                  type="number"
+                  step="0.01"
+                  value={editingCoin?.weight || ""}
+                  onChange={(e) => setEditingCoin(editingCoin ? {...editingCoin, weight: parseFloat(e.target.value)} : null)}
+                  placeholder="e.g., 25.0"
+                  className="bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-2 justify-end pt-4 border-t border-slate-200 dark:border-slate-700">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => {
+                  setIsEditDialogOpen(false);
+                  setEditingCoin(null);
+                }}
+                className="border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300"
+              >
+                Cancel
+              </Button>
+              <Button type="submit" className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100">
+                Save Changes
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Sale Dialog */}
       <Dialog open={isSaleDialogOpen} onOpenChange={setIsSaleDialogOpen}>

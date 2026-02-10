@@ -67,8 +67,8 @@ export const storageService = {
   },
 
   generateSKU: (countryCode: string, kmNumber: string): string => {
-    // Remove any non-alphanumeric characters from KM number
-    const cleanKM = kmNumber.replace(/[^0-9a-zA-Z]/g, '');
+    // Remove any non-numeric characters except decimals from KM number
+    const cleanKM = kmNumber.replace(/[^0-9.]/g, '');
     return `${countryCode.toUpperCase()}-KM${cleanKM}`;
   }
 };
