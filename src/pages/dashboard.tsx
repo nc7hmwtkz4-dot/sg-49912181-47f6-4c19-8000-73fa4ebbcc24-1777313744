@@ -7,6 +7,7 @@ import { Coin, Sale, COUNTRY_CODES } from "@/types/coin";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Coins, TrendingUp, DollarSign, Package, Globe, PieChart, Sparkles, RefreshCw } from "lucide-react";
+import { Treemap, ResponsiveContainer, Tooltip } from "recharts";
 
 export default function Dashboard() {
   const [coins, setCoins] = useState<Coin[]>([]);
@@ -123,6 +124,68 @@ export default function Dashboard() {
   const topCountries = Object.entries(stats.coinsByCountry)
     .sort(([, a], [, b]) => b - a)
     .slice(0, 5);
+
+  // Prepare data for treemap
+  const mapData = Object.entries(stats.coinsByCountry).map(([code, count]) => ({
+    name: code,
+    fullName: COUNTRY_CODES[code] || code,
+    size: count,
+    fill: `hsl(${Math.random() * 360}, 70%, 60%)`
+  }));
+
+  const CustomTreemapContent = (props: any) => {
+    const { x, y, width, height, name, fullName, size } = props;
+    
+    if (width < 60 || height < 40) return null;
+
+    return (
+      <g>
+        <rect
+          x={x}
+          y={y}
+          width={width}
+          height={height}
+          style={{
+            fill: props.fill,
+            stroke: "#fff",
+            strokeWidth: 2,
+            opacity: 0.9
+          }}
+        />
+        <text
+          x={x + width / 2}
+          y={y + height / 2 - 10}
+          textAnchor="middle"
+          fill="#fff"
+          fontSize={width > 80 ? 16 : 12}
+          fontWeight="bold"
+        >
+          {name}
+        </text>
+        <text
+          x={x + width / 2}
+          y={y + height / 2 + 10}
+          textAnchor="middle"
+          fill="#fff"
+          fontSize={width > 80 ? 14 : 11}
+        >
+          {size} {size === 1 ? 'coin' : 'coins'}
+        </text>
+        {width > 100 && (
+          <text
+            x={x + width / 2}
+            y={y + height / 2 + 28}
+            textAnchor="middle"
+            fill="#fff"
+            fontSize={10}
+            opacity={0.9}
+          >
+            {fullName}
+          </text>
+        )}
+      </g>
+    );
+  };
 
   return (
     <Layout>
@@ -391,7 +454,7 @@ export default function Dashboard() {
           </Card>
         </div>
 
-        {/* World Map Placeholder */}
+        {/* Interactive World Map */}
         <Card className="border-0 shadow-lg">
           <CardHeader>
             <CardTitle className="text-xl flex items-center gap-2">
@@ -399,26 +462,49 @@ export default function Dashboard() {
               World Distribution Map
             </CardTitle>
             <CardDescription className="text-base">
-              Visual representation of your collection across the globe
+              Interactive visualization of your {stats.totalCoins} coins across {Object.keys(stats.coinsByCountry).length} countries
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-800 dark:via-gray-900 dark:to-indigo-950 rounded-xl p-12 text-center border-2 border-dashed border-brand-primary/30">
-              <Globe className="w-20 h-20 mx-auto text-brand-primary mb-4" />
-              <p className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                Interactive World Map
-              </p>
-              <p className="text-base text-gray-600 dark:text-gray-400 mb-6">
-                Visualize your collection of {stats.totalCoins} coins across {Object.keys(stats.coinsByCountry).length} countries
-              </p>
-              <div className="flex flex-wrap gap-2 justify-center">
-                {Object.entries(stats.coinsByCountry).map(([code, count]) => (
-                  <Badge key={code} className="bg-gradient-to-r from-brand-primary to-brand-secondary text-white">
-                    {code}: {count}
-                  </Badge>
-                ))}
+            {mapData.length > 0 ? (
+              <div className="w-full h-[500px] bg-gradient-to-br from-slate-50 to-blue-50 dark:from-gray-900 dark:to-slate-950 rounded-xl p-4 border border-brand-primary/20">
+                <ResponsiveContainer width="100%" height="100%">
+                  <Treemap
+                    data={mapData}
+                    dataKey="size"
+                    aspectRatio={4 / 3}
+                    stroke="#fff"
+                    content={<CustomTreemapContent />}
+                  >
+                    <Tooltip 
+                      content={({ payload }) => {
+                        if (payload && payload.length > 0) {
+                          const data = payload[0].payload;
+                          return (
+                            <div className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
+                              <p className="font-bold text-brand-primary">{data.name}</p>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">{data.fullName}</p>
+                              <p className="text-sm font-semibold mt-1">{data.size} {data.size === 1 ? 'coin' : 'coins'}</p>
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                  </Treemap>
+                </ResponsiveContainer>
               </div>
-            </div>
+            ) : (
+              <div className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-800 dark:via-gray-900 dark:to-indigo-950 rounded-xl p-12 text-center border-2 border-dashed border-brand-primary/30">
+                <Globe className="w-20 h-20 mx-auto text-brand-primary mb-4" />
+                <p className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                  No Collection Data Yet
+                </p>
+                <p className="text-base text-gray-600 dark:text-gray-400">
+                  Add coins to your collection to see the interactive world map
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
