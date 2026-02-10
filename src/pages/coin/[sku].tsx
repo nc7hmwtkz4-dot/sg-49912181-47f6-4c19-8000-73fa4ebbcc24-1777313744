@@ -26,6 +26,21 @@ export default function CoinDetail() {
   const [isAddPurchaseOpen, setIsAddPurchaseOpen] = useState(false);
   const [isSaleDialogOpen, setIsSaleDialogOpen] = useState(false);
   const [editingCoin, setEditingCoin] = useState<Coin | null>(null);
+  const [purchaseFormData, setPurchaseFormData] = useState<{
+    year: number;
+    mintmark: string;
+    sheldonGrade: string;
+    purchaseDate: string;
+    purchasePrice: number;
+    notes: string;
+  }>({
+    year: new Date().getFullYear(),
+    mintmark: "",
+    sheldonGrade: "MS-63",
+    purchaseDate: new Date().toISOString().split("T")[0],
+    purchasePrice: 0,
+    notes: ""
+  });
   const [saleFormData, setSaleFormData] = useState<{
     coinId: string;
     saleDate: string;
@@ -87,6 +102,46 @@ export default function CoinDetail() {
     }
   };
 
+  const handleAddPurchase = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!purchaseFormData.year || !purchaseFormData.purchasePrice || !purchaseFormData.purchaseDate) {
+      alert("Please fill in all required fields");
+      return;
+    }
+
+    const newCoin: Coin = {
+      id: storageService.generateId(),
+      sku: referenceCoin.sku,
+      coinName: referenceCoin.coinName,
+      countryCode: referenceCoin.countryCode,
+      kmNumber: referenceCoin.kmNumber,
+      metal: referenceCoin.metal,
+      purity: referenceCoin.purity,
+      weight: referenceCoin.weight,
+      year: purchaseFormData.year,
+      mintmark: purchaseFormData.mintmark,
+      sheldonGrade: purchaseFormData.sheldonGrade,
+      purchaseDate: purchaseFormData.purchaseDate,
+      purchasePrice: purchaseFormData.purchasePrice,
+      notes: purchaseFormData.notes,
+      imageUrl: referenceCoin.imageUrl,
+      isSold: false
+    };
+
+    storageService.addCoin(newCoin);
+    loadCoins();
+    setIsAddPurchaseOpen(false);
+    setPurchaseFormData({
+      year: referenceCoin.year,
+      mintmark: "",
+      sheldonGrade: "MS-63",
+      purchaseDate: new Date().toISOString().split("T")[0],
+      purchasePrice: 0,
+      notes: ""
+    });
+  };
+
   const calculateBullionValue = (coin: Coin): number => {
     if (!spotPrices) return 0;
     return spotPriceService.calculateBullionValue(
@@ -98,10 +153,13 @@ export default function CoinDetail() {
   };
 
   const handleRecordSale = (coinId: string) => {
+    const coin = coins.find(c => c.id === coinId);
+    if (!coin) return;
+    
     setSaleFormData({
       coinId,
       saleDate: new Date().toISOString().split("T")[0],
-      salePrice: 0
+      salePrice: calculateBullionValue(coin)
     });
     setIsSaleDialogOpen(true);
   };
@@ -322,9 +380,18 @@ export default function CoinDetail() {
                 Add Purchase
               </Button>
 
-              <Button className="h-14 bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100">
+              <Button 
+                className="h-14 bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100"
+                disabled={coins.filter(c => !c.isSold).length === 0}
+                onClick={() => {
+                  const unsoldCoins = coins.filter(c => !c.isSold);
+                  if (unsoldCoins.length > 0) {
+                    handleRecordSale(unsoldCoins[0].id);
+                  }
+                }}
+              >
                 <DollarSign className="w-5 h-5 mr-2" />
-                Record Sale
+                Record Sale ({coins.filter(c => !c.isSold).length})
               </Button>
             </div>
           </div>
@@ -373,9 +440,20 @@ export default function CoinDetail() {
                               Sold
                             </Badge>
                           ) : (
-                            <Badge className="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-0">
-                              In Collection
-                            </Badge>
+                            <>
+                              <Badge className="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-0">
+                                In Collection
+                              </Badge>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleRecordSale(coin.id)}
+                                className="ml-2 text-blue-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                              >
+                                <DollarSign className="w-4 h-4 mr-1" />
+                                Sell
+                              </Button>
+                            </>
                           )}
                         </TableCell>
                         <TableCell className="text-slate-600 dark:text-slate-400">
@@ -532,6 +610,114 @@ export default function CoinDetail() {
               </Button>
               <Button type="submit" className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100">
                 Save Changes
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Purchase Dialog */}
+      <Dialog open={isAddPurchaseOpen} onOpenChange={setIsAddPurchaseOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+          <DialogHeader>
+            <DialogTitle className="text-2xl text-slate-900 dark:text-white">Add Individual Coin Purchase</DialogTitle>
+          </DialogHeader>
+          
+          <form onSubmit={handleAddPurchase} className="space-y-6">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="year" className="text-slate-700 dark:text-slate-300">Year *</Label>
+                <Input
+                  id="year"
+                  type="number"
+                  value={purchaseFormData.year}
+                  onChange={(e) => setPurchaseFormData({...purchaseFormData, year: parseInt(e.target.value)})}
+                  placeholder="e.g., 1879"
+                  className="bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
+                  required
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="mintmark" className="text-slate-700 dark:text-slate-300">Mintmark</Label>
+                <Input
+                  id="mintmark"
+                  value={purchaseFormData.mintmark}
+                  onChange={(e) => setPurchaseFormData({...purchaseFormData, mintmark: e.target.value})}
+                  placeholder="e.g., D, S (optional)"
+                  className="bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="sheldonGrade" className="text-slate-700 dark:text-slate-300">Sheldon Grade *</Label>
+                <Select 
+                  value={purchaseFormData.sheldonGrade} 
+                  onValueChange={(value) => setPurchaseFormData({...purchaseFormData, sheldonGrade: value})}
+                >
+                  <SelectTrigger className="bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-700 max-h-60">
+                    {SHELDON_GRADES.map(grade => (
+                      <SelectItem key={grade} value={grade} className="text-slate-900 dark:text-white">
+                        {grade}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="purchaseDate" className="text-slate-700 dark:text-slate-300">Purchase Date *</Label>
+                <Input
+                  id="purchaseDate"
+                  type="date"
+                  value={purchaseFormData.purchaseDate}
+                  onChange={(e) => setPurchaseFormData({...purchaseFormData, purchaseDate: e.target.value})}
+                  className="bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
+                  required
+                />
+              </div>
+
+              <div className="col-span-2">
+                <Label htmlFor="purchasePrice" className="text-slate-700 dark:text-slate-300">Purchase Price (CHF) *</Label>
+                <Input
+                  id="purchasePrice"
+                  type="number"
+                  step="0.01"
+                  value={purchaseFormData.purchasePrice || ""}
+                  onChange={(e) => setPurchaseFormData({...purchaseFormData, purchasePrice: parseFloat(e.target.value)})}
+                  placeholder="e.g., 19.06"
+                  className="bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
+                  required
+                />
+              </div>
+
+              <div className="col-span-2">
+                <Label htmlFor="notes" className="text-slate-700 dark:text-slate-300">Notes</Label>
+                <Textarea
+                  id="notes"
+                  value={purchaseFormData.notes}
+                  onChange={(e) => setPurchaseFormData({...purchaseFormData, notes: e.target.value})}
+                  placeholder="Additional notes about this coin"
+                  rows={3}
+                  className="bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-2 justify-end pt-4 border-t border-slate-200 dark:border-slate-700">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => setIsAddPurchaseOpen(false)}
+                className="border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300"
+              >
+                Cancel
+              </Button>
+              <Button type="submit" className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100">
+                Add Purchase
               </Button>
             </div>
           </form>
