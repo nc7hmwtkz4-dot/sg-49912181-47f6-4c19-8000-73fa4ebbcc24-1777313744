@@ -15,6 +15,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Plus, Upload, DollarSign, ShoppingCart, Search, Package } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import { ImageViewer } from "@/components/ImageViewer";
 
 export default function Collection() {
   const router = useRouter();
@@ -26,8 +27,10 @@ export default function Collection() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingCoin, setEditingCoin] = useState<Coin | null>(null);
   const [spotPrices, setSpotPrices] = useState<any>(null);
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string>("");
+  const [obverseImageFile, setObverseImageFile] = useState<File | null>(null);
+  const [reverseImageFile, setReverseImageFile] = useState<File | null>(null);
+  const [obverseImagePreview, setObverseImagePreview] = useState<string>("");
+  const [reverseImagePreview, setReverseImagePreview] = useState<string>("");
   const [formData, setFormData] = useState<Partial<Coin>>({
     countryCode: "US",
     metal: "silver",
@@ -56,7 +59,9 @@ export default function Collection() {
 
   // Sale dialog state
   const [isSaleDialogOpen, setIsSaleDialogOpen] = useState(false);
-  const [selectedCoinForSale, setSelectedCoinForSale] = useState<Coin | null>(null);
+  const [selectedCoinForSale, setSelectedCoinForSale] = useState<string>("");
+  const [imageViewerOpen, setImageViewerOpen] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<{ url: string; alt: string } | null>(null);
   const [availableCoinsForSale, setAvailableCoinsForSale] = useState<Coin[]>([]);
   const [saleFormData, setSaleFormData] = useState<{
     coinId: string;
@@ -124,6 +129,30 @@ export default function Collection() {
     }
   };
 
+  const handleObverseImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setObverseImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setObverseImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleReverseImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setReverseImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setReverseImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -136,15 +165,21 @@ export default function Collection() {
     }
 
     try {
-      let imageUrl = formData.imageUrl || "";
+      let obverseImageUrl = formData.obverseImageUrl || "";
+      let reverseImageUrl = formData.reverseImageUrl || "";
       
-      // Upload image to Supabase Storage if a new file is selected
-      if (imageFile) {
-        imageUrl = await imageService.uploadImage(imageFile);
+      // Upload obverse image to Supabase Storage if a new file is selected
+      if (obverseImageFile) {
+        obverseImageUrl = await imageService.uploadImage(obverseImageFile);
+      }
+
+      // Upload reverse image to Supabase Storage if a new file is selected
+      if (reverseImageFile) {
+        reverseImageUrl = await imageService.uploadImage(reverseImageFile);
       }
 
       if (editingCoin) {
-        storageService.updateCoin(editingCoin.id, { ...formData, imageUrl });
+        storageService.updateCoin(editingCoin.id, { ...formData, obverseImageUrl, reverseImageUrl });
       } else {
         const newCoin: Coin = {
           id: storageService.generateId(),
@@ -161,7 +196,8 @@ export default function Collection() {
           purchasePrice: formData.purchasePrice,
           purchaseDate: formData.purchaseDate,
           notes: formData.notes,
-          imageUrl: imageUrl,
+          obverseImageUrl: obverseImageUrl,
+          reverseImageUrl: reverseImageUrl,
           isSold: false
         };
         storageService.addCoin(newCoin);
@@ -184,8 +220,10 @@ export default function Collection() {
       sheldonGrade: "MS-63"
     });
     setEditingCoin(null);
-    setImageFile(null);
-    setImagePreview("");
+    setObverseImageFile(null);
+    setReverseImageFile(null);
+    setObverseImagePreview("");
+    setReverseImagePreview("");
   };
 
   const calculateBullionValue = (coin: Coin): number => {
@@ -275,7 +313,7 @@ export default function Collection() {
         buyerInfo: "",
         notes: ""
       });
-      setSelectedCoinForSale(coin);
+      setSelectedCoinForSale(coin.id);
     } else {
       setSaleFormData({
         coinId: "",
@@ -284,7 +322,7 @@ export default function Collection() {
         buyerInfo: "",
         notes: ""
       });
-      setSelectedCoinForSale(null);
+      setSelectedCoinForSale("");
     }
     
     setIsSaleDialogOpen(true);
@@ -293,7 +331,7 @@ export default function Collection() {
   const handleCoinSelection = (coinId: string) => {
     const coin = availableCoinsForSale.find(c => c.id === coinId);
     if (coin) {
-      setSelectedCoinForSale(coin);
+      setSelectedCoinForSale(coinId);
       setSaleFormData({
         ...saleFormData,
         coinId: coinId,
@@ -330,8 +368,13 @@ export default function Collection() {
       buyerInfo: "",
       notes: ""
     });
-    setSelectedCoinForSale(null);
+    setSelectedCoinForSale("");
     setAvailableCoinsForSale([]);
+  };
+
+  const handleImageClick = (imageUrl: string, coinName: string) => {
+    setSelectedImage({ url: imageUrl, alt: coinName });
+    setImageViewerOpen(true);
   };
 
   // Group coins by SKU
@@ -682,6 +725,7 @@ export default function Collection() {
                                 src={coin.imageUrl} 
                                 alt={coin.coinName || sku}
                                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                loading="lazy"
                               />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center">
@@ -970,11 +1014,13 @@ export default function Collection() {
               </div>
             </div>
 
-            {selectedCoinForSale && (
+            {selectedCoinForSale && availableCoinsForSale.find(c => c.id === selectedCoinForSale) && (
               <div className="p-4 bg-slate-800 rounded-lg border border-slate-700 space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-400">Purchase Price:</span>
-                  <span className="text-white font-medium">{spotPriceService.formatCHF(selectedCoinForSale.purchasePrice)}</span>
+                  <span className="text-white font-medium">
+                    {spotPriceService.formatCHF(availableCoinsForSale.find(c => c.id === selectedCoinForSale)!.purchasePrice)}
+                  </span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-400">Sale Price:</span>
@@ -982,8 +1028,8 @@ export default function Collection() {
                 </div>
                 <div className="flex justify-between text-sm pt-2 border-t border-slate-700">
                   <span className="text-slate-400">Profit:</span>
-                  <span className={`font-bold ${saleFormData.salePrice - selectedCoinForSale.purchasePrice >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                    {spotPriceService.formatCHF(saleFormData.salePrice - selectedCoinForSale.purchasePrice)}
+                  <span className={`font-bold ${saleFormData.salePrice - availableCoinsForSale.find(c => c.id === selectedCoinForSale)!.purchasePrice >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    {spotPriceService.formatCHF(saleFormData.salePrice - availableCoinsForSale.find(c => c.id === selectedCoinForSale)!.purchasePrice)}
                   </span>
                 </div>
               </div>
@@ -1000,6 +1046,13 @@ export default function Collection() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <ImageViewer
+        isOpen={imageViewerOpen}
+        onClose={() => setImageViewerOpen(false)}
+        imageUrl={selectedImage?.url || ""}
+        alt={selectedImage?.alt || ""}
+      />
     </Layout>
   );
 }

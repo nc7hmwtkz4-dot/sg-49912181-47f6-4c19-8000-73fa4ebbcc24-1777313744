@@ -13,7 +13,8 @@ export interface Coin {
   purchasePrice: number; // CHF
   purchaseDate: string;
   notes?: string;
-  imageUrl?: string;
+  obverseImageUrl?: string;
+  reverseImageUrl?: string;
   isSold: boolean;
   saleId?: string;
 }

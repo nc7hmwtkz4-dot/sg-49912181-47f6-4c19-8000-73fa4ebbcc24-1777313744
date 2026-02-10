@@ -5,6 +5,7 @@ import { Layout } from "@/components/Layout";
 import { storageService } from "@/lib/storage";
 import { spotPriceService } from "@/lib/spotPrices";
 import { Coin, COUNTRY_CODES, SHELDON_GRADES, SheldonGrade } from "@/types/coin";
+import { ImageViewer } from "@/components/ImageViewer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -48,6 +49,7 @@ export default function CoinDetail() {
     buyerInfo?: string;
     notes?: string;
   }>({ coinId: "", saleDate: new Date().toISOString().split("T")[0], salePrice: 0 });
+  const [imageViewerOpen, setImageViewerOpen] = useState(false);
 
   useEffect(() => {
     if (sku) {
@@ -182,7 +184,13 @@ export default function CoinDetail() {
     };
 
     storageService.addSale(sale);
-    storageService.markCoinAsSold(saleFormData.coinId, sale.id);
+    storageService.markCoinAsSold(
+      saleFormData.coinId,
+      saleFormData.saleDate,
+      saleFormData.salePrice,
+      saleFormData.buyerInfo,
+      saleFormData.notes
+    );
     
     loadCoins();
     setIsSaleDialogOpen(false);
@@ -273,33 +281,16 @@ export default function CoinDetail() {
             {/* Coin Images */}
             <Card className="bg-slate-900 border-slate-800 overflow-hidden">
               <CardContent className="p-6">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="aspect-square bg-white rounded-lg overflow-hidden">
-                    {referenceCoin.imageUrl ? (
-                      <img 
-                        src={referenceCoin.imageUrl} 
-                        alt={`${referenceCoin.coinName} - Obverse`}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-slate-100">
-                        <span className="text-slate-400 text-sm">No image</span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="aspect-square bg-white rounded-lg overflow-hidden">
-                    {referenceCoin.imageUrl ? (
-                      <img 
-                        src={referenceCoin.imageUrl} 
-                        alt={`${referenceCoin.coinName} - Reverse`}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-slate-100">
-                        <span className="text-slate-400 text-sm">No image</span>
-                      </div>
-                    )}
-                  </div>
+                <div className="flex items-start gap-6">
+                  {referenceCoin.imageUrl && (
+                    <img
+                      src={referenceCoin.imageUrl}
+                      alt={referenceCoin.coinName}
+                      className="w-48 h-48 object-cover rounded-lg border-2 border-amber-500/20 cursor-pointer hover:opacity-80 transition-opacity"
+                      onClick={() => setImageViewerOpen(true)}
+                      loading="lazy"
+                    />
+                  )}
                 </div>
 
                 <div className="flex gap-2 mt-4">
@@ -791,6 +782,13 @@ export default function CoinDetail() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <ImageViewer
+        isOpen={imageViewerOpen}
+        onClose={() => setImageViewerOpen(false)}
+        imageUrl={referenceCoin?.imageUrl || ""}
+        alt={referenceCoin?.coinName || ""}
+      />
     </Layout>
   );
 }
