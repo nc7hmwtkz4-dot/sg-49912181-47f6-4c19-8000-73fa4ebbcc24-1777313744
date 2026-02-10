@@ -98,8 +98,8 @@ export default function Dashboard() {
       ? ((totalProfit / totalSalesAmount) * 100) 
       : 0;
     
-    // Calculate distributions
-    const coinsByCountry = coins.reduce((acc, coin) => {
+    // Calculate distributions - ONLY UNSOLD COINS
+    const coinsByCountry = unsoldCoins.reduce((acc, coin) => {
       acc[coin.countryCode] = (acc[coin.countryCode] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
@@ -108,11 +108,11 @@ export default function Dashboard() {
       .map(([code, count]) => ({
         country: COUNTRY_CODES[code] || code,
         count,
-        percentage: (count / totalCoins) * 100
+        percentage: totalUnsold > 0 ? (count / totalUnsold) * 100 : 0
       }))
       .sort((a, b) => b.count - a.count);
     
-    const coinsByMetal = coins.reduce((acc, coin) => {
+    const coinsByMetal = unsoldCoins.reduce((acc, coin) => {
       acc[coin.metal] = (acc[coin.metal] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
@@ -121,7 +121,7 @@ export default function Dashboard() {
       .map(([metal, count]) => ({
         metal,
         count,
-        percentage: (count / totalCoins) * 100
+        percentage: totalUnsold > 0 ? (count / totalUnsold) * 100 : 0
       }))
       .sort((a, b) => b.count - a.count);
 
@@ -136,6 +136,10 @@ export default function Dashboard() {
       countryDistribution,
       metalDistribution
     });
+  };
+
+  const refreshStats = () => {
+    // Legacy function removed, using calculateStats via useEffect
   };
 
   return (
