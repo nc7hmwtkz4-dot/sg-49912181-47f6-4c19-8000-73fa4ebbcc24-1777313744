@@ -15,20 +15,24 @@ export function Layout({ children }: LayoutProps) {
   const isActive = (path: string) => router.pathname === path;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-yellow-50 to-orange-50 dark:from-gray-900 dark:via-slate-900 dark:to-gray-800">
-      <nav className="border-b border-amber-200 dark:border-gray-800 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto px-4">
+    <div className="min-h-screen bg-background">
+      <nav className="border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-50">
+        <div className="container">
           <div className="flex items-center justify-between h-16">
-            <Link href="/" className="flex items-center gap-2 font-bold text-xl text-amber-700 dark:text-amber-400">
-              <Coins className="w-6 h-6" />
-              NumiVault
+            <Link href="/" className="flex items-center gap-2 font-bold text-xl text-foreground hover:text-primary transition-colors">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary via-secondary to-accent flex items-center justify-center">
+                <Coins className="w-5 h-5 text-white" />
+              </div>
+              <span className="bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
+                NumiVault
+              </span>
             </Link>
 
             <div className="flex items-center gap-2">
               <Link href="/dashboard">
                 <Button 
                   variant={isActive("/dashboard") ? "default" : "ghost"}
-                  className={isActive("/dashboard") ? "bg-amber-600 hover:bg-amber-700" : ""}
+                  className={isActive("/dashboard") ? "bg-primary hover:bg-primary/90 text-primary-foreground" : "hover:bg-accent/10 hover:text-accent"}
                 >
                   <LayoutDashboard className="w-4 h-4 mr-2" />
                   Dashboard
@@ -37,16 +41,16 @@ export function Layout({ children }: LayoutProps) {
               <Link href="/collection">
                 <Button 
                   variant={isActive("/collection") ? "default" : "ghost"}
-                  className={isActive("/collection") ? "bg-amber-600 hover:bg-amber-700" : ""}
+                  className={isActive("/collection") ? "bg-primary hover:bg-primary/90 text-primary-foreground" : "hover:bg-accent/10 hover:text-accent"}
                 >
                   <Package className="w-4 h-4 mr-2" />
-                  Collection
+                  Inventory
                 </Button>
               </Link>
               <Link href="/sales">
                 <Button 
                   variant={isActive("/sales") ? "default" : "ghost"}
-                  className={isActive("/sales") ? "bg-amber-600 hover:bg-amber-700" : ""}
+                  className={isActive("/sales") ? "bg-primary hover:bg-primary/90 text-primary-foreground" : "hover:bg-accent/10 hover:text-accent"}
                 >
                   <TrendingUp className="w-4 h-4 mr-2" />
                   Sales
@@ -58,9 +62,21 @@ export function Layout({ children }: LayoutProps) {
         </div>
       </nav>
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="container py-8">
         {children}
       </main>
+      
+      <footer className="border-t border-border mt-16 py-6">
+        <div className="container">
+          <div className="flex items-center justify-between text-sm text-muted-foreground">
+            <p>© 2026 NumiVault. Professional coin collection management.</p>
+            <div className="flex items-center gap-1">
+              <span>Powered by</span>
+              <span className="font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">Metal Price API</span>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
