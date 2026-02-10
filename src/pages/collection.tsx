@@ -14,7 +14,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Plus, Upload, DollarSign, ShoppingCart, Search, Package } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
-import { useRouter } from "next/navigation";
 
 export default function Collection() {
   const router = useRouter();

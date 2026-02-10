@@ -53,6 +53,15 @@ export const storageService = {
     storageService.saveSales(sales);
   },
 
+  markCoinAsSold: (coinId: string, saleId: string): void => {
+    const coins = storageService.getCoins();
+    const index = coins.findIndex(c => c.id === coinId);
+    if (index !== -1) {
+      coins[index] = { ...coins[index], isSold: true, saleId };
+      storageService.saveCoins(coins);
+    }
+  },
+
   generateId: (): string => {
     return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   },
