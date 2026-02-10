@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { Layout } from "@/components/Layout";
 import { SEO } from "@/components/SEO";
-import { authService } from "@/services/authService";
+import { authService, type AuthUser } from "@/services/authService";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,23 +10,33 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
-import { User, Mail, Lock, Trash2, Save, AlertCircle, CheckCircle2 } from "lucide-react";
+import { User, Mail, Lock, Trash2, Save, AlertCircle, CheckCircle2, Shield, XCircle, Loader2, Calendar, CheckCircle } from "lucide-react";
 
 export default function ProfilePage() {
   const router = useRouter();
-  const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  
-  // Profile form state
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [showDangerZone, setShowDangerZone] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [has2FA, setHas2FA] = useState(false);
+  const [show2FASetup, setShow2FASetup] = useState(false);
+  const [qrCode, setQrCode] = useState("");
+  const [secret, setSecret] = useState("");
+  const [verificationCode, setVerificationCode] = useState("");
+  const [twoFALoading, setTwoFALoading] = useState(false);
+  
+  // Profile form state
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
   const [profileMessage, setProfileMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   
   // Password form state
   const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
   const [passwordMessage, setPasswordMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   
@@ -48,17 +58,13 @@ export default function ProfilePage() {
       }
 
       setUser(authUser);
+      setFullName(authUser.user_metadata?.full_name || "");
       setEmail(authUser.email || "");
 
-      // Get full name from profiles table
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("full_name")
-        .eq("id", authUser.id)
-        .single();
-
-      if (profile) {
-        setFullName(profile.full_name || "");
+      // Check if user has 2FA enabled
+      const { enabled, error: mfaError } = await authService.has2FA();
+      if (!mfaError) {
+        setHas2FA(enabled);
       }
     } catch (err) {
       console.error("Error loading profile:", err);
@@ -181,6 +187,81 @@ export default function ProfilePage() {
     } catch (error: any) {
       console.error("Error deleting account:", error);
       alert(error.message || "Failed to delete account. Please try again.");
+    }
+  };
+
+  const handleEnable2FA = async () => {
+    setTwoFALoading(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      const { qrCode: qr, secret: sec, error: enrollError } = await authService.enroll2FA();
+      
+      if (enrollError) {
+        setError(enrollError.message);
+      } else if (qr && sec) {
+        setQrCode(qr);
+        setSecret(sec);
+        setShow2FASetup(true);
+      }
+    } catch (err) {
+      setError("Failed to enable 2FA. Please try again.");
+    } finally {
+      setTwoFALoading(false);
+    }
+  };
+
+  const handleVerify2FA = async () => {
+    if (!verificationCode || verificationCode.length !== 6) {
+      setError("Please enter a valid 6-digit code");
+      return;
+    }
+
+    setTwoFALoading(true);
+    setError("");
+
+    try {
+      const { error: verifyError } = await authService.verify2FA(verificationCode);
+      
+      if (verifyError) {
+        setError(verifyError.message);
+      } else {
+        setSuccess("Two-factor authentication enabled successfully!");
+        setHas2FA(true);
+        setShow2FASetup(false);
+        setQrCode("");
+        setSecret("");
+        setVerificationCode("");
+      }
+    } catch (err) {
+      setError("Failed to verify code. Please try again.");
+    } finally {
+      setTwoFALoading(false);
+    }
+  };
+
+  const handleDisable2FA = async () => {
+    if (!window.confirm("Are you sure you want to disable two-factor authentication? This will make your account less secure.")) {
+      return;
+    }
+
+    setTwoFALoading(true);
+    setError("");
+
+    try {
+      const { error: disableError } = await authService.disable2FA();
+      
+      if (disableError) {
+        setError(disableError.message);
+      } else {
+        setSuccess("Two-factor authentication disabled successfully.");
+        setHas2FA(false);
+      }
+    } catch (err) {
+      setError("Failed to disable 2FA. Please try again.");
+    } finally {
+      setTwoFALoading(false);
     }
   };
 
@@ -352,6 +433,147 @@ export default function ProfilePage() {
                 {isUpdatingPassword ? "Updating..." : "Update Password"}
               </Button>
             </form>
+          </CardContent>
+        </Card>
+
+        {/* Two-Factor Authentication Section */}
+        <Card className="border-slate-200 dark:border-slate-800">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5 text-blue-500" />
+              Two-Factor Authentication
+            </CardTitle>
+            <CardDescription>
+              Add an extra layer of security to your account
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+              <div className="flex items-center gap-3">
+                {has2FA ? (
+                  <>
+                    <CheckCircle className="h-5 w-5 text-green-500" />
+                    <div>
+                      <p className="font-medium text-slate-900 dark:text-slate-100">2FA Enabled</p>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">Your account is protected with 2FA</p>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <XCircle className="h-5 w-5 text-slate-400" />
+                    <div>
+                      <p className="font-medium text-slate-900 dark:text-slate-100">2FA Disabled</p>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">Enable 2FA for enhanced security</p>
+                    </div>
+                  </>
+                )}
+              </div>
+              {has2FA ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDisable2FA}
+                  disabled={twoFALoading}
+                  className="border-red-300 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950"
+                >
+                  {twoFALoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    "Disable 2FA"
+                  )}
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleEnable2FA}
+                  disabled={twoFALoading}
+                  className="border-blue-300 text-blue-600 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-950"
+                >
+                  {twoFALoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    "Enable 2FA"
+                  )}
+                </Button>
+              )}
+            </div>
+
+            {show2FASetup && qrCode && (
+              <div className="space-y-4 p-4 border border-blue-200 dark:border-blue-800 rounded-lg bg-blue-50/50 dark:bg-blue-950/20">
+                <div>
+                  <h4 className="font-medium mb-2 text-slate-900 dark:text-slate-100">Step 1: Scan QR Code</h4>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+                    Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.)
+                  </p>
+                  <div className="flex justify-center p-4 bg-white dark:bg-slate-900 rounded-lg">
+                    <img src={qrCode} alt="2FA QR Code" className="w-48 h-48" />
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="font-medium mb-2 text-slate-900 dark:text-slate-100">Step 2: Enter Secret Key (Optional)</h4>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
+                    If you can't scan the QR code, manually enter this key:
+                  </p>
+                  <code className="block p-3 bg-slate-100 dark:bg-slate-800 rounded text-sm font-mono break-all">
+                    {secret}
+                  </code>
+                </div>
+
+                <div>
+                  <h4 className="font-medium mb-2 text-slate-900 dark:text-slate-100">Step 3: Verify Code</h4>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">
+                    Enter the 6-digit code from your authenticator app to complete setup:
+                  </p>
+                  <div className="flex gap-2">
+                    <Input
+                      type="text"
+                      placeholder="000000"
+                      value={verificationCode}
+                      onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                      maxLength={6}
+                      className="text-center text-lg tracking-widest font-mono"
+                    />
+                    <Button
+                      onClick={handleVerify2FA}
+                      disabled={twoFALoading || verificationCode.length !== 6}
+                    >
+                      {twoFALoading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        "Verify"
+                      )}
+                    </Button>
+                  </div>
+                </div>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setShow2FASetup(false);
+                    setQrCode("");
+                    setSecret("");
+                    setVerificationCode("");
+                    setError("");
+                  }}
+                  className="w-full"
+                >
+                  Cancel
+                </Button>
+              </div>
+            )}
+
+            <div className="text-sm text-slate-600 dark:text-slate-400 space-y-1">
+              <p className="font-medium">Why enable 2FA?</p>
+              <ul className="list-disc list-inside space-y-1 text-slate-500 dark:text-slate-400">
+                <li>Protects your account even if your password is compromised</li>
+                <li>Adds a verification step during login</li>
+                <li>Uses time-based one-time passwords (TOTP)</li>
+                <li>Compatible with popular authenticator apps</li>
+              </ul>
+            </div>
           </CardContent>
         </Card>
 
