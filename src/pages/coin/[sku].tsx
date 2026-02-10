@@ -4,7 +4,7 @@ import { SEO } from "@/components/SEO";
 import { Layout } from "@/components/Layout";
 import { storageService } from "@/lib/storage";
 import { spotPriceService } from "@/lib/spotPrices";
-import { Coin, COUNTRY_CODES, SHELDON_GRADES } from "@/types/coin";
+import { Coin, COUNTRY_CODES, SHELDON_GRADES, SheldonGrade } from "@/types/coin";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -29,14 +29,14 @@ export default function CoinDetail() {
   const [purchaseFormData, setPurchaseFormData] = useState<{
     year: number;
     mintmark: string;
-    sheldonGrade: string;
+    sheldonGrade: SheldonGrade;
     purchaseDate: string;
     purchasePrice: number;
     notes: string;
   }>({
     year: new Date().getFullYear(),
     mintmark: "",
-    sheldonGrade: "MS-63",
+    sheldonGrade: "MS-63" as SheldonGrade,
     purchaseDate: new Date().toISOString().split("T")[0],
     purchasePrice: 0,
     notes: ""
@@ -135,7 +135,7 @@ export default function CoinDetail() {
     setPurchaseFormData({
       year: referenceCoin.year,
       mintmark: "",
-      sheldonGrade: "MS-63",
+      sheldonGrade: "MS-63" as SheldonGrade,
       purchaseDate: new Date().toISOString().split("T")[0],
       purchasePrice: 0,
       notes: ""
@@ -653,7 +653,7 @@ export default function CoinDetail() {
                 <Label htmlFor="sheldonGrade" className="text-slate-700 dark:text-slate-300">Sheldon Grade *</Label>
                 <Select 
                   value={purchaseFormData.sheldonGrade} 
-                  onValueChange={(value) => setPurchaseFormData({...purchaseFormData, sheldonGrade: value})}
+                  onValueChange={(value) => setPurchaseFormData({...purchaseFormData, sheldonGrade: value as SheldonGrade})}
                 >
                   <SelectTrigger className="bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white">
                     <SelectValue />
