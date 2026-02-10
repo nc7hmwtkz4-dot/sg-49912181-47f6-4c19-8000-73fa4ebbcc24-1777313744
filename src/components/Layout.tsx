@@ -75,89 +75,103 @@ export function Layout({ children }: LayoutProps) {
               </span>
             </Link>
 
-            <div className="flex items-center gap-2">
-              <Link href="/dashboard">
-                <Button 
-                  variant={isActive("/dashboard") ? "default" : "ghost"}
-                  className={isActive("/dashboard") ? "bg-primary hover:bg-primary/90 text-primary-foreground" : "hover:bg-accent/10 hover:text-accent"}
+            {/* Navigation Links - Only visible when logged in */}
+            {user && (
+              <>
+                <Link 
+                  href="/dashboard"
+                  className={`px-4 py-2 rounded-lg transition-all ${
+                    router.pathname === "/dashboard"
+                      ? "bg-slate-900 dark:bg-white text-white dark:text-slate-900"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                  }`}
                 >
-                  <LayoutDashboard className="w-4 h-4 mr-2" />
                   Dashboard
-                </Button>
-              </Link>
-              <Link href="/collection">
-                <Button 
-                  variant={isActive("/collection") ? "default" : "ghost"}
-                  className={isActive("/collection") ? "bg-primary hover:bg-primary/90 text-primary-foreground" : "hover:bg-accent/10 hover:text-accent"}
+                </Link>
+
+                <Link 
+                  href="/collection"
+                  className={`px-4 py-2 rounded-lg transition-all ${
+                    router.pathname === "/collection"
+                      ? "bg-slate-900 dark:bg-white text-white dark:text-slate-900"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                  }`}
                 >
-                  <Package className="w-4 h-4 mr-2" />
-                  Inventory
-                </Button>
-              </Link>
-              <Link href="/sales">
-                <Button 
-                  variant={isActive("/sales") ? "default" : "ghost"}
-                  className={isActive("/sales") ? "bg-primary hover:bg-primary/90 text-primary-foreground" : "hover:bg-accent/10 hover:text-accent"}
+                  Collection
+                </Link>
+
+                <Link 
+                  href="/sales"
+                  className={`px-4 py-2 rounded-lg transition-all ${
+                    router.pathname === "/sales"
+                      ? "bg-slate-900 dark:bg-white text-white dark:text-slate-900"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                  }`}
                 >
-                  <TrendingUp className="w-4 h-4 mr-2" />
                   Sales
-                </Button>
-              </Link>
-              
-              <div className="h-6 w-px bg-border mx-2" />
-              
-              <ThemeSwitch />
-              
-              {loading ? (
-                <div className="w-8 h-8 rounded-full bg-muted animate-pulse" />
-              ) : user ? (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="relative h-8 w-8 rounded-full ml-2">
-                      <Avatar className="h-8 w-8 border border-border">
-                        <AvatarImage src={user.user_metadata?.avatar_url} alt={user.user_metadata?.full_name || user.email} />
-                        <AvatarFallback className="bg-primary/10 text-primary font-medium">
-                          {(user.user_metadata?.full_name?.[0] || user.email[0]).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-56" align="end" forceMount>
-                    <DropdownMenuLabel className="font-normal">
-                      <div className="flex flex-col space-y-1">
-                        <p className="text-sm font-medium leading-none">{user.user_metadata?.full_name || "User"}</p>
-                        <p className="text-xs leading-none text-muted-foreground">
-                          {user.email}
-                        </p>
-                      </div>
-                    </DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                      <Link href="/dashboard" className="cursor-pointer">
-                        <LayoutDashboard className="mr-2 h-4 w-4" />
-                        <span>Dashboard</span>
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href="/collection" className="cursor-pointer">
-                        <Coins className="mr-2 h-4 w-4" />
-                        <span>My Collection</span>
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive cursor-pointer">
-                      <LogOut className="mr-2 h-4 w-4" />
-                      <span>Log out</span>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              ) : (
-                <Button onClick={() => setIsAuthModalOpen(true)} variant="outline" className="ml-2 gap-2">
-                  <LogIn className="w-4 h-4" />
-                  Sign In
-                </Button>
-              )}
-            </div>
+                </Link>
+              </>
+            )}
+            
+            <div className="h-6 w-px bg-border mx-2" />
+            
+            <ThemeSwitch />
+            
+            {loading ? (
+              <div className="w-8 h-8 rounded-full bg-muted animate-pulse" />
+            ) : user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-8 w-8 rounded-full ml-2">
+                    <Avatar className="h-8 w-8 border border-border">
+                      <AvatarImage src={user.user_metadata?.avatar_url} alt={user.user_metadata?.full_name || user.email} />
+                      <AvatarFallback className="bg-primary/10 text-primary font-medium">
+                        {(user.user_metadata?.full_name?.[0] || user.email[0]).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56" align="end" forceMount>
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">{user.user_metadata?.full_name || "User"}</p>
+                      <p className="text-xs leading-none text-muted-foreground">
+                        {user.email}
+                      </p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link href="/dashboard" className="flex items-center gap-2 w-full cursor-pointer">
+                      <LayoutDashboard className="w-4 h-4" />
+                      <span>Dashboard</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/collection" className="flex items-center gap-2 w-full cursor-pointer">
+                      <Coins className="w-4 h-4" />
+                      <span>My Collection</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/profile" className="flex items-center gap-2 w-full cursor-pointer">
+                      <User className="w-4 h-4" />
+                      <span>Profile Settings</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator className="bg-slate-200 dark:bg-slate-700" />
+                  <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive cursor-pointer">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Log out</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Button onClick={() => setIsAuthModalOpen(true)} variant="outline" className="ml-2 gap-2">
+                <LogIn className="w-4 h-4" />
+                Sign In
+              </Button>
+            )}
           </div>
         </div>
       </nav>

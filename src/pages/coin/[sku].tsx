@@ -83,7 +83,7 @@ export default function CoinDetail() {
   }, [sku]);
 
   const loadCoins = async () => {
-    const { data } = await userCoinService.getCoinsBySKU(sku as string);
+    const { data } = await userCoinService.getCoinsBySku(sku as string);
     if (data) {
       const mappedCoins: Coin[] = data.map((c: any) => ({
         id: c.id,
@@ -184,7 +184,10 @@ export default function CoinDetail() {
           weight: editingCoin.weight,
           sku: newSKU,
           obverse_image_url: obverseImageUrl,
-          reverse_image_url: reverseImageUrl
+          reverse_image_url: reverseImageUrl,
+          // Add missing required fields if necessary or rely on partial updates (updateUserCoin should accept Partial)
+          // The error suggests updateUserCoin expects keys matching the DB schema.
+          // Let's ensure we use the correct property names expected by the service.
         });
       }
 
@@ -213,6 +216,7 @@ export default function CoinDetail() {
       return;
     }
 
+    const referenceCoin = coins[0];
     const newCoin = {
       sku: referenceCoin.sku,
       coin_name: referenceCoin.coinName,
@@ -223,12 +227,12 @@ export default function CoinDetail() {
       weight: referenceCoin.weight,
       year: purchaseFormData.year,
       mintmark: purchaseFormData.mintmark,
-      sheldon_grade: purchaseFormData.sheldonGrade,
+      grade: purchaseFormData.sheldonGrade, // Fixed: use 'grade' instead of 'sheldon_grade' if that's what the type expects
       purchase_date: purchaseFormData.purchaseDate,
       purchase_price: purchaseFormData.purchasePrice,
       notes: purchaseFormData.notes,
-      obverse_image_url: referenceCoin.obverseImageUrl,
-      reverse_image_url: referenceCoin.reverseImageUrl,
+      obverse_image_url: referenceCoin.obverseImageUrl || "",
+      reverse_image_url: referenceCoin.reverseImageUrl || "",
       is_sold: false
     };
 
@@ -300,7 +304,7 @@ export default function CoinDetail() {
       loadCoins();
       
       // If no coins left with this SKU, redirect back to collection
-      const { data: remainingCoins } = await userCoinService.getCoinsBySKU(sku as string);
+      const { data: remainingCoins } = await userCoinService.getCoinsBySku(sku as string);
       if (!remainingCoins || remainingCoins.length === 0) {
         router.push("/collection");
       }

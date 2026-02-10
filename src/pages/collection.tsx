@@ -156,14 +156,16 @@ export default function Collection() {
       let obverseImageUrl = formData.obverseImageUrl || "";
       let reverseImageUrl = formData.reverseImageUrl || "";
       
-      // Upload obverse image to Supabase Storage if a new file is selected
+      // Upload obverse image
       if (obverseImageFile) {
-        obverseImageUrl = await imageService.uploadImage(obverseImageFile);
+        const result = await imageService.uploadImage(obverseImageFile);
+        obverseImageUrl = result.url;
       }
 
-      // Upload reverse image to Supabase Storage if a new file is selected
+      // Upload reverse image
       if (reverseImageFile) {
-        reverseImageUrl = await imageService.uploadImage(reverseImageFile);
+        const result = await imageService.uploadImage(reverseImageFile);
+        reverseImageUrl = result.url;
       }
 
       if (editingCoin) {

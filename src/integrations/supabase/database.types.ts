@@ -95,6 +95,7 @@ export type Database = {
       }
       user_coins: {
         Row: {
+          coin_name: string | null
           country_code: string
           created_at: string | null
           grade: string
@@ -105,10 +106,12 @@ export type Database = {
           metal: string
           mintmark: string | null
           notes: string | null
+          obverse_image_url: string | null
           purchase_date: string
           purchase_price: number
           purity: number
           reference_coin_id: string | null
+          reverse_image_url: string | null
           sku: string
           updated_at: string | null
           user_id: string
@@ -116,6 +119,7 @@ export type Database = {
           year: number
         }
         Insert: {
+          coin_name?: string | null
           country_code: string
           created_at?: string | null
           grade: string
@@ -126,10 +130,12 @@ export type Database = {
           metal: string
           mintmark?: string | null
           notes?: string | null
+          obverse_image_url?: string | null
           purchase_date: string
           purchase_price: number
           purity: number
           reference_coin_id?: string | null
+          reverse_image_url?: string | null
           sku: string
           updated_at?: string | null
           user_id: string
@@ -137,6 +143,7 @@ export type Database = {
           year: number
         }
         Update: {
+          coin_name?: string | null
           country_code?: string
           created_at?: string | null
           grade?: string
@@ -147,10 +154,12 @@ export type Database = {
           metal?: string
           mintmark?: string | null
           notes?: string | null
+          obverse_image_url?: string | null
           purchase_date?: string
           purchase_price?: number
           purity?: number
           reference_coin_id?: string | null
+          reverse_image_url?: string | null
           sku?: string
           updated_at?: string | null
           user_id?: string

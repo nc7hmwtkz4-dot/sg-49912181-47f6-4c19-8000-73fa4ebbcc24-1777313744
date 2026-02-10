@@ -175,6 +175,69 @@ export const authService = {
     }
   },
 
+  // Update email
+  async updateEmail(newEmail: string): Promise<{ error: AuthError | null }> {
+    try {
+      const { error } = await supabase.auth.updateUser({
+        email: newEmail
+      });
+
+      if (error) {
+        return { error: { message: error.message } };
+      }
+
+      return { error: null };
+    } catch (error) {
+      return { 
+        error: { message: "An unexpected error occurred while updating email" } 
+      };
+    }
+  },
+
+  // Update password
+  async updatePassword(newPassword: string): Promise<{ error: AuthError | null }> {
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+
+      if (error) {
+        return { error: { message: error.message } };
+      }
+
+      return { error: null };
+    } catch (error) {
+      return { 
+        error: { message: "An unexpected error occurred while updating password" } 
+      };
+    }
+  },
+
+  // Delete account
+  async deleteAccount(): Promise<{ error: AuthError | null }> {
+    try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        return { error: { message: "No user found" } };
+      }
+
+      // Delete user account (will cascade to user_coins and user_sales due to FK constraints)
+      const { error } = await supabase.auth.admin.deleteUser(user.id);
+
+      if (error) {
+        return { error: { message: error.message } };
+      }
+
+      return { error: null };
+    } catch (error) {
+      return { 
+        error: { message: "An unexpected error occurred while deleting account" } 
+      };
+    }
+  },
+
   // Listen to auth state changes
   onAuthStateChange(callback: (event: string, session: Session | null) => void) {
     return supabase.auth.onAuthStateChange(callback);
