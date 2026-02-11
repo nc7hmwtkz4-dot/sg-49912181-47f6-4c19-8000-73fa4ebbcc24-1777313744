@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Edit, Plus, DollarSign, Trash2, ArrowLeft, Upload } from "lucide-react";
+import { Edit, Plus, DollarSign, Trash2, ArrowLeft, Upload, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 
 export default function CoinDetail() {
@@ -28,7 +28,10 @@ export default function CoinDetail() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isAddPurchaseOpen, setIsAddPurchaseOpen] = useState(false);
   const [isSaleDialogOpen, setIsSaleDialogOpen] = useState(false);
+  const [isEditCoinDialogOpen, setIsEditCoinDialogOpen] = useState(false);
   const [editingCoin, setEditingCoin] = useState<Coin | null>(null);
+  const [editingIndividualCoin, setEditingIndividualCoin] = useState<Coin | null>(null);
+  const [showSoldCoins, setShowSoldCoins] = useState(true);
   const [purchaseFormData, setPurchaseFormData] = useState<{
     year: number;
     mintmark: string;
@@ -96,7 +99,7 @@ export default function CoinDetail() {
         metal: c.metal,
         purity: c.purity,
         weight: c.weight,
-        sheldonGrade: c.sheldon_grade,
+        sheldonGrade: c.grade,
         purchasePrice: c.purchase_price,
         purchaseDate: c.purchase_date,
         notes: c.notes,
@@ -185,9 +188,6 @@ export default function CoinDetail() {
           sku: newSKU,
           obverse_image_url: obverseImageUrl,
           reverse_image_url: reverseImageUrl,
-          // Add missing required fields if necessary or rely on partial updates (updateUserCoin should accept Partial)
-          // The error suggests updateUserCoin expects keys matching the DB schema.
-          // Let's ensure we use the correct property names expected by the service.
         });
       }
 
@@ -204,6 +204,38 @@ export default function CoinDetail() {
       }
     } catch (error) {
       console.error("Error updating coin:", error);
+      alert("Failed to update coin. Please try again.");
+    }
+  };
+
+  const handleEditIndividualCoin = (coin: Coin) => {
+    setEditingIndividualCoin(coin);
+    setIsEditCoinDialogOpen(true);
+  };
+
+  const handleEditIndividualCoinSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!editingIndividualCoin) {
+      alert("No coin selected for editing");
+      return;
+    }
+
+    try {
+      await userCoinService.updateUserCoin(editingIndividualCoin.id, {
+        year: editingIndividualCoin.year,
+        mintmark: editingIndividualCoin.mintmark,
+        grade: editingIndividualCoin.sheldonGrade,
+        purchase_date: editingIndividualCoin.purchaseDate,
+        purchase_price: editingIndividualCoin.purchasePrice,
+        notes: editingIndividualCoin.notes,
+      });
+
+      setIsEditCoinDialogOpen(false);
+      setEditingIndividualCoin(null);
+      loadCoins();
+    } catch (error) {
+      console.error("Error updating individual coin:", error);
       alert("Failed to update coin. Please try again.");
     }
   };
@@ -227,7 +259,7 @@ export default function CoinDetail() {
       weight: referenceCoin.weight,
       year: purchaseFormData.year,
       mintmark: purchaseFormData.mintmark,
-      grade: purchaseFormData.sheldonGrade, // Fixed: use 'grade' instead of 'sheldon_grade' if that's what the type expects
+      grade: purchaseFormData.sheldonGrade,
       purchase_date: purchaseFormData.purchaseDate,
       purchase_price: purchaseFormData.purchasePrice,
       notes: purchaseFormData.notes,
@@ -342,6 +374,8 @@ export default function CoinDetail() {
 
   const metalContent = (referenceCoin.weight * referenceCoin.purity / 100).toFixed(3);
 
+  const filteredCoins = showSoldCoins ? coins : coins.filter(c => !c.isSold);
+
   return (
     <Layout>
       <SEO 
@@ -438,13 +472,9 @@ export default function CoinDetail() {
                     <p className="text-slate-400 text-sm mb-1">Weight</p>
                     <p className="text-2xl font-semibold">{referenceCoin.weight}g</p>
                   </div>
-                  <div>
+                  <div className="col-span-2">
                     <p className="text-slate-400 text-sm mb-1">Metal Content</p>
                     <p className="text-2xl font-semibold">{metalContent}g</p>
-                  </div>
-                  <div>
-                    <p className="text-slate-400 text-sm mb-1">Year</p>
-                    <p className="text-2xl font-semibold">{referenceCoin.year}</p>
                   </div>
                 </div>
               </CardContent>
@@ -517,8 +547,26 @@ export default function CoinDetail() {
 
         {/* Individual Coins Table */}
         <Card className="bg-slate-100 dark:bg-slate-900 border-slate-200 dark:border-slate-800">
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-2xl text-slate-900 dark:text-white">Individual Coins</CardTitle>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowSoldCoins(!showSoldCoins)}
+              className="border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300"
+            >
+              {showSoldCoins ? (
+                <>
+                  <EyeOff className="w-4 h-4 mr-2" />
+                  Hide Sold
+                </>
+              ) : (
+                <>
+                  <Eye className="w-4 h-4 mr-2" />
+                  Show Sold
+                </>
+              )}
+            </Button>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
@@ -537,13 +585,13 @@ export default function CoinDetail() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {coins.map(coin => {
+                  {filteredCoins.map(coin => {
                     const sale = salesData.find(s => s.coin_id === coin.id);
                     return (
                       <TableRow key={coin.id} className="border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50">
                         <TableCell className="text-slate-900 dark:text-white font-medium">{coin.year}</TableCell>
                         <TableCell className="text-slate-600 dark:text-slate-400">{coin.mintmark || "-"}</TableCell>
-                        <TableCell className="text-slate-600 dark:text-slate-400">{coin.sheldonGrade}</TableCell>
+                        <TableCell className="text-slate-600 dark:text-slate-400">{coin.sheldonGrade || "-"}</TableCell>
                         <TableCell className="text-slate-600 dark:text-slate-400">
                           {new Date(coin.purchaseDate).toLocaleDateString('en-US', { 
                             year: 'numeric', 
@@ -596,14 +644,24 @@ export default function CoinDetail() {
                           {coin.notes || "-"}
                         </TableCell>
                         <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDeleteCoin(coin.id)}
-                            className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                          <div className="flex gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEditIndividualCoin(coin)}
+                              className="text-blue-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDeleteCoin(coin.id)}
+                              className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
@@ -615,7 +673,7 @@ export default function CoinDetail() {
         </Card>
       </div>
 
-      {/* Edit Dialog */}
+      {/* Edit SKU Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
           <DialogHeader>
@@ -769,6 +827,117 @@ export default function CoinDetail() {
                 onClick={() => {
                   setIsEditDialogOpen(false);
                   setEditingCoin(null);
+                }}
+                className="border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300"
+              >
+                Cancel
+              </Button>
+              <Button type="submit" className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100">
+                Save Changes
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Individual Coin Dialog */}
+      <Dialog open={isEditCoinDialogOpen} onOpenChange={setIsEditCoinDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+          <DialogHeader>
+            <DialogTitle className="text-2xl text-slate-900 dark:text-white">Edit Individual Coin</DialogTitle>
+          </DialogHeader>
+          
+          <form onSubmit={handleEditIndividualCoinSubmit} className="space-y-6">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="editYear" className="text-slate-700 dark:text-slate-300">Year *</Label>
+                <Input
+                  id="editYear"
+                  type="number"
+                  value={editingIndividualCoin?.year || ""}
+                  onChange={(e) => setEditingIndividualCoin(editingIndividualCoin ? {...editingIndividualCoin, year: parseInt(e.target.value)} : null)}
+                  placeholder="e.g., 1879"
+                  className="bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
+                  required
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="editMintmark" className="text-slate-700 dark:text-slate-300">Mintmark</Label>
+                <Input
+                  id="editMintmark"
+                  value={editingIndividualCoin?.mintmark || ""}
+                  onChange={(e) => setEditingIndividualCoin(editingIndividualCoin ? {...editingIndividualCoin, mintmark: e.target.value} : null)}
+                  placeholder="e.g., D, S (optional)"
+                  className="bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="editGrade" className="text-slate-700 dark:text-slate-300">Sheldon Grade *</Label>
+                <Select 
+                  value={editingIndividualCoin?.sheldonGrade} 
+                  onValueChange={(value) => setEditingIndividualCoin(editingIndividualCoin ? {...editingIndividualCoin, sheldonGrade: value as SheldonGrade} : null)}
+                >
+                  <SelectTrigger className="bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-700 max-h-60">
+                    {SHELDON_GRADES.map(grade => (
+                      <SelectItem key={grade} value={grade} className="text-slate-900 dark:text-white">
+                        {grade}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="editPurchaseDate" className="text-slate-700 dark:text-slate-300">Purchase Date *</Label>
+                <Input
+                  id="editPurchaseDate"
+                  type="date"
+                  value={editingIndividualCoin?.purchaseDate || ""}
+                  onChange={(e) => setEditingIndividualCoin(editingIndividualCoin ? {...editingIndividualCoin, purchaseDate: e.target.value} : null)}
+                  className="bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
+                  required
+                />
+              </div>
+
+              <div className="col-span-2">
+                <Label htmlFor="editPurchasePrice" className="text-slate-700 dark:text-slate-300">Purchase Price (CHF) *</Label>
+                <Input
+                  id="editPurchasePrice"
+                  type="number"
+                  step="0.01"
+                  value={editingIndividualCoin?.purchasePrice || ""}
+                  onChange={(e) => setEditingIndividualCoin(editingIndividualCoin ? {...editingIndividualCoin, purchasePrice: parseFloat(e.target.value)} : null)}
+                  placeholder="e.g., 19.06"
+                  className="bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
+                  required
+                />
+              </div>
+
+              <div className="col-span-2">
+                <Label htmlFor="editNotes" className="text-slate-700 dark:text-slate-300">Notes</Label>
+                <Textarea
+                  id="editNotes"
+                  value={editingIndividualCoin?.notes || ""}
+                  onChange={(e) => setEditingIndividualCoin(editingIndividualCoin ? {...editingIndividualCoin, notes: e.target.value} : null)}
+                  placeholder="Additional notes about this coin"
+                  rows={3}
+                  className="bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-2 justify-end pt-4 border-t border-slate-200 dark:border-slate-700">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => {
+                  setIsEditCoinDialogOpen(false);
+                  setEditingIndividualCoin(null);
                 }}
                 className="border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300"
               >
