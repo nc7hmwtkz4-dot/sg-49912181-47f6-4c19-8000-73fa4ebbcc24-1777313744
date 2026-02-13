@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Coins, TrendingUp, Map, BarChart3, Sparkles, Package, LayoutDashboard, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import Image from "next/image";
 
 export default function Home() {
   return (
@@ -16,8 +17,15 @@ export default function Home() {
       <div className="min-h-[80vh] flex flex-col items-center justify-center text-center space-y-8">
         <div className="space-y-4">
           <div className="flex justify-center mb-6">
-            <div className="w-20 h-20 rounded-2xl gradient-gold flex items-center justify-center shadow-2xl">
-              <Coins className="w-12 h-12 text-white" />
+            <div className="w-24 h-24 relative">
+              <Image
+                src="/numivault-logo.png"
+                alt="NumiVault Logo"
+                width={96}
+                height={96}
+                className="object-contain drop-shadow-2xl"
+                priority
+              />
             </div>
           </div>
           
