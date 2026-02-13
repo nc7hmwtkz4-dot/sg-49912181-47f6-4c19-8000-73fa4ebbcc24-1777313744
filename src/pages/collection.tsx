@@ -6,6 +6,7 @@ import { spotPriceService } from "@/lib/spotPrices";
 import { imageService } from "@/services/imageService";
 import { userCoinService } from "@/services/userCoinService";
 import { userSalesService } from "@/services/userSalesService";
+import { supabase } from "@/integrations/supabase/client";
 import { Coin, COUNTRY_CODES, SHELDON_GRADES, SheldonGrade } from "@/types/coin";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +21,8 @@ import { ImageViewer } from "@/components/ImageViewer";
 
 export default function Collection() {
   const router = useRouter();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [coins, setCoins] = useState<Coin[]>([]);
   const [filteredCoins, setFilteredCoins] = useState<Coin[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -78,10 +81,34 @@ export default function Collection() {
     notes: ""
   });
 
+  // Check authentication on mount
   useEffect(() => {
-    loadCoins();
-    loadSpotPrices();
+    checkAuth();
   }, []);
+
+  const checkAuth = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        router.push("/");
+        return;
+      }
+      
+      setIsAuthenticated(true);
+      setIsLoading(false);
+    } catch (error) {
+      console.error("Auth check error:", error);
+      router.push("/");
+    }
+  };
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadCoins();
+      loadSpotPrices();
+    }
+  }, [isAuthenticated]);
 
   useEffect(() => {
     let filtered = coins;
@@ -478,6 +505,29 @@ export default function Collection() {
   }, {} as Record<string, Coin[]>);
 
   const uniqueCountries = Array.from(new Set(coins.map(c => c.countryCode))).sort();
+
+  // Show loading state while checking auth
+  if (isLoading) {
+    return (
+      <Layout>
+        <SEO 
+          title="Inventory - NumiVault"
+          description="Manage your numismatic collection"
+        />
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-center">
+            <div className="w-16 h-16 border-4 border-slate-700 border-t-white rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-slate-400">Loading your collection...</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  // Don't render collection content if not authenticated
+  if (!isAuthenticated) {
+    return null;
+  }
 
   return (
     <Layout>
