@@ -6,6 +6,7 @@ import { spotPriceService } from "@/lib/spotPrices";
 import { imageService } from "@/services/imageService";
 import { userCoinService } from "@/services/userCoinService";
 import { userSalesService } from "@/services/userSalesService";
+import { coinReferenceService } from "@/services/coinReferenceService";
 import { supabase } from "@/integrations/supabase/client";
 import { Coin, COUNTRY_CODES, SHELDON_GRADES, SheldonGrade } from "@/types/coin";
 import { Button } from "@/components/ui/button";
@@ -35,11 +36,16 @@ export default function Collection() {
   const [reverseImageFile, setReverseImageFile] = useState<File | null>(null);
   const [obverseImagePreview, setObverseImagePreview] = useState<string>("");
   const [reverseImagePreview, setReverseImagePreview] = useState<string>("");
+  
+  // Reference coin search state
+  const [referenceSearchTerm, setReferenceSearchTerm] = useState("");
+  const [referenceSearchResults, setReferenceSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  
   const [formData, setFormData] = useState<Partial<Coin>>({
     countryCode: "US",
     metal: "silver",
-    purity: 90,
-    sheldonGrade: "MS-63"
+    purity: 90
   });
 
   // Purchase dialog state
@@ -134,6 +140,25 @@ export default function Collection() {
     setFilteredCoins(filtered);
   }, [searchTerm, countryFilter, metalFilter, coins]);
 
+  // Search reference coins with debounce
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      if (referenceSearchTerm.trim().length >= 2) {
+        setIsSearching(true);
+        const { data, error } = await coinReferenceService.searchReferences(referenceSearchTerm);
+        
+        if (!error && data) {
+          setReferenceSearchResults(data);
+        }
+        setIsSearching(false);
+      } else {
+        setReferenceSearchResults([]);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [referenceSearchTerm]);
+
   const loadCoins = async () => {
     const { data, error } = await userCoinService.getUserCoins();
     
@@ -198,13 +223,27 @@ export default function Collection() {
     }
   };
 
+  // Select reference coin from search results
+  const handleSelectReference = (reference: any) => {
+    setFormData({
+      countryCode: reference.country_code,
+      kmNumber: reference.km_number,
+      coinName: reference.coin_name,
+      metal: reference.metal,
+      purity: reference.purity,
+      weight: reference.weight,
+      obverseImageUrl: reference.obverse_image_url || "",
+      reverseImageUrl: reference.reverse_image_url || ""
+    });
+    setReferenceSearchTerm("");
+    setReferenceSearchResults([]);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.countryCode || !formData.kmNumber || !formData.year || 
-        !formData.metal || !formData.purity || !formData.weight || 
-        !formData.sheldonGrade || !formData.purchasePrice || !formData.purchaseDate ||
-        !formData.coinName) {
+    if (!formData.countryCode || !formData.kmNumber || !formData.metal || 
+        !formData.purity || !formData.weight || !formData.coinName) {
       alert("Please fill in all required fields");
       return;
     }
@@ -225,66 +264,39 @@ export default function Collection() {
         reverseImageUrl = result.url;
       }
 
-      if (editingCoin) {
-        // Update existing coin
-        const { error } = await userCoinService.updateUserCoin(editingCoin.id, {
-          coin_name: formData.coinName,
+      const sku = `${formData.countryCode}-${formData.kmNumber}`;
+
+      // Check if reference coin exists
+      const { data: existingRef } = await coinReferenceService.getReferenceBySKU(sku);
+
+      if (!existingRef) {
+        // Create reference coin first
+        const { error: refError } = await coinReferenceService.createReference({
+          sku,
+          coin_name: formData.coinName!,
           country_code: formData.countryCode,
           km_number: formData.kmNumber!,
-          year: formData.year!,
-          mintmark: formData.mintmark || null,
           metal: formData.metal!,
           purity: formData.purity!,
           weight: formData.weight!,
-          grade: formData.sheldonGrade!,
-          purchase_price: formData.purchasePrice!,
-          purchase_date: formData.purchaseDate!,
-          notes: formData.notes || null,
           obverse_image_url: obverseImageUrl || null,
           reverse_image_url: reverseImageUrl || null
         });
 
-        if (error) {
-          alert("Failed to update coin. Please try again.");
-          console.error("Update error:", error);
-          return;
-        }
-      } else {
-        // Add new coin
-        const sku = `${formData.countryCode}-${formData.kmNumber}`;
-        
-        const { error } = await userCoinService.addUserCoin({
-          sku,
-          coin_name: formData.coinName,
-          country_code: formData.countryCode,
-          km_number: formData.kmNumber!,
-          year: formData.year!,
-          mintmark: formData.mintmark || null,
-          metal: formData.metal!,
-          purity: formData.purity!,
-          weight: formData.weight!,
-          grade: formData.sheldonGrade!,
-          purchase_price: formData.purchasePrice!,
-          purchase_date: formData.purchaseDate!,
-          notes: formData.notes || null,
-          obverse_image_url: obverseImageUrl || null,
-          reverse_image_url: reverseImageUrl || null,
-          is_sold: false
-        });
-
-        if (error) {
-          alert("Failed to add coin. Please try again.");
-          console.error("Add error:", error);
+        if (refError) {
+          alert("Failed to create reference coin. Please try again.");
+          console.error("Reference creation error:", refError);
           return;
         }
       }
 
+      alert(`Reference coin ${sku} created successfully! Now use "Add Purchase" to add individual coins.`);
       await loadCoins();
       resetForm();
       setIsAddDialogOpen(false);
     } catch (error) {
-      console.error("Error saving coin:", error);
-      alert("Failed to save coin. Please try again.");
+      console.error("Error saving reference coin:", error);
+      alert("Failed to save reference coin. Please try again.");
     }
   };
 
@@ -292,14 +304,15 @@ export default function Collection() {
     setFormData({
       countryCode: "US",
       metal: "silver",
-      purity: 90,
-      sheldonGrade: "MS-63"
+      purity: 90
     });
     setEditingCoin(null);
     setObverseImageFile(null);
     setReverseImageFile(null);
     setObverseImagePreview("");
     setReverseImagePreview("");
+    setReferenceSearchTerm("");
+    setReferenceSearchResults([]);
   };
 
   const calculateBullionValue = (coin: Coin): number => {
@@ -449,8 +462,6 @@ export default function Collection() {
         buyer_info: saleFormData.buyerInfo || "",
         notes: saleFormData.notes || "",
         purchase_price: coin.purchasePrice,
-        // Profit and markup will be calculated by DB trigger or service, 
-        // but passing 0 ensures type safety if required
         profit: Number(saleFormData.salePrice) - coin.purchasePrice,
         markup_percentage: ((Number(saleFormData.salePrice) - coin.purchasePrice) / coin.purchasePrice) * 100
       });
@@ -461,7 +472,7 @@ export default function Collection() {
         return;
       }
 
-      // 2. Mark coin as sold
+      // Mark coin as sold
       const { error: updateError } = await userCoinService.updateUserCoin(saleFormData.coinId, {
         is_sold: true
       });
@@ -472,7 +483,6 @@ export default function Collection() {
         return;
       }
 
-      // 3. Reload coins and close dialog
       await loadCoins();
       setIsSaleDialogOpen(false);
       setSaleFormData({
@@ -567,24 +577,58 @@ export default function Collection() {
               <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-slate-900 border-slate-700">
                 <DialogHeader>
                   <DialogTitle className="text-2xl text-white">
-                    {editingCoin ? "Edit Coin" : "Add New Coin"}
+                    Add New Coin Reference (SKU)
                   </DialogTitle>
+                  <p className="text-slate-400 text-sm">
+                    Define the coin type specifications. Individual coins are added via "Add Purchase" button.
+                  </p>
                 </DialogHeader>
                 
                 <form onSubmit={handleSubmit} className="space-y-6">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="col-span-2">
-                      <Label htmlFor="coinName" className="text-slate-300">Coin Name *</Label>
+                  {/* Search existing reference coins */}
+                  <div className="p-4 bg-slate-800/50 rounded-lg border border-slate-700">
+                    <Label htmlFor="referenceSearch" className="text-slate-300 mb-2 block">
+                      Search Existing Coins
+                    </Label>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-500" />
                       <Input
-                        id="coinName"
-                        value={formData.coinName || ""}
-                        onChange={(e) => setFormData({...formData, coinName: e.target.value})}
-                        placeholder="e.g., 5 Francs - Léopold II petit..."
-                        className="bg-slate-800 border-slate-700 text-white"
-                        required
+                        id="referenceSearch"
+                        value={referenceSearchTerm}
+                        onChange={(e) => setReferenceSearchTerm(e.target.value)}
+                        placeholder="Search by name, country, or KM number..."
+                        className="pl-10 bg-slate-800 border-slate-700 text-white"
                       />
                     </div>
+                    {isSearching && (
+                      <p className="text-slate-400 text-sm mt-2">Searching...</p>
+                    )}
+                    {referenceSearchResults.length > 0 && (
+                      <div className="mt-3 space-y-2 max-h-48 overflow-y-auto">
+                        {referenceSearchResults.map((ref) => (
+                          <button
+                            key={ref.sku}
+                            type="button"
+                            onClick={() => handleSelectReference(ref)}
+                            className="w-full text-left p-3 bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-600 transition-colors"
+                          >
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <p className="text-white font-medium">{ref.coin_name}</p>
+                                <p className="text-slate-400 text-sm">{ref.sku}</p>
+                              </div>
+                              <Badge variant="secondary" className="bg-slate-700 text-slate-200">
+                                {ref.metal}
+                              </Badge>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
 
+                  <div className="grid grid-cols-2 gap-4">
+                    {/* Country Code and KM Number on first line */}
                     <div>
                       <Label htmlFor="countryCode" className="text-slate-300">Country Code *</Label>
                       <Select 
@@ -616,27 +660,16 @@ export default function Collection() {
                       />
                     </div>
 
-                    <div>
-                      <Label htmlFor="year" className="text-slate-300">Year *</Label>
+                    {/* Coin Name on second line */}
+                    <div className="col-span-2">
+                      <Label htmlFor="coinName" className="text-slate-300">Coin Name *</Label>
                       <Input
-                        id="year"
-                        type="number"
-                        value={formData.year || ""}
-                        onChange={(e) => setFormData({...formData, year: parseInt(e.target.value)})}
-                        placeholder="e.g., 1875"
+                        id="coinName"
+                        value={formData.coinName || ""}
+                        onChange={(e) => setFormData({...formData, coinName: e.target.value})}
+                        placeholder="e.g., 5 Francs - Léopold II petit..."
                         className="bg-slate-800 border-slate-700 text-white"
                         required
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="mintmark" className="text-slate-300">Mintmark</Label>
-                      <Input
-                        id="mintmark"
-                        value={formData.mintmark || ""}
-                        onChange={(e) => setFormData({...formData, mintmark: e.target.value})}
-                        placeholder="e.g., D, S, P"
-                        className="bg-slate-800 border-slate-700 text-white"
                       />
                     </div>
 
@@ -674,7 +707,7 @@ export default function Collection() {
                       />
                     </div>
 
-                    <div>
+                    <div className="col-span-2">
                       <Label htmlFor="weight" className="text-slate-300">Weight (grams) *</Label>
                       <Input
                         id="weight"
@@ -683,49 +716,6 @@ export default function Collection() {
                         value={formData.weight || ""}
                         onChange={(e) => setFormData({...formData, weight: parseFloat(e.target.value)})}
                         placeholder="e.g., 25.0"
-                        className="bg-slate-800 border-slate-700 text-white"
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="sheldonGrade" className="text-slate-300">Sheldon Grade *</Label>
-                      <Select 
-                        value={formData.sheldonGrade} 
-                        onValueChange={(value) => setFormData({...formData, sheldonGrade: value as any})}
-                      >
-                        <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="bg-slate-800 border-slate-700 max-h-60">
-                          {SHELDON_GRADES.map(grade => (
-                            <SelectItem key={grade} value={grade} className="text-white">{grade}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div>
-                      <Label htmlFor="purchasePrice" className="text-slate-300">Purchase Price (CHF) *</Label>
-                      <Input
-                        id="purchasePrice"
-                        type="number"
-                        step="0.01"
-                        value={formData.purchasePrice || ""}
-                        onChange={(e) => setFormData({...formData, purchasePrice: parseFloat(e.target.value)})}
-                        placeholder="e.g., 19.06"
-                        className="bg-slate-800 border-slate-700 text-white"
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="purchaseDate" className="text-slate-300">Purchase Date *</Label>
-                      <Input
-                        id="purchaseDate"
-                        type="date"
-                        value={formData.purchaseDate || ""}
-                        onChange={(e) => setFormData({...formData, purchaseDate: e.target.value})}
                         className="bg-slate-800 border-slate-700 text-white"
                         required
                       />
@@ -774,18 +764,6 @@ export default function Collection() {
                         )}
                       </div>
                     </div>
-
-                    <div className="col-span-2">
-                      <Label htmlFor="notes" className="text-slate-300">Notes</Label>
-                      <Textarea
-                        id="notes"
-                        value={formData.notes || ""}
-                        onChange={(e) => setFormData({...formData, notes: e.target.value})}
-                        placeholder="Additional information about this coin"
-                        rows={3}
-                        className="bg-slate-800 border-slate-700 text-white"
-                      />
-                    </div>
                   </div>
 
                   <div className="flex gap-2 justify-end pt-4 border-t border-slate-700">
@@ -793,7 +771,7 @@ export default function Collection() {
                       Cancel
                     </Button>
                     <Button type="submit" className="bg-white text-slate-900 hover:bg-slate-100">
-                      {editingCoin ? "Update" : "Add"} Coin
+                      Create Reference Coin
                     </Button>
                   </div>
                 </form>
@@ -959,19 +937,6 @@ export default function Collection() {
                             </div>
 
                             <div className="flex gap-2 pt-3 border-t border-slate-700">
-                              <Button 
-                                size="sm" 
-                                variant="outline" 
-                                className="flex-1 border-slate-600 text-slate-300 hover:bg-slate-700"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setEditingCoin(coin);
-                                  setFormData(coin);
-                                  setIsAddDialogOpen(true);
-                                }}
-                              >
-                                Edit
-                              </Button>
                               <Button 
                                 size="sm" 
                                 variant="outline" 
