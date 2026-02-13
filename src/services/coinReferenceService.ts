@@ -16,12 +16,16 @@ export const coinReferenceService = {
         return { data: null, error: new Error("User not authenticated") };
       }
 
+      const searchPattern = `%${searchTerm}%`;
+      
       const { data, error } = await supabase
         .from("coins_reference")
         .select("*")
-        .or(`sku.ilike.%${searchTerm}%,coin_name.ilike.%${searchTerm}%,km_number.ilike.%${searchTerm}%`)
+        .or(`sku.ilike.${searchPattern},coin_name.ilike.${searchPattern},km_number.ilike.${searchPattern}`)
         .order("coin_name");
 
+      console.log("Search results:", { searchTerm, data, error });
+      
       return { data, error };
     } catch (error) {
       console.error("Error searching reference coins:", error);
