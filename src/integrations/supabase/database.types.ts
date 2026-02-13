@@ -1,4 +1,4 @@
- 
+/* eslint-disable @typescript-eslint/no-empty-object-type */
 export type Json =
   | string
   | number
@@ -17,6 +17,7 @@ export type Database = {
     Tables: {
       coins_reference: {
         Row: {
+          coin_name: string | null
           country_code: string
           created_at: string | null
           created_by: string | null
@@ -26,13 +27,15 @@ export type Database = {
           image_url: string | null
           km_number: string
           metal: string
-          name: string | null
+          obverse_image_url: string | null
           purity: number
+          reverse_image_url: string | null
           sku: string
           updated_at: string | null
           weight: number
         }
         Insert: {
+          coin_name?: string | null
           country_code: string
           created_at?: string | null
           created_by?: string | null
@@ -42,13 +45,15 @@ export type Database = {
           image_url?: string | null
           km_number: string
           metal: string
-          name?: string | null
+          obverse_image_url?: string | null
           purity: number
+          reverse_image_url?: string | null
           sku: string
           updated_at?: string | null
           weight: number
         }
         Update: {
+          coin_name?: string | null
           country_code?: string
           created_at?: string | null
           created_by?: string | null
@@ -58,8 +63,9 @@ export type Database = {
           image_url?: string | null
           km_number?: string
           metal?: string
-          name?: string | null
+          obverse_image_url?: string | null
           purity?: number
+          reverse_image_url?: string | null
           sku?: string
           updated_at?: string | null
           weight?: number
