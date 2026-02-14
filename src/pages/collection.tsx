@@ -41,6 +41,7 @@ export default function Collection() {
   const [referenceSearchTerm, setReferenceSearchTerm] = useState("");
   const [referenceSearchResults, setReferenceSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const [formData, setFormData] = useState<Partial<Coin>>({
     countryCode: "US",
@@ -895,8 +896,8 @@ export default function Collection() {
                     <Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)} className="border-slate-600 text-slate-300">
                       Cancel
                     </Button>
-                    <Button type="submit" className="bg-white text-slate-900 hover:bg-slate-100">
-                      Create Reference Coin
+                    <Button type="submit" disabled={isSubmitting} className="bg-white text-slate-900 hover:bg-slate-100">
+                      {isSubmitting ? "Creating..." : "Create Reference Coin"}
                     </Button>
                   </div>
                 </form>
