@@ -52,6 +52,15 @@ export default function Collection() {
   const [isAddPurchaseOpen, setIsAddPurchaseOpen] = useState(false);
   const [selectedSKU, setSelectedSKU] = useState<string>("");
   const [purchaseFormData, setPurchaseFormData] = useState<{
+    sku: string;
+    coinName: string;
+    countryCode: string;
+    kmNumber: string;
+    metal: string;
+    purity: number;
+    weight: number;
+    obverseImageUrl: string;
+    reverseImageUrl: string;
     year: number;
     mintmark: string;
     sheldonGrade: SheldonGrade;
@@ -59,9 +68,18 @@ export default function Collection() {
     purchasePrice: number;
     notes: string;
   }>({
+    sku: "",
+    coinName: "",
+    countryCode: "",
+    kmNumber: "",
+    metal: "",
+    purity: 0,
+    weight: 0,
+    obverseImageUrl: "",
+    reverseImageUrl: "",
     year: new Date().getFullYear(),
     mintmark: "",
-    sheldonGrade: "MS-63",
+    sheldonGrade: "MS-63" as SheldonGrade,
     purchaseDate: new Date().toISOString().split("T")[0],
     purchasePrice: 0,
     notes: ""
@@ -345,52 +363,58 @@ export default function Collection() {
 
   const handleAddPurchase = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    const skuCoins = coins.filter(c => c.sku === selectedSKU);
-    if (skuCoins.length === 0) return;
-
-    const referenceCoin = skuCoins[0];
-
-    try {
-      const { error } = await userCoinService.addUserCoin({
-        sku: selectedSKU,
-        coin_name: referenceCoin.coinName,
-        country_code: referenceCoin.countryCode,
-        km_number: referenceCoin.kmNumber,
-        year: purchaseFormData.year,
-        mintmark: purchaseFormData.mintmark || null,
-        metal: referenceCoin.metal,
-        purity: referenceCoin.purity,
-        weight: referenceCoin.weight,
-        grade: purchaseFormData.sheldonGrade,
-        purchase_price: purchaseFormData.purchasePrice,
-        purchase_date: purchaseFormData.purchaseDate,
-        notes: purchaseFormData.notes || null,
-        obverse_image_url: referenceCoin.obverseImageUrl || null,
-        reverse_image_url: referenceCoin.reverseImageUrl || null,
-        is_sold: false
-      });
-
-      if (error) {
-        alert("Failed to add purchase. Please try again.");
-        console.error("Add purchase error:", error);
-        return;
-      }
-
-      await loadCoins();
-      setIsAddPurchaseOpen(false);
-      setPurchaseFormData({
-        year: new Date().getFullYear(),
-        mintmark: "",
-        sheldonGrade: "MS-63",
-        purchaseDate: new Date().toISOString().split("T")[0],
-        purchasePrice: 0,
-        notes: ""
-      });
-    } catch (err) {
-      console.error("Error adding purchase:", err);
-      alert("An unexpected error occurred. Please try again.");
+    
+    if (!purchaseFormData.year || !purchaseFormData.purchasePrice || !purchaseFormData.purchaseDate) {
+      alert("Please fill in all required fields");
+      return;
     }
+
+    const newCoinData = {
+      sku: purchaseFormData.sku,
+      coin_name: purchaseFormData.coinName,
+      country_code: purchaseFormData.countryCode,
+      km_number: purchaseFormData.kmNumber,
+      metal: purchaseFormData.metal,
+      purity: purchaseFormData.purity,
+      weight: purchaseFormData.weight,
+      year: purchaseFormData.year,
+      mintmark: purchaseFormData.mintmark,
+      grade: purchaseFormData.sheldonGrade,
+      purchase_date: purchaseFormData.purchaseDate,
+      purchase_price: purchaseFormData.purchasePrice,
+      notes: purchaseFormData.notes,
+      obverse_image_url: purchaseFormData.obverseImageUrl,
+      reverse_image_url: purchaseFormData.reverseImageUrl,
+      is_sold: false
+    };
+
+    const result = await userCoinService.addUserCoin(newCoinData);
+    
+    if (result.error) {
+      console.error("Error adding purchase:", result.error);
+      alert("Failed to add purchase. Please try again.");
+      return;
+    }
+
+    loadCoins();
+    setIsAddPurchaseOpen(false);
+    setPurchaseFormData({
+      sku: "",
+      coinName: "",
+      countryCode: "",
+      kmNumber: "",
+      metal: "",
+      purity: 0,
+      weight: 0,
+      obverseImageUrl: "",
+      reverseImageUrl: "",
+      year: new Date().getFullYear(),
+      mintmark: "",
+      sheldonGrade: "MS-63" as SheldonGrade,
+      purchaseDate: new Date().toISOString().split("T")[0],
+      purchasePrice: 0,
+      notes: ""
+    });
   };
 
   // Handle Record Sale
@@ -995,99 +1019,111 @@ export default function Collection() {
 
       {/* Add Purchase Dialog */}
       <Dialog open={isAddPurchaseOpen} onOpenChange={setIsAddPurchaseOpen}>
-        <DialogContent className="max-w-lg bg-slate-900 border-slate-700">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
           <DialogHeader>
-            <DialogTitle className="text-2xl text-white">
-              Add Purchase - {selectedSKU}
-            </DialogTitle>
+            <DialogTitle className="text-2xl text-slate-900 dark:text-white">Add Coin Purchase</DialogTitle>
+            {purchaseFormData.coinName && (
+              <p className="text-slate-600 dark:text-slate-400 text-sm mt-2">
+                {purchaseFormData.coinName} ({purchaseFormData.sku})
+              </p>
+            )}
           </DialogHeader>
           
-          <form onSubmit={handleAddPurchase} className="space-y-4">
+          <form onSubmit={handleAddPurchase} className="space-y-6">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="purchaseYear" className="text-slate-300">Year *</Label>
+                <Label htmlFor="purchaseYear" className="text-slate-700 dark:text-slate-300">Year *</Label>
                 <Input
                   id="purchaseYear"
                   type="number"
                   value={purchaseFormData.year}
                   onChange={(e) => setPurchaseFormData({...purchaseFormData, year: parseInt(e.target.value)})}
-                  className="bg-slate-800 border-slate-700 text-white"
+                  placeholder="e.g., 1879"
+                  className="bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
                   required
                 />
               </div>
 
               <div>
-                <Label htmlFor="purchaseMintmark" className="text-slate-300">Mintmark</Label>
+                <Label htmlFor="purchaseMintmark" className="text-slate-700 dark:text-slate-300">Mintmark</Label>
                 <Input
                   id="purchaseMintmark"
                   value={purchaseFormData.mintmark}
                   onChange={(e) => setPurchaseFormData({...purchaseFormData, mintmark: e.target.value})}
-                  placeholder="e.g., D, S, P"
-                  className="bg-slate-800 border-slate-700 text-white"
+                  placeholder="e.g., D, S, P (optional)"
+                  className="bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
                 />
               </div>
 
-              <div className="col-span-2">
-                <Label htmlFor="purchaseSheldonGrade" className="text-slate-300">Sheldon Grade *</Label>
+              <div>
+                <Label htmlFor="purchaseSheldonGrade" className="text-slate-700 dark:text-slate-300">Sheldon Grade *</Label>
                 <Select 
                   value={purchaseFormData.sheldonGrade} 
                   onValueChange={(value) => setPurchaseFormData({...purchaseFormData, sheldonGrade: value as SheldonGrade})}
                 >
-                  <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
+                  <SelectTrigger className="bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="bg-slate-800 border-slate-700 max-h-60">
+                  <SelectContent className="bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-700 max-h-60">
                     {SHELDON_GRADES.map(grade => (
-                      <SelectItem key={grade} value={grade} className="text-white">{grade}</SelectItem>
+                      <SelectItem key={grade} value={grade} className="text-slate-900 dark:text-white">
+                        {grade}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
 
               <div>
-                <Label htmlFor="purchasePurchaseDate" className="text-slate-300">Purchase Date *</Label>
+                <Label htmlFor="purchasePurchaseDate" className="text-slate-700 dark:text-slate-300">Purchase Date *</Label>
                 <Input
                   id="purchasePurchaseDate"
                   type="date"
                   value={purchaseFormData.purchaseDate}
                   onChange={(e) => setPurchaseFormData({...purchaseFormData, purchaseDate: e.target.value})}
-                  className="bg-slate-800 border-slate-700 text-white"
-                  required
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="purchasePurchasePrice" className="text-slate-300">Purchase Price (CHF) *</Label>
-                <Input
-                  id="purchasePurchasePrice"
-                  type="number"
-                  step="0.01"
-                  value={purchaseFormData.purchasePrice}
-                  onChange={(e) => setPurchaseFormData({...purchaseFormData, purchasePrice: parseFloat(e.target.value)})}
-                  className="bg-slate-800 border-slate-700 text-white"
+                  className="bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
                   required
                 />
               </div>
 
               <div className="col-span-2">
-                <Label htmlFor="purchaseNotes" className="text-slate-300">Notes</Label>
+                <Label htmlFor="purchasePurchasePrice" className="text-slate-700 dark:text-slate-300">Purchase Price (CHF) *</Label>
+                <Input
+                  id="purchasePurchasePrice"
+                  type="number"
+                  step="0.01"
+                  value={purchaseFormData.purchasePrice || ""}
+                  onChange={(e) => setPurchaseFormData({...purchaseFormData, purchasePrice: parseFloat(e.target.value)})}
+                  placeholder="e.g., 19.06"
+                  className="bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
+                  required
+                />
+              </div>
+
+              <div className="col-span-2">
+                <Label htmlFor="purchaseNotes" className="text-slate-700 dark:text-slate-300">Notes</Label>
                 <Textarea
                   id="purchaseNotes"
                   value={purchaseFormData.notes}
                   onChange={(e) => setPurchaseFormData({...purchaseFormData, notes: e.target.value})}
-                  placeholder="Additional information"
+                  placeholder="Additional notes about this specific coin"
                   rows={3}
-                  className="bg-slate-800 border-slate-700 text-white"
+                  className="bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
                 />
               </div>
             </div>
 
-            <div className="flex gap-2 justify-end pt-4 border-t border-slate-700">
-              <Button type="button" variant="outline" onClick={() => setIsAddPurchaseOpen(false)} className="border-slate-600 text-slate-300">
+            <div className="flex gap-2 justify-end pt-4 border-t border-slate-200 dark:border-slate-700">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => setIsAddPurchaseOpen(false)}
+                className="border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300"
+              >
                 Cancel
               </Button>
-              <Button type="submit" className="bg-white text-slate-900 hover:bg-slate-100">
-                Add Purchase
+              <Button type="submit" className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100">
+                Add to Collection
               </Button>
             </div>
           </form>
