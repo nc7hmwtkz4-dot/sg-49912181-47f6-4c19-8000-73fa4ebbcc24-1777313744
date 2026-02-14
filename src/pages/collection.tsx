@@ -470,6 +470,13 @@ export default function Collection() {
     try {
       setIsRegisteringPurchase(true);
 
+      // Fetch the reference coin to get images
+      const { data: refCoin, error: refError } = await coinReferenceService.getReferenceBySKU(registerFormData.sku);
+      
+      if (refError || !refCoin) {
+        throw new Error("Failed to fetch reference coin details");
+      }
+
       const newCoinData = {
         sku: registerFormData.sku,
         coin_name: registerFormData.coinName,
@@ -484,8 +491,8 @@ export default function Collection() {
         purchase_date: registerFormData.purchaseDate,
         purchase_price: registerFormData.purchasePrice,
         notes: registerFormData.notes || "",
-        obverse_image_url: "",
-        reverse_image_url: "",
+        obverse_image_url: refCoin.obverse_image_url || "",
+        reverse_image_url: refCoin.reverse_image_url || "",
         is_sold: false
       };
 
