@@ -351,6 +351,15 @@ export default function Collection() {
     const referenceCoin = skuCoins[0];
     setSelectedSKU(sku);
     setPurchaseFormData({
+      sku: referenceCoin.sku,
+      coinName: referenceCoin.coinName,
+      countryCode: referenceCoin.countryCode,
+      kmNumber: referenceCoin.kmNumber,
+      metal: referenceCoin.metal,
+      purity: referenceCoin.purity,
+      weight: referenceCoin.weight,
+      obverseImageUrl: referenceCoin.obverseImageUrl || "",
+      reverseImageUrl: referenceCoin.reverseImageUrl || "",
       year: referenceCoin.year,
       mintmark: referenceCoin.mintmark || "",
       sheldonGrade: referenceCoin.sheldonGrade,
