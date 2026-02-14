@@ -318,6 +318,98 @@ export default function Collection() {
     }
   };
 
+  const handleAddCoin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    if (!formData.countryCode || !formData.kmNumber || !formData.metal || 
+        !formData.purity || !formData.weight || !formData.coinName) {
+      alert("Please fill in all required fields");
+      setIsSubmitting(false);
+      return;
+    }
+
+    try {
+      let obverseImageUrl = formData.obverseImageUrl || "";
+      let reverseImageUrl = formData.reverseImageUrl || "";
+      
+      // Upload obverse image
+      if (obverseImageFile) {
+        const result = await imageService.uploadImage(obverseImageFile);
+        obverseImageUrl = result.url;
+      }
+
+      // Upload reverse image
+      if (reverseImageFile) {
+        const result = await imageService.uploadImage(reverseImageFile);
+        reverseImageUrl = result.url;
+      }
+
+      const sku = `${formData.countryCode}-${formData.kmNumber}`;
+
+      // Check if reference coin exists
+      const { data: existingRef } = await coinReferenceService.getReferenceBySKU(sku);
+
+      if (!existingRef) {
+        // Create reference coin first
+        const { error: refError } = await coinReferenceService.createReference({
+          sku,
+          coin_name: formData.coinName!,
+          country_code: formData.countryCode,
+          km_number: formData.kmNumber!,
+          metal: formData.metal!,
+          purity: formData.purity!,
+          weight: formData.weight!,
+          obverse_image_url: obverseImageUrl || null,
+          reverse_image_url: reverseImageUrl || null
+        });
+
+        if (refError) {
+          alert("Failed to create reference coin. Please try again.");
+          console.error("Reference creation error:", refError);
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
+      // Prepare purchase form data with the created reference coin info
+      const newPurchaseFormData = {
+        sku,
+        coinName: formData.coinName!,
+        countryCode: formData.countryCode,
+        kmNumber: formData.kmNumber!,
+        metal: formData.metal!,
+        purity: formData.purity!,
+        weight: formData.weight!,
+        obverseImageUrl: obverseImageUrl,
+        reverseImageUrl: reverseImageUrl,
+        year: new Date().getFullYear(),
+        mintmark: "",
+        sheldonGrade: "MS-63" as SheldonGrade,
+        purchaseDate: new Date().toISOString().split("T")[0],
+        purchasePrice: 0,
+        notes: ""
+      };
+
+      // Close Add SKU dialog first
+      setIsAddDialogOpen(false);
+      resetForm();
+
+      // Small delay to ensure the dialog transition completes
+      setTimeout(() => {
+        setPurchaseFormData(newPurchaseFormData);
+        setIsAddPurchaseOpen(true);
+      }, 100);
+
+      await loadCoins();
+    } catch (error) {
+      console.error("Error saving reference coin:", error);
+      alert("Failed to add coin. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       countryCode: "US",
