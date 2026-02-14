@@ -124,6 +124,11 @@ export default function Collection() {
     purchasePrice: 0,
     notes: ""
   });
+  
+  // Reference coins for Register Purchase
+  const [availableReferences, setAvailableReferences] = useState<any[]>([]);
+  const [referenceFilter, setReferenceFilter] = useState("");
+  const [isLoadingReferences, setIsLoadingReferences] = useState(false);
 
   // Check authentication on mount
   useEffect(() => {
@@ -509,6 +514,7 @@ export default function Collection() {
         purchasePrice: 0,
         notes: ""
       });
+      setReferenceFilter("");
       
       // Refresh the collection
       await loadCoins();
@@ -519,6 +525,32 @@ export default function Collection() {
       setIsRegisteringPurchase(false);
     }
   };
+
+  // Load available reference coins for Register Purchase
+  const loadAvailableReferences = async () => {
+    setIsLoadingReferences(true);
+    const { data, error } = await coinReferenceService.getAllReferences();
+    
+    if (error) {
+      console.error("Error loading reference coins:", error);
+    } else if (data) {
+      setAvailableReferences(data);
+    }
+    setIsLoadingReferences(false);
+  };
+
+  // Filter reference coins based on search
+  const filteredReferences = useMemo(() => {
+    if (!referenceFilter) return availableReferences;
+    
+    const searchLower = referenceFilter.toLowerCase();
+    return availableReferences.filter(ref => 
+      ref.sku.toLowerCase().includes(searchLower) ||
+      ref.coin_name.toLowerCase().includes(searchLower) ||
+      ref.km_number.toLowerCase().includes(searchLower) ||
+      ref.country_code.toLowerCase().includes(searchLower)
+    );
+  }, [availableReferences, referenceFilter]);
 
   // Handle Record Sale
   const handleOpenRecordSale = (sku: string) => {
@@ -640,17 +672,6 @@ export default function Collection() {
     acc[coin.sku].push(coin);
     return acc;
   }, {} as Record<string, Coin[]>);
-
-  // Get unique SKUs for the Register Purchase dropdown
-  const uniqueSKUs = useMemo(() => {
-    const skuMap = new Map<string, Coin>();
-    coins.forEach(coin => {
-      if (!skuMap.has(coin.sku)) {
-        skuMap.set(coin.sku, coin);
-      }
-    });
-    return Array.from(skuMap.values());
-  }, [coins]);
 
   const uniqueCountries = Array.from(new Set(coins.map(c => c.countryCode))).sort();
 
@@ -910,7 +931,12 @@ export default function Collection() {
             </Dialog>
 
             {/* Register Purchase Dialog */}
-            <Dialog open={isRegisterPurchaseOpen} onOpenChange={setIsRegisterPurchaseOpen}>
+            <Dialog open={isRegisterPurchaseOpen} onOpenChange={(open) => {
+              setIsRegisterPurchaseOpen(open);
+              if (open) {
+                loadAvailableReferences();
+              }
+            }}>
               <DialogTrigger asChild>
                 <Button size="lg" variant="outline" className="flex items-center gap-2 border-slate-600 text-slate-300">
                   <ShoppingCart className="h-5 w-5" />
@@ -925,44 +951,81 @@ export default function Collection() {
                   </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleRegisterPurchase} className="space-y-6">
-                  {/* SKU Selection */}
+                  {/* SKU Selection with Search */}
                   <div className="space-y-4">
                     <div>
-                      <Label htmlFor="register-sku" className="text-slate-300">Select SKU *</Label>
-                      <select
-                        id="register-sku"
-                        value={registerFormData.sku}
-                        onChange={(e) => {
-                          const selectedSKU = e.target.value;
-                          const coin = uniqueSKUs.find(c => c.sku === selectedSKU);
-                          if (coin) {
-                            setRegisterFormData({
-                              ...registerFormData,
-                              sku: selectedSKU,
-                              coinName: coin.coinName || "",
-                              countryCode: coin.countryCode || "",
-                              kmNumber: coin.kmNumber || "",
-                              metal: coin.metal || "",
-                              purity: coin.purity || 0,
-                              weight: coin.weight || 0
-                            });
-                          }
-                        }}
-                        className="w-full px-3 py-2 border rounded-md bg-slate-800 border-slate-700 text-white"
-                        required
-                      >
-                        <option value="">-- Select a coin --</option>
-                        {uniqueSKUs.map((coin) => (
-                          <option key={coin.sku} value={coin.sku}>
-                            {coin.sku} - {coin.coinName}
-                          </option>
-                        ))}
-                      </select>
+                      <Label htmlFor="register-sku-search" className="text-slate-300">Search & Select SKU *</Label>
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-500" />
+                        <Input
+                          id="register-sku-search"
+                          value={referenceFilter}
+                          onChange={(e) => setReferenceFilter(e.target.value)}
+                          placeholder="Search by SKU, name, country, or KM number..."
+                          className="pl-10 bg-slate-800 border-slate-700 text-white"
+                        />
+                      </div>
                     </div>
 
-                    {/* Show coin details when selected */}
+                    {/* Show loading state */}
+                    {isLoadingReferences && (
+                      <p className="text-slate-400 text-sm">Loading reference coins...</p>
+                    )}
+
+                    {/* Show filtered results */}
+                    {!isLoadingReferences && filteredReferences.length > 0 && (
+                      <div className="border border-slate-700 rounded-lg max-h-60 overflow-y-auto bg-slate-800/50">
+                        {filteredReferences.map((ref) => (
+                          <button
+                            key={ref.sku}
+                            type="button"
+                            onClick={() => {
+                              setRegisterFormData({
+                                ...registerFormData,
+                                sku: ref.sku,
+                                coinName: ref.coin_name || "",
+                                countryCode: ref.country_code || "",
+                                kmNumber: ref.km_number || "",
+                                metal: ref.metal || "",
+                                purity: ref.purity || 0,
+                                weight: ref.weight || 0
+                              });
+                              setReferenceFilter("");
+                            }}
+                            className={`w-full text-left p-3 hover:bg-slate-700 transition-colors border-b border-slate-700 last:border-b-0 ${
+                              registerFormData.sku === ref.sku ? 'bg-slate-700' : ''
+                            }`}
+                          >
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <p className="text-white font-medium">{ref.coin_name}</p>
+                                <p className="text-slate-400 text-sm">{ref.sku}</p>
+                              </div>
+                              <div className="flex gap-2">
+                                <Badge variant="secondary" className="bg-slate-600 text-slate-200 text-xs">
+                                  {ref.country_code}
+                                </Badge>
+                                <Badge variant="secondary" className="bg-slate-600 text-slate-200 text-xs capitalize">
+                                  {ref.metal}
+                                </Badge>
+                              </div>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Show no results message */}
+                    {!isLoadingReferences && referenceFilter && filteredReferences.length === 0 && (
+                      <p className="text-slate-400 text-sm">No reference coins found. Try a different search term.</p>
+                    )}
+
+                    {/* Show selected coin details */}
                     {registerFormData.sku && (
                       <div className="p-4 bg-slate-800 rounded-lg border border-slate-700 space-y-2 text-sm">
+                        <p className="text-white font-semibold mb-2">Selected Coin:</p>
+                        <p className="text-slate-400"><strong className="text-white">SKU:</strong> {registerFormData.sku}</p>
+                        <p className="text-slate-400"><strong className="text-white">Name:</strong> {registerFormData.coinName}</p>
                         <p className="text-slate-400"><strong className="text-white">Country:</strong> {COUNTRY_CODES[registerFormData.countryCode]}</p>
                         <p className="text-slate-400"><strong className="text-white">KM#:</strong> {registerFormData.kmNumber}</p>
                         <p className="text-slate-400"><strong className="text-white">Metal:</strong> {registerFormData.metal} ({registerFormData.purity}%)</p>
@@ -999,14 +1062,21 @@ export default function Collection() {
 
                   <div>
                     <Label htmlFor="register-grade" className="text-slate-300">Sheldon Grade *</Label>
-                    <Input
-                      id="register-grade"
-                      value={registerFormData.sheldonGrade}
-                      onChange={(e) => setRegisterFormData({ ...registerFormData, sheldonGrade: e.target.value })}
-                      placeholder="e.g., MS65, AU58, VF30"
-                      className="bg-slate-800 border-slate-700 text-white"
-                      required
-                    />
+                    <Select 
+                      value={registerFormData.sheldonGrade} 
+                      onValueChange={(value) => setRegisterFormData({ ...registerFormData, sheldonGrade: value })}
+                    >
+                      <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
+                        <SelectValue placeholder="Select grade" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-slate-800 border-slate-700 max-h-60">
+                        {SHELDON_GRADES.map(grade => (
+                          <SelectItem key={grade} value={grade} className="text-white">
+                            {grade}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
@@ -1038,11 +1108,11 @@ export default function Collection() {
 
                   <div>
                     <Label htmlFor="register-notes" className="text-slate-300">Notes</Label>
-                    <textarea
+                    <Textarea
                       id="register-notes"
                       value={registerFormData.notes}
                       onChange={(e) => setRegisterFormData({ ...registerFormData, notes: e.target.value })}
-                      className="w-full px-3 py-2 border rounded-md bg-slate-800 border-slate-700 text-white min-h-[80px]"
+                      className="bg-slate-800 border-slate-700 text-white min-h-[80px]"
                       placeholder="Optional notes about this coin"
                     />
                   </div>
@@ -1051,7 +1121,7 @@ export default function Collection() {
                     <Button type="button" variant="outline" onClick={() => setIsRegisterPurchaseOpen(false)} className="border-slate-600 text-slate-300">
                       Cancel
                     </Button>
-                    <Button type="submit" disabled={isRegisteringPurchase} className="bg-white text-slate-900 hover:bg-slate-100">
+                    <Button type="submit" disabled={isRegisteringPurchase || !registerFormData.sku} className="bg-white text-slate-900 hover:bg-slate-100">
                       {isRegisteringPurchase ? "Registering..." : "Register Purchase"}
                     </Button>
                   </div>
