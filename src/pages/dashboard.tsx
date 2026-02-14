@@ -23,6 +23,7 @@ export default function Dashboard() {
     totalCost: 0,
     totalProfit: 0,
     profitMargin: 0,
+    unrealizedProfitLoss: 0,
     countryDistribution: [] as { country: string; count: number; percentage: number }[],
     metalDistribution: [] as { metal: string; count: number; percentage: number }[]
   });
@@ -125,6 +126,10 @@ export default function Dashboard() {
     
     const totalCost = coins.reduce((sum, coin) => sum + coin.purchasePrice, 0);
     
+    // Calculate unrealized profit/loss for unsold coins (current bullion value - purchase price)
+    const unsoldCost = unsoldCoins.reduce((sum, coin) => sum + coin.purchasePrice, 0);
+    const unrealizedProfitLoss = totalBullionValue - unsoldCost;
+    
     const totalSalesAmount = sales.reduce((sum, sale) => sum + sale.salePrice, 0);
     
     const totalProfit = sales.reduce((sum, sale) => {
@@ -171,6 +176,7 @@ export default function Dashboard() {
       totalCost,
       totalProfit,
       profitMargin,
+      unrealizedProfitLoss,
       countryDistribution,
       metalDistribution
     });
@@ -208,7 +214,7 @@ export default function Dashboard() {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
           {/* Total Coins */}
           <Card className="glass-card hover-lift">
             <CardContent className="pt-6">
@@ -241,6 +247,24 @@ export default function Dashboard() {
                 </div>
                 <div className="w-12 h-12 rounded-lg bg-secondary/10 flex items-center justify-center">
                   <TrendingUp className="w-6 h-6 text-secondary" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Unrealized P/L */}
+          <Card className="glass-card hover-lift">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Unrealized P/L</p>
+                  <p className={`text-3xl font-bold mt-1 ${stats.unrealizedProfitLoss >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                    {stats.unrealizedProfitLoss >= 0 ? '+' : ''}{stats.unrealizedProfitLoss.toFixed(2)} CHF
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-2">Spot value vs cost</p>
+                </div>
+                <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${stats.unrealizedProfitLoss >= 0 ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
+                  <TrendingUp className={`w-6 h-6 ${stats.unrealizedProfitLoss >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`} />
                 </div>
               </div>
             </CardContent>
