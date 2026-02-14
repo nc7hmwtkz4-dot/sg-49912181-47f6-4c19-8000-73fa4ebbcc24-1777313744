@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Upload, DollarSign, ShoppingCart, Search, Package } from "lucide-react";
@@ -103,6 +103,25 @@ export default function Collection() {
     saleDate: new Date().toISOString().split("T")[0],
     salePrice: 0,
     buyerInfo: "",
+    notes: ""
+  });
+
+  // Register purchase dialog state
+  const [isRegisterPurchaseOpen, setIsRegisterPurchaseOpen] = useState(false);
+  const [isRegisteringPurchase, setIsRegisteringPurchase] = useState(false);
+  const [registerFormData, setRegisterFormData] = useState({
+    sku: "",
+    coinName: "",
+    country: "",
+    kmNumber: "",
+    metal: "",
+    purity: 0,
+    weight: 0,
+    year: 0,
+    mintmark: "",
+    sheldonGrade: "",
+    purchaseDate: new Date().toISOString().split("T")[0],
+    purchasePrice: 0,
     notes: ""
   });
 
@@ -321,90 +340,54 @@ export default function Collection() {
 
   const handleAddCoin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
+    setIsSubmitting(false);
 
-    if (!formData.countryCode || !formData.kmNumber || !formData.metal || 
-        !formData.purity || !formData.weight || !formData.coinName) {
-      alert("Please fill in all required fields");
-      setIsSubmitting(false);
+    if (!user) {
+      alert("Please log in to add coins.");
       return;
     }
 
     try {
-      let obverseImageUrl = formData.obverseImageUrl || "";
-      let reverseImageUrl = formData.reverseImageUrl || "";
+      setIsSubmitting(true);
+
+      // Create reference coin
+      const { data: newCoin, error } = await coinReferenceService.createReference({
+        sku: formData.sku,
+        country: formData.country,
+        kmNumber: formData.kmNumber,
+        coinName: formData.coinName,
+        metal: formData.metal,
+        purity: formData.purity,
+        weight: formData.weight,
+        obverseImage: formData.obverseImage,
+        reverseImage: formData.reverseImage,
+        userId: user.id
+      });
+
+      if (error || !newCoin) {
+        throw new Error(error?.message || "Failed to create reference coin");
+      }
+
+      alert("Reference coin created successfully!");
       
-      // Upload obverse image
-      if (obverseImageFile) {
-        const result = await imageService.uploadImage(obverseImageFile);
-        obverseImageUrl = result.url;
-      }
-
-      // Upload reverse image
-      if (reverseImageFile) {
-        const result = await imageService.uploadImage(reverseImageFile);
-        reverseImageUrl = result.url;
-      }
-
-      const sku = `${formData.countryCode}-${formData.kmNumber}`;
-
-      // Check if reference coin exists
-      const { data: existingRef } = await coinReferenceService.getReferenceBySKU(sku);
-
-      if (!existingRef) {
-        // Create reference coin first
-        const { error: refError } = await coinReferenceService.createReference({
-          sku,
-          coin_name: formData.coinName!,
-          country_code: formData.countryCode,
-          km_number: formData.kmNumber!,
-          metal: formData.metal!,
-          purity: formData.purity!,
-          weight: formData.weight!,
-          obverse_image_url: obverseImageUrl || null,
-          reverse_image_url: reverseImageUrl || null
-        });
-
-        if (refError) {
-          alert("Failed to create reference coin. Please try again.");
-          console.error("Reference creation error:", refError);
-          setIsSubmitting(false);
-          return;
-        }
-      }
-
-      // Prepare purchase form data with the created reference coin info
-      const newPurchaseFormData = {
-        sku,
-        coinName: formData.coinName!,
-        countryCode: formData.countryCode,
-        kmNumber: formData.kmNumber!,
-        metal: formData.metal!,
-        purity: formData.purity!,
-        weight: formData.weight!,
-        obverseImageUrl: obverseImageUrl,
-        reverseImageUrl: reverseImageUrl,
-        year: new Date().getFullYear(),
-        mintmark: "",
-        sheldonGrade: "MS-63" as SheldonGrade,
-        purchaseDate: new Date().toISOString().split("T")[0],
-        purchasePrice: 0,
-        notes: ""
-      };
-
-      // Close Add SKU dialog first
-      setIsAddDialogOpen(false);
-      resetForm();
-
-      // Small delay to ensure the dialog transition completes
-      setTimeout(() => {
-        setPurchaseFormData(newPurchaseFormData);
-        setIsAddPurchaseOpen(true);
-      }, 100);
-
-      await loadCoins();
-    } catch (error) {
-      console.error("Error saving reference coin:", error);
+      // Close dialog and reset form
+      setIsAddCoinOpen(false);
+      setFormData({
+        sku: "",
+        country: "",
+        kmNumber: "",
+        coinName: "",
+        metal: "",
+        purity: 0,
+        weight: 0,
+        obverseImage: "",
+        reverseImage: ""
+      });
+      
+      // Refresh the page to show new coin
+      await fetchUserCoins();
+    } catch (err) {
+      console.error("Error adding coin:", err);
       alert("Failed to add coin. Please try again.");
     } finally {
       setIsSubmitting(false);
@@ -517,6 +500,69 @@ export default function Collection() {
       purchasePrice: 0,
       notes: ""
     });
+  };
+
+  // Handle Register Purchase
+  const handleRegisterPurchase = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!user) {
+      alert("Please log in to register purchases.");
+      return;
+    }
+
+    if (!registerFormData.sku) {
+      alert("Please select a SKU.");
+      return;
+    }
+
+    try {
+      setIsRegisteringPurchase(true);
+
+      const { error } = await userCoinService.createUserCoin({
+        userId: user.id,
+        sku: registerFormData.sku,
+        year: registerFormData.year,
+        mintmark: registerFormData.mintmark || null,
+        sheldonGrade: registerFormData.sheldonGrade,
+        purchaseDate: registerFormData.purchaseDate,
+        purchasePrice: registerFormData.purchasePrice,
+        notes: registerFormData.notes || null,
+        isSold: false
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      alert("Purchase registered successfully!");
+      
+      // Close dialog and reset form
+      setIsRegisterPurchaseOpen(false);
+      setRegisterFormData({
+        sku: "",
+        coinName: "",
+        country: "",
+        kmNumber: "",
+        metal: "",
+        purity: 0,
+        weight: 0,
+        year: 0,
+        mintmark: "",
+        sheldonGrade: "",
+        purchaseDate: new Date().toISOString().split("T")[0],
+        purchasePrice: 0,
+        notes: ""
+      });
+      
+      // Refresh the collection
+      await fetchUserCoins();
+    } catch (err) {
+      console.error("Error registering purchase:", err);
+      alert("Failed to register purchase. Please try again.");
+    } finally {
+      setIsRegisteringPurchase(false);
+    }
   };
 
   // Handle Record Sale
@@ -684,23 +730,17 @@ export default function Collection() {
             </p>
           </div>
 
-          <div className="flex gap-3 flex-wrap">
-            <Button variant="outline" className="border-slate-600 text-slate-300 hover:bg-slate-800">
-              <Upload className="w-4 h-4 mr-2" />
-              Import CSV
-            </Button>
-            
-            <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
-              setIsAddDialogOpen(open);
-              if (!open) resetForm();
-            }}>
+          {/* Action Buttons */}
+          <div className="flex gap-3 mb-6">
+            <Dialog open={isAddCoinOpen} onOpenChange={setIsAddCoinOpen}>
               <DialogTrigger asChild>
-                <Button className="bg-white text-slate-900 hover:bg-slate-100">
-                  <Plus className="w-4 h-4 mr-2" />
+                <Button size="lg" className="flex items-center gap-2">
+                  <Plus className="h-5 w-5" />
                   Add SKU
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-slate-900 border-slate-700">
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                {/* Add Coin Dialog Content - same as before */}
                 <DialogHeader>
                   <DialogTitle className="text-2xl text-white">
                     Add New Coin Reference (SKU)
@@ -710,7 +750,7 @@ export default function Collection() {
                   </p>
                 </DialogHeader>
                 
-                <form onSubmit={handleSubmit} className="space-y-6">
+                <form onSubmit={handleAddCoin} className="space-y-6">
                   {/* Search existing reference coins */}
                   <div className="p-4 bg-slate-800/50 rounded-lg border border-slate-700">
                     <Label htmlFor="referenceSearch" className="text-slate-300 mb-2 block">
@@ -898,6 +938,151 @@ export default function Collection() {
                     </Button>
                     <Button type="submit" disabled={isSubmitting} className="bg-white text-slate-900 hover:bg-slate-100">
                       {isSubmitting ? "Creating..." : "Create Reference Coin"}
+                    </Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
+
+            {/* Register Purchase Dialog */}
+            <Dialog open={isRegisterPurchaseOpen} onOpenChange={setIsRegisterPurchaseOpen}>
+              <DialogTrigger asChild>
+                <Button size="lg" variant="outline" className="flex items-center gap-2">
+                  <Plus className="h-5 w-5" />
+                  Register Purchase
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Register Coin Purchase</DialogTitle>
+                  <DialogDescription>
+                    Select an existing SKU and add purchase details for a coin in your collection.
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleRegisterPurchase} className="space-y-6">
+                  {/* SKU Selection */}
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="register-sku">Select SKU *</Label>
+                      <select
+                        id="register-sku"
+                        value={registerFormData.sku}
+                        onChange={(e) => {
+                          const selectedSKU = e.target.value;
+                          const coin = uniqueSKUs.find(c => c.sku === selectedSKU);
+                          if (coin) {
+                            setRegisterFormData({
+                              ...registerFormData,
+                              sku: selectedSKU,
+                              coinName: coin.coinName || "",
+                              country: coin.country || "",
+                              kmNumber: coin.kmNumber || "",
+                              metal: coin.metal || "",
+                              purity: coin.purity || 0,
+                              weight: coin.weight || 0
+                            });
+                          }
+                        }}
+                        className="w-full px-3 py-2 border rounded-md bg-background"
+                        required
+                      >
+                        <option value="">-- Select a coin --</option>
+                        {uniqueSKUs.map((coin) => (
+                          <option key={coin.sku} value={coin.sku}>
+                            {coin.sku} - {coin.coinName}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Show coin details when selected */}
+                    {registerFormData.sku && (
+                      <div className="p-4 bg-muted rounded-lg space-y-2 text-sm">
+                        <p><strong>Country:</strong> {registerFormData.country}</p>
+                        <p><strong>KM#:</strong> {registerFormData.kmNumber}</p>
+                        <p><strong>Metal:</strong> {registerFormData.metal} ({registerFormData.purity}%)</p>
+                        <p><strong>Weight:</strong> {registerFormData.weight}g</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Purchase Details */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="register-year">Year *</Label>
+                      <Input
+                        id="register-year"
+                        type="number"
+                        value={registerFormData.year || ""}
+                        onChange={(e) => setRegisterFormData({ ...registerFormData, year: parseInt(e.target.value) || 0 })}
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="register-mintmark">Mintmark</Label>
+                      <Input
+                        id="register-mintmark"
+                        value={registerFormData.mintmark}
+                        onChange={(e) => setRegisterFormData({ ...registerFormData, mintmark: e.target.value })}
+                        placeholder="Optional"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="register-grade">Sheldon Grade *</Label>
+                    <Input
+                      id="register-grade"
+                      value={registerFormData.sheldonGrade}
+                      onChange={(e) => setRegisterFormData({ ...registerFormData, sheldonGrade: e.target.value })}
+                      placeholder="e.g., MS65, AU58, VF30"
+                      required
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="register-purchase-date">Purchase Date *</Label>
+                      <Input
+                        id="register-purchase-date"
+                        type="date"
+                        value={registerFormData.purchaseDate}
+                        onChange={(e) => setRegisterFormData({ ...registerFormData, purchaseDate: e.target.value })}
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="register-purchase-price">Purchase Price (CHF) *</Label>
+                      <Input
+                        id="register-purchase-price"
+                        type="number"
+                        step="0.01"
+                        value={registerFormData.purchasePrice || ""}
+                        onChange={(e) => setRegisterFormData({ ...registerFormData, purchasePrice: parseFloat(e.target.value) || 0 })}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="register-notes">Notes</Label>
+                    <textarea
+                      id="register-notes"
+                      value={registerFormData.notes}
+                      onChange={(e) => setRegisterFormData({ ...registerFormData, notes: e.target.value })}
+                      className="w-full px-3 py-2 border rounded-md bg-background min-h-[80px]"
+                      placeholder="Optional notes about this coin"
+                    />
+                  </div>
+
+                  <div className="flex justify-end gap-3 pt-4">
+                    <Button type="button" variant="outline" onClick={() => setIsRegisterPurchaseOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={isRegisteringPurchase}>
+                      {isRegisteringPurchase ? "Registering..." : "Register Purchase"}
                     </Button>
                   </div>
                 </form>
