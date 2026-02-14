@@ -112,7 +112,7 @@ export default function Collection() {
   const [registerFormData, setRegisterFormData] = useState({
     sku: "",
     coinName: "",
-    country: "",
+    countryCode: "",
     kmNumber: "",
     metal: "",
     purity: 0,
@@ -183,10 +183,14 @@ export default function Collection() {
     const timer = setTimeout(async () => {
       if (referenceSearchTerm.trim().length >= 2) {
         setIsSearching(true);
+        console.log("Searching for:", referenceSearchTerm);
         const { data, error } = await coinReferenceService.searchReferences(referenceSearchTerm);
         
+        console.log("Search results:", { data, error });
         if (!error && data) {
           setReferenceSearchResults(data);
+        } else {
+          console.error("Search error:", error);
         }
         setIsSearching(false);
       } else {
@@ -287,6 +291,7 @@ export default function Collection() {
     }
 
     try {
+      setIsSubmitting(true);
       let obverseImageUrl = formData.obverseImageUrl || "";
       let reverseImageUrl = formData.reverseImageUrl || "";
       
@@ -328,67 +333,13 @@ export default function Collection() {
         }
       }
 
-      alert(`Reference coin ${sku} created successfully! Now use "Add Purchase" to add individual coins.`);
+      alert(`Reference coin ${sku} created successfully! Use "Register Purchase" to add individual coins.`);
       await loadCoins();
       resetForm();
       setIsAddDialogOpen(false);
     } catch (error) {
       console.error("Error saving reference coin:", error);
       alert("Failed to save reference coin. Please try again.");
-    }
-  };
-
-  const handleAddCoin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(false);
-
-    if (!user) {
-      alert("Please log in to add coins.");
-      return;
-    }
-
-    try {
-      setIsSubmitting(true);
-
-      // Create reference coin
-      const { data: newCoin, error } = await coinReferenceService.createReference({
-        sku: formData.sku,
-        country: formData.country,
-        kmNumber: formData.kmNumber,
-        coinName: formData.coinName,
-        metal: formData.metal,
-        purity: formData.purity,
-        weight: formData.weight,
-        obverseImage: formData.obverseImage,
-        reverseImage: formData.reverseImage,
-        userId: user.id
-      });
-
-      if (error || !newCoin) {
-        throw new Error(error?.message || "Failed to create reference coin");
-      }
-
-      alert("Reference coin created successfully!");
-      
-      // Close dialog and reset form
-      setIsAddCoinOpen(false);
-      setFormData({
-        sku: "",
-        country: "",
-        kmNumber: "",
-        coinName: "",
-        metal: "",
-        purity: 0,
-        weight: 0,
-        obverseImage: "",
-        reverseImage: ""
-      });
-      
-      // Refresh the page to show new coin
-      await fetchUserCoins();
-    } catch (err) {
-      console.error("Error adding coin:", err);
-      alert("Failed to add coin. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -506,11 +457,6 @@ export default function Collection() {
   const handleRegisterPurchase = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!user) {
-      alert("Please log in to register purchases.");
-      return;
-    }
-
     if (!registerFormData.sku) {
       alert("Please select a SKU.");
       return;
@@ -519,17 +465,26 @@ export default function Collection() {
     try {
       setIsRegisteringPurchase(true);
 
-      const { error } = await userCoinService.createUserCoin({
-        userId: user.id,
+      const newCoinData = {
         sku: registerFormData.sku,
+        coin_name: registerFormData.coinName,
+        country_code: registerFormData.countryCode,
+        km_number: registerFormData.kmNumber,
+        metal: registerFormData.metal,
+        purity: registerFormData.purity,
+        weight: registerFormData.weight,
         year: registerFormData.year,
-        mintmark: registerFormData.mintmark || null,
-        sheldonGrade: registerFormData.sheldonGrade,
-        purchaseDate: registerFormData.purchaseDate,
-        purchasePrice: registerFormData.purchasePrice,
-        notes: registerFormData.notes || null,
-        isSold: false
-      });
+        mintmark: registerFormData.mintmark || "",
+        grade: registerFormData.sheldonGrade,
+        purchase_date: registerFormData.purchaseDate,
+        purchase_price: registerFormData.purchasePrice,
+        notes: registerFormData.notes || "",
+        obverse_image_url: "",
+        reverse_image_url: "",
+        is_sold: false
+      };
+
+      const { error } = await userCoinService.addUserCoin(newCoinData);
 
       if (error) {
         throw new Error(error.message);
@@ -542,7 +497,7 @@ export default function Collection() {
       setRegisterFormData({
         sku: "",
         coinName: "",
-        country: "",
+        countryCode: "",
         kmNumber: "",
         metal: "",
         purity: 0,
@@ -556,7 +511,7 @@ export default function Collection() {
       });
       
       // Refresh the collection
-      await fetchUserCoins();
+      await loadCoins();
     } catch (err) {
       console.error("Error registering purchase:", err);
       alert("Failed to register purchase. Please try again.");
@@ -686,6 +641,17 @@ export default function Collection() {
     return acc;
   }, {} as Record<string, Coin[]>);
 
+  // Get unique SKUs for the Register Purchase dropdown
+  const uniqueSKUs = useMemo(() => {
+    const skuMap = new Map<string, Coin>();
+    coins.forEach(coin => {
+      if (!skuMap.has(coin.sku)) {
+        skuMap.set(coin.sku, coin);
+      }
+    });
+    return Array.from(skuMap.values());
+  }, [coins]);
+
   const uniqueCountries = Array.from(new Set(coins.map(c => c.countryCode))).sort();
 
   // Show loading state while checking auth
@@ -731,8 +697,8 @@ export default function Collection() {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex gap-3 mb-6">
-            <Dialog open={isAddCoinOpen} onOpenChange={setIsAddCoinOpen}>
+          <div className="flex gap-3">
+            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
               <DialogTrigger asChild>
                 <Button size="lg" className="flex items-center gap-2">
                   <Plus className="h-5 w-5" />
@@ -740,17 +706,16 @@ export default function Collection() {
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                {/* Add Coin Dialog Content - same as before */}
                 <DialogHeader>
                   <DialogTitle className="text-2xl text-white">
                     Add New Coin Reference (SKU)
                   </DialogTitle>
                   <p className="text-slate-400 text-sm">
-                    Define the coin type specifications. Individual coins are added via "Add Purchase" button.
+                    Define the coin type specifications. Individual coins are added via "Register Purchase" button.
                   </p>
                 </DialogHeader>
                 
-                <form onSubmit={handleAddCoin} className="space-y-6">
+                <form onSubmit={handleSubmit} className="space-y-6">
                   {/* Search existing reference coins */}
                   <div className="p-4 bg-slate-800/50 rounded-lg border border-slate-700">
                     <Label htmlFor="referenceSearch" className="text-slate-300 mb-2 block">
@@ -947,15 +912,15 @@ export default function Collection() {
             {/* Register Purchase Dialog */}
             <Dialog open={isRegisterPurchaseOpen} onOpenChange={setIsRegisterPurchaseOpen}>
               <DialogTrigger asChild>
-                <Button size="lg" variant="outline" className="flex items-center gap-2">
-                  <Plus className="h-5 w-5" />
+                <Button size="lg" variant="outline" className="flex items-center gap-2 border-slate-600 text-slate-300">
+                  <ShoppingCart className="h-5 w-5" />
                   Register Purchase
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-slate-900 border-slate-700">
                 <DialogHeader>
-                  <DialogTitle>Register Coin Purchase</DialogTitle>
-                  <DialogDescription>
+                  <DialogTitle className="text-white">Register Coin Purchase</DialogTitle>
+                  <DialogDescription className="text-slate-400">
                     Select an existing SKU and add purchase details for a coin in your collection.
                   </DialogDescription>
                 </DialogHeader>
@@ -963,7 +928,7 @@ export default function Collection() {
                   {/* SKU Selection */}
                   <div className="space-y-4">
                     <div>
-                      <Label htmlFor="register-sku">Select SKU *</Label>
+                      <Label htmlFor="register-sku" className="text-slate-300">Select SKU *</Label>
                       <select
                         id="register-sku"
                         value={registerFormData.sku}
@@ -975,7 +940,7 @@ export default function Collection() {
                               ...registerFormData,
                               sku: selectedSKU,
                               coinName: coin.coinName || "",
-                              country: coin.country || "",
+                              countryCode: coin.countryCode || "",
                               kmNumber: coin.kmNumber || "",
                               metal: coin.metal || "",
                               purity: coin.purity || 0,
@@ -983,7 +948,7 @@ export default function Collection() {
                             });
                           }
                         }}
-                        className="w-full px-3 py-2 border rounded-md bg-background"
+                        className="w-full px-3 py-2 border rounded-md bg-slate-800 border-slate-700 text-white"
                         required
                       >
                         <option value="">-- Select a coin --</option>
@@ -997,11 +962,11 @@ export default function Collection() {
 
                     {/* Show coin details when selected */}
                     {registerFormData.sku && (
-                      <div className="p-4 bg-muted rounded-lg space-y-2 text-sm">
-                        <p><strong>Country:</strong> {registerFormData.country}</p>
-                        <p><strong>KM#:</strong> {registerFormData.kmNumber}</p>
-                        <p><strong>Metal:</strong> {registerFormData.metal} ({registerFormData.purity}%)</p>
-                        <p><strong>Weight:</strong> {registerFormData.weight}g</p>
+                      <div className="p-4 bg-slate-800 rounded-lg border border-slate-700 space-y-2 text-sm">
+                        <p className="text-slate-400"><strong className="text-white">Country:</strong> {COUNTRY_CODES[registerFormData.countryCode]}</p>
+                        <p className="text-slate-400"><strong className="text-white">KM#:</strong> {registerFormData.kmNumber}</p>
+                        <p className="text-slate-400"><strong className="text-white">Metal:</strong> {registerFormData.metal} ({registerFormData.purity}%)</p>
+                        <p className="text-slate-400"><strong className="text-white">Weight:</strong> {registerFormData.weight}g</p>
                       </div>
                     )}
                   </div>
@@ -1009,79 +974,84 @@ export default function Collection() {
                   {/* Purchase Details */}
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="register-year">Year *</Label>
+                      <Label htmlFor="register-year" className="text-slate-300">Year *</Label>
                       <Input
                         id="register-year"
                         type="number"
                         value={registerFormData.year || ""}
                         onChange={(e) => setRegisterFormData({ ...registerFormData, year: parseInt(e.target.value) || 0 })}
+                        className="bg-slate-800 border-slate-700 text-white"
                         required
                       />
                     </div>
 
                     <div>
-                      <Label htmlFor="register-mintmark">Mintmark</Label>
+                      <Label htmlFor="register-mintmark" className="text-slate-300">Mintmark</Label>
                       <Input
                         id="register-mintmark"
                         value={registerFormData.mintmark}
                         onChange={(e) => setRegisterFormData({ ...registerFormData, mintmark: e.target.value })}
                         placeholder="Optional"
+                        className="bg-slate-800 border-slate-700 text-white"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <Label htmlFor="register-grade">Sheldon Grade *</Label>
+                    <Label htmlFor="register-grade" className="text-slate-300">Sheldon Grade *</Label>
                     <Input
                       id="register-grade"
                       value={registerFormData.sheldonGrade}
                       onChange={(e) => setRegisterFormData({ ...registerFormData, sheldonGrade: e.target.value })}
                       placeholder="e.g., MS65, AU58, VF30"
+                      className="bg-slate-800 border-slate-700 text-white"
                       required
                     />
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="register-purchase-date">Purchase Date *</Label>
+                      <Label htmlFor="register-purchase-date" className="text-slate-300">Purchase Date *</Label>
                       <Input
                         id="register-purchase-date"
                         type="date"
                         value={registerFormData.purchaseDate}
                         onChange={(e) => setRegisterFormData({ ...registerFormData, purchaseDate: e.target.value })}
+                        className="bg-slate-800 border-slate-700 text-white"
                         required
                       />
                     </div>
 
                     <div>
-                      <Label htmlFor="register-purchase-price">Purchase Price (CHF) *</Label>
+                      <Label htmlFor="register-purchase-price" className="text-slate-300">Purchase Price (CHF) *</Label>
                       <Input
                         id="register-purchase-price"
                         type="number"
                         step="0.01"
                         value={registerFormData.purchasePrice || ""}
                         onChange={(e) => setRegisterFormData({ ...registerFormData, purchasePrice: parseFloat(e.target.value) || 0 })}
+                        className="bg-slate-800 border-slate-700 text-white"
                         required
                       />
                     </div>
                   </div>
 
                   <div>
-                    <Label htmlFor="register-notes">Notes</Label>
+                    <Label htmlFor="register-notes" className="text-slate-300">Notes</Label>
                     <textarea
                       id="register-notes"
                       value={registerFormData.notes}
                       onChange={(e) => setRegisterFormData({ ...registerFormData, notes: e.target.value })}
-                      className="w-full px-3 py-2 border rounded-md bg-background min-h-[80px]"
+                      className="w-full px-3 py-2 border rounded-md bg-slate-800 border-slate-700 text-white min-h-[80px]"
                       placeholder="Optional notes about this coin"
                     />
                   </div>
 
-                  <div className="flex justify-end gap-3 pt-4">
-                    <Button type="button" variant="outline" onClick={() => setIsRegisterPurchaseOpen(false)}>
+                  <div className="flex justify-end gap-3 pt-4 border-t border-slate-700">
+                    <Button type="button" variant="outline" onClick={() => setIsRegisterPurchaseOpen(false)} className="border-slate-600 text-slate-300">
                       Cancel
                     </Button>
-                    <Button type="submit" disabled={isRegisteringPurchase}>
+                    <Button type="submit" disabled={isRegisteringPurchase} className="bg-white text-slate-900 hover:bg-slate-100">
                       {isRegisteringPurchase ? "Registering..." : "Register Purchase"}
                     </Button>
                   </div>
