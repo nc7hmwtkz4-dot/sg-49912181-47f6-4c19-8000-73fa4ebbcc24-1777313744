@@ -86,10 +86,11 @@ export default function Dashboard() {
     
     const totalInvestment = unsoldCoins.reduce((sum, coin) => sum + (coin.purchase_price || 0), 0);
     
-    // Calculate total profit from actual sales data with proper field names
+    // Calculate total profit from actual sales data - matching sales page logic
     const totalProfit = salesData.reduce((sum, sale) => {
-      // Use the profit field from the database (calculated by trigger)
-      return sum + (sale.profit || 0);
+      // Each sale record has sale_price and purchase_price from the database
+      const profit = (sale.sale_price || 0) - (sale.purchase_price || 0);
+      return sum + profit;
     }, 0);
     
     const unrealizedPL = totalBullionValue - totalInvestment;
