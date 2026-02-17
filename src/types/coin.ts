@@ -17,6 +17,7 @@ export interface Coin {
   reverseImageUrl?: string;
   isSold: boolean;
   saleId?: string;
+  listingId?: string;
 }
 
 export interface Sale {

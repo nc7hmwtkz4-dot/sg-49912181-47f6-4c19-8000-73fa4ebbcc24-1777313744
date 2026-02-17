@@ -1,29 +1,32 @@
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/router";
-import { SEO } from "@/components/SEO";
 import { Layout } from "@/components/Layout";
-import { spotPriceService } from "@/lib/spotPrices";
-import { imageService } from "@/services/imageService";
-import { userCoinService } from "@/services/userCoinService";
-import { userSalesService } from "@/services/userSalesService";
-import { coinReferenceService } from "@/services/coinReferenceService";
-import { supabase } from "@/integrations/supabase/client";
-import { Coin, COUNTRY_CODES, SHELDON_GRADES, SheldonGrade } from "@/types/coin";
+import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Upload, DollarSign, ShoppingCart, Search, Package } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AlertCircle, Plus, Edit, Trash2, TrendingUp, Package, DollarSign, Eye, Gavel, ShoppingCart, Search } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { userCoinService } from "@/services/userCoinService";
+import { userSalesService } from "@/services/userSalesService";
+import { imageService } from "@/services/imageService";
+import { spotPriceService } from "@/lib/spotPrices";
+import { supabase } from "@/integrations/supabase/client";
 import { ImageViewer } from "@/components/ImageViewer";
+import { coinReferenceService } from "@/services/coinReferenceService";
+import { createListing } from "@/services/listingService";
+import { type Coin, type SheldonGrade, SHELDON_GRADES, COUNTRY_CODES } from "@/types/coin";
 
 export default function Collection() {
   const router = useRouter();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [coins, setCoins] = useState<Coin[]>([]);
   const [filteredCoins, setFilteredCoins] = useState<Coin[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -131,6 +134,20 @@ export default function Collection() {
   const [referenceFilter, setReferenceFilter] = useState("");
   const [isLoadingReferences, setIsLoadingReferences] = useState(false);
 
+  // Create listing dialog state
+  const [isCreateListingDialogOpen, setIsCreateListingDialogOpen] = useState(false);
+  const [listingCoin, setListingCoin] = useState<Coin | null>(null);
+  const [listingFormData, setListingFormData] = useState({
+    platform: "",
+    startingPrice: "",
+    currentBid: "",
+    expectedEndDate: "",
+    notes: ""
+  });
+
+  // Image viewer state
+  const [viewImage, setViewImage] = useState<{ url: string; alt: string } | null>(null);
+
   // Check authentication on mount
   useEffect(() => {
     checkAuth();
@@ -228,13 +245,14 @@ export default function Collection() {
         metal: c.metal as "gold" | "silver" | "copper" | "platinum" | "palladium" | "other",
         purity: c.purity,
         weight: c.weight,
-        sheldonGrade: c.grade as SheldonGrade,
+        sheldonGrade: c.grade as any,
         purchasePrice: c.purchase_price,
         purchaseDate: c.purchase_date,
         notes: c.notes || "",
         obverseImageUrl: c.obverse_image_url || "",
         reverseImageUrl: c.reverse_image_url || "",
-        isSold: c.is_sold
+        isSold: c.is_sold,
+        listingId: c.listing_id || undefined
       }));
       
       setCoins(mappedCoins);
@@ -458,6 +476,71 @@ export default function Collection() {
       notes: ""
     });
   };
+
+  async function handleDeleteCoin(id: string) {
+    if (!confirm("Are you sure you want to delete this coin? This action cannot be undone.")) {
+      return;
+    }
+
+    const { error } = await userCoinService.deleteUserCoin(id);
+    if (error) {
+      console.error("Error deleting coin:", error);
+      alert("Failed to delete coin");
+      return;
+    }
+
+    loadCoins();
+  }
+
+  function openEditDialog(coin: Coin) {
+    setEditingCoin(coin);
+    setFormData({
+      countryCode: coin.countryCode,
+      kmNumber: coin.kmNumber,
+      coinName: coin.coinName,
+      metal: coin.metal,
+      purity: coin.purity,
+      weight: coin.weight,
+      obverseImageUrl: coin.obverseImageUrl,
+      reverseImageUrl: coin.reverseImageUrl
+    });
+    setObverseImagePreview(coin.obverseImageUrl || "");
+    setReverseImagePreview(coin.reverseImageUrl || "");
+    setIsAddDialogOpen(true);
+  }
+
+  function openCreateListingDialog(coin: Coin) {
+    setListingCoin(coin);
+    setListingFormData({
+      platform: "",
+      startingPrice: coin.purchasePrice.toString(),
+      currentBid: "",
+      expectedEndDate: "",
+      notes: ""
+    });
+    setIsCreateListingDialogOpen(true);
+  }
+
+  async function handleCreateListing() {
+    if (!listingCoin) return;
+
+    const data = {
+      coinId: listingCoin.id,
+      platform: listingFormData.platform,
+      startingPrice: parseFloat(listingFormData.startingPrice),
+      currentBid: listingFormData.currentBid ? parseFloat(listingFormData.currentBid) : undefined,
+      expectedEndDate: listingFormData.expectedEndDate || undefined,
+      notes: listingFormData.notes || undefined
+    };
+
+    const { error: listingError } = await createListing(data);
+    if (listingError) {
+      setError(listingError.message);
+    } else {
+      setIsCreateListingDialogOpen(false);
+      loadCoins(); // Reload to show updated status
+    }
+  }
 
   // Handle Register Purchase
   const handleRegisterPurchase = async (e: React.FormEvent) => {
@@ -1300,8 +1383,8 @@ export default function Collection() {
                               <h3 className="text-white font-semibold line-clamp-2 min-h-[3rem]">
                                 {coin.coinName || `${COUNTRY_CODES[coin.countryCode]} Coin`}
                               </h3>
-                              <p className="text-slate-400 text-sm font-mono">
-                                {sku}
+                              <p className="text-slate-400 text-sm mb-2">
+                                {coin.sku}
                               </p>
                               
                               <div className="flex items-center gap-2 pt-2">
@@ -1325,32 +1408,44 @@ export default function Collection() {
                               </div>
                             </div>
 
-                            <div className="flex gap-2 pt-3 border-t border-slate-700">
-                              <Button 
-                                size="sm" 
-                                variant="outline" 
-                                className="flex-1 border-slate-600 text-slate-300 hover:bg-slate-700"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleOpenAddPurchase(sku);
-                                }}
+                            <div className="flex gap-2 pt-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => router.push(`/coin/${coin.sku}`)}
+                                className="flex-1"
                               >
-                                <Plus className="w-3 h-3 mr-1" />
-                                Purchase
+                                <Eye className="h-4 w-4 mr-1" />
+                                View Details
                               </Button>
-                              <Button 
-                                size="sm" 
-                                variant="outline" 
-                                className="flex-1 border-slate-600 text-slate-300 hover:bg-slate-700"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleOpenRecordSale(sku);
-                                }}
-                                disabled={unsoldCoins.length === 0}
-                              >
-                                <DollarSign className="w-3 h-3 mr-1" />
-                                Sale
-                              </Button>
+                              {!coin.isSold && !coin.listingId && (
+                                <Button
+                                  size="sm"
+                                  variant="default"
+                                  onClick={() => openCreateListingDialog(coin)}
+                                >
+                                  <Gavel className="h-4 w-4 mr-1" />
+                                  List for Sale
+                                </Button>
+                              )}
+                              {!coin.isSold && (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => openEditDialog(coin)}
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleDeleteCoin(coin.id)}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </>
+                              )}
                             </div>
                           </CardContent>
                         </Card>
@@ -1609,12 +1704,91 @@ export default function Collection() {
         </DialogContent>
       </Dialog>
 
-      <ImageViewer
-        isOpen={imageViewerOpen}
-        onClose={() => setImageViewerOpen(false)}
-        imageUrl={selectedImage?.url || ""}
-        alt={selectedImage?.alt || ""}
-      />
+      {/* Create Listing Dialog */}
+      <Dialog open={isCreateListingDialogOpen} onOpenChange={setIsCreateListingDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>List Coin for Sale</DialogTitle>
+            <DialogDescription>
+              {listingCoin && `${listingCoin.coinName} (${listingCoin.sku})`}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="platform">Platform/Venue *</Label>
+              <Input
+                id="platform"
+                value={listingFormData.platform}
+                onChange={(e) => setListingFormData({ ...listingFormData, platform: e.target.value })}
+                placeholder="e.g., eBay, Heritage Auctions"
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="starting-price">Starting Price (CHF) *</Label>
+              <Input
+                id="starting-price"
+                type="number"
+                step="0.01"
+                value={listingFormData.startingPrice}
+                onChange={(e) => setListingFormData({ ...listingFormData, startingPrice: e.target.value })}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="current-bid">Current Bid (CHF)</Label>
+              <Input
+                id="current-bid"
+                type="number"
+                step="0.01"
+                value={listingFormData.currentBid}
+                onChange={(e) => setListingFormData({ ...listingFormData, currentBid: e.target.value })}
+                placeholder="Optional - update as bids come in"
+              />
+            </div>
+            <div>
+              <Label htmlFor="end-date">Expected End Date</Label>
+              <Input
+                id="end-date"
+                type="date"
+                value={listingFormData.expectedEndDate}
+                onChange={(e) => setListingFormData({ ...listingFormData, expectedEndDate: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label htmlFor="listing-notes">Notes</Label>
+              <Textarea
+                id="listing-notes"
+                value={listingFormData.notes}
+                onChange={(e) => setListingFormData({ ...listingFormData, notes: e.target.value })}
+                placeholder="Additional information about this listing"
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCreateListingDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleCreateListing}
+              disabled={!listingFormData.platform || !listingFormData.startingPrice}
+            >
+              Create Listing
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Image Viewer Modal */}
+      {viewImage && (
+        <ImageViewer
+          isOpen={!!viewImage}
+          onClose={() => setViewImage(null)}
+          imageUrl={viewImage.url}
+          alt={viewImage.alt}
+        />
+      )}
     </Layout>
   );
 }

@@ -126,16 +126,18 @@ export default function ListingsPage() {
     const salePrice = parseFloat(completeSaleData.salePrice);
     const purchasePrice = completingListing.coin.purchasePrice;
     const profit = salePrice - purchasePrice;
+    const markupPercentage = purchasePrice > 0 ? (profit / purchasePrice) * 100 : 0;
 
     const saleData = {
-      coinId: completingListing.coin_id,
+      coin_id: completingListing.coin_id,
       sku: completingListing.coin.sku,
-      coinName: completingListing.coin.coinName,
-      saleDate: completeSaleData.saleDate,
-      salePrice,
-      purchasePrice,
+      coin_name: completingListing.coin.coinName,
+      sale_date: completeSaleData.saleDate,
+      sale_price: salePrice,
+      purchase_price: purchasePrice,
       profit,
-      buyerInfo: completeSaleData.buyerInfo,
+      markup_percentage: markupPercentage,
+      buyer_info: completeSaleData.buyerInfo,
       notes: completeSaleData.notes
     };
 

@@ -44,7 +44,7 @@ export async function createListing(data: CreateListingData): Promise<{ data: Li
     // Fetch coin details first to get SKU
     const { data: coin, error: coinError } = await supabase
       .from("user_coins")
-      .select("sku, coinName")
+      .select("sku, coin_name")
       .eq("id", data.coinId)
       .single();
 
@@ -59,7 +59,7 @@ export async function createListing(data: CreateListingData): Promise<{ data: Li
         user_id: user.id,
         coin_id: data.coinId,
         sku: coin.sku,
-        coin_name: coin.coinName,
+        coin_name: coin.coin_name,
         listing_date: new Date().toISOString().split('T')[0],
         platform: data.platform,
         starting_price: data.startingPrice,
@@ -109,13 +109,13 @@ export async function getActiveListings(): Promise<{ data: ListingWithCoin[]; er
         *,
         coin:user_coins!user_listings_coin_id_fkey(
           sku,
-          coinName,
+          coin_name,
           year,
           metal,
-          sheldonGrade,
-          purchasePrice,
-          obverseImageUrl,
-          reverseImageUrl
+          grade,
+          purchase_price,
+          obverse_image_url,
+          reverse_image_url
         )
       `)
       .eq("user_id", user.id)
@@ -127,10 +127,29 @@ export async function getActiveListings(): Promise<{ data: ListingWithCoin[]; er
     }
 
     // Transform the data to match ListingWithCoin interface
-    const listings: ListingWithCoin[] = (data || []).map(listing => ({
-      ...listing,
-      coin: Array.isArray(listing.coin) ? listing.coin[0] : listing.coin
-    }));
+    const listings: ListingWithCoin[] = (data || []).map(listing => {
+      // Handle the joined data which could be an array or single object
+      // and map snake_case DB columns to camelCase interface properties
+      const coinData = Array.isArray(listing.coin) ? listing.coin[0] : listing.coin;
+      
+      // We need to cast the coinData to any to access snake_case properties 
+      // because the type inference might be tricky with the join
+      const rawCoin = coinData as any;
+      
+      return {
+        ...listing,
+        coin: rawCoin ? {
+          sku: rawCoin.sku,
+          coinName: rawCoin.coin_name,
+          year: rawCoin.year,
+          metal: rawCoin.metal,
+          sheldonGrade: rawCoin.grade,
+          purchasePrice: rawCoin.purchase_price,
+          obverseImageUrl: rawCoin.obverse_image_url,
+          reverseImageUrl: rawCoin.reverse_image_url
+        } : undefined
+      };
+    });
 
     return { data: listings, error: null };
   } catch (err) {
@@ -217,7 +236,7 @@ export async function getListingStats(): Promise<{
         id,
         starting_price,
         current_bid,
-        coin:user_coins!user_listings_coin_id_fkey(purchasePrice)
+        coin:user_coins!user_listings_coin_id_fkey(purchase_price)
       `)
       .eq("user_id", user.id);
 
@@ -232,8 +251,9 @@ export async function getListingStats(): Promise<{
     const listings = data || [];
     const totalListings = listings.length;
     const totalPurchaseValue = listings.reduce((sum, listing) => {
-      const coin = Array.isArray(listing.coin) ? listing.coin[0] : listing.coin;
-      return sum + (coin?.purchasePrice || 0);
+      const coinData = Array.isArray(listing.coin) ? listing.coin[0] : listing.coin;
+      const rawCoin = coinData as any;
+      return sum + (rawCoin?.purchase_price || 0);
     }, 0);
     const totalListingValue = listings.reduce((sum, listing) => {
       const highestPrice = Math.max(listing.starting_price, listing.current_bid || 0);
