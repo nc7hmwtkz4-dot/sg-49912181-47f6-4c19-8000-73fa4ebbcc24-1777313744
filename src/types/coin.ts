@@ -79,6 +79,7 @@ export const COUNTRY_CODES: { [key: string]: string } = {
   "AU": "Australia",
   "CN": "China",
   "JP": "Japan",
+  "KR": "South Korea",
   "MX": "Mexico",
   "BR": "Brazil",
   "AR": "Argentina",
