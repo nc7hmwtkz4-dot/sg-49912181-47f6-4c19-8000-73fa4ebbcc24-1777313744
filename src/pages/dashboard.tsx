@@ -53,7 +53,10 @@ export default function Dashboard() {
       const prices = await spotPriceService.getSpotPrices();
       
       if (coinsResult.data) setCoins(coinsResult.data);
-      if (salesResult.data) setSales(salesResult.data);
+      if (salesResult.data) {
+        console.log("Dashboard sales data:", salesResult.data);
+        setSales(salesResult.data);
+      }
       if (listingsResult.data) setListings(listingsResult.data);
       setSpotPrices(prices);
       setIsLoading(false);
@@ -90,8 +93,11 @@ export default function Dashboard() {
     const totalProfit = salesData.reduce((sum, sale) => {
       // Each sale record has sale_price and purchase_price from the database
       const profit = (sale.sale_price || 0) - (sale.purchase_price || 0);
+      console.log(`Sale ${sale.id}: sale_price=${sale.sale_price}, purchase_price=${sale.purchase_price}, profit=${profit}`);
       return sum + profit;
     }, 0);
+    
+    console.log("Dashboard Total Profit:", totalProfit);
     
     const unrealizedPL = totalBullionValue - totalInvestment;
     const unrealizedPLPercent = totalInvestment > 0 ? (unrealizedPL / totalInvestment) * 100 : 0;
@@ -238,7 +244,7 @@ export default function Dashboard() {
         {/* Collection Overview Section */}
         <div>
           <h2 className="text-2xl font-semibold text-white mb-4">Collection Overview</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <Card className="bg-slate-800/50 border-slate-700">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-slate-400">
@@ -262,7 +268,7 @@ export default function Dashboard() {
                 <TrendingUp className="h-5 w-5 text-blue-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-white break-words">
+                <div className="text-xl font-bold text-white break-words">
                   {spotPriceService.formatCHF(stats.totalBullionValue)}
                 </div>
                 <p className="text-xs text-slate-500 mt-1">Unsold coins only</p>
@@ -277,7 +283,7 @@ export default function Dashboard() {
                 <TrendingUp className="h-5 w-5 text-green-500" />
               </CardHeader>
               <CardContent>
-                <div className={`text-2xl font-bold break-words ${stats.unrealizedPL >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                <div className={`text-xl font-bold break-words ${stats.unrealizedPL >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                   {spotPriceService.formatCHF(stats.unrealizedPL)}
                 </div>
                 <p className="text-xs text-slate-500 mt-1">
@@ -294,13 +300,19 @@ export default function Dashboard() {
                 <ShoppingCart className="h-5 w-5 text-orange-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-white break-words">
+                <div className="text-xl font-bold text-white break-words">
                   {spotPriceService.formatCHF(stats.totalInvestment)}
                 </div>
                 <p className="text-xs text-slate-500 mt-1">Purchase cost</p>
               </CardContent>
             </Card>
+          </div>
+        </div>
 
+        {/* Active Listings Section */}
+        <div>
+          <h2 className="text-2xl font-semibold text-white mb-4">Active Listings</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <Card className="bg-slate-800/50 border-slate-700">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-slate-400">
@@ -313,20 +325,14 @@ export default function Dashboard() {
                 <p className="text-xs text-slate-500 mt-1">Active listings</p>
               </CardContent>
             </Card>
-          </div>
-        </div>
 
-        {/* Active Listings Section */}
-        <div>
-          <h2 className="text-2xl font-semibold text-white mb-4">Active Listings</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <Card className="bg-slate-800/50 border-slate-700">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-slate-400">Purchase Value</CardTitle>
                 <ShoppingCart className="h-5 w-5 text-orange-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-white break-words">
+                <div className="text-xl font-bold text-white break-words">
                   {spotPriceService.formatCHF(listingStats.totalPurchaseValue)}
                 </div>
                 <p className="text-xs text-slate-500 mt-1">Cost of listed coins</p>
@@ -339,7 +345,7 @@ export default function Dashboard() {
                 <DollarSign className="h-5 w-5 text-blue-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-white break-words">
+                <div className="text-xl font-bold text-white break-words">
                   {spotPriceService.formatCHF(listingStats.totalListingValue)}
                 </div>
                 <p className="text-xs text-slate-500 mt-1">Initial listing prices</p>
@@ -352,7 +358,7 @@ export default function Dashboard() {
                 <TrendingUp className="h-5 w-5 text-green-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-white break-words">
+                <div className="text-xl font-bold text-white break-words">
                   {spotPriceService.formatCHF(listingStats.totalListingValue)}
                 </div>
                 <p className="text-xs text-slate-500 mt-1">Highest of starting/bid</p>
