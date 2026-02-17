@@ -1,4 +1,4 @@
- 
+/* eslint-disable @typescript-eslint/no-empty-object-type */
 export type Json =
   | string
   | number
@@ -109,6 +109,7 @@ export type Database = {
           image_url: string | null
           is_sold: boolean | null
           km_number: string
+          listing_id: string | null
           metal: string
           mintmark: string | null
           notes: string | null
@@ -133,6 +134,7 @@ export type Database = {
           image_url?: string | null
           is_sold?: boolean | null
           km_number: string
+          listing_id?: string | null
           metal: string
           mintmark?: string | null
           notes?: string | null
@@ -157,6 +159,7 @@ export type Database = {
           image_url?: string | null
           is_sold?: boolean | null
           km_number?: string
+          listing_id?: string | null
           metal?: string
           mintmark?: string | null
           notes?: string | null
@@ -174,10 +177,79 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "user_coins_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "user_listings"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "user_coins_reference_coin_id_fkey"
             columns: ["reference_coin_id"]
             isOneToOne: false
             referencedRelation: "coins_reference"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_listings: {
+        Row: {
+          coin_id: string
+          coin_name: string | null
+          created_at: string | null
+          current_bid: number | null
+          expected_end_date: string | null
+          id: string
+          is_active: boolean | null
+          listing_date: string
+          notes: string | null
+          platform: string
+          reserve_price: number | null
+          sku: string
+          starting_price: number
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          coin_id: string
+          coin_name?: string | null
+          created_at?: string | null
+          current_bid?: number | null
+          expected_end_date?: string | null
+          id?: string
+          is_active?: boolean | null
+          listing_date: string
+          notes?: string | null
+          platform: string
+          reserve_price?: number | null
+          sku: string
+          starting_price: number
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          coin_id?: string
+          coin_name?: string | null
+          created_at?: string | null
+          current_bid?: number | null
+          expected_end_date?: string | null
+          id?: string
+          is_active?: boolean | null
+          listing_date?: string
+          notes?: string | null
+          platform?: string
+          reserve_price?: number | null
+          sku?: string
+          starting_price?: number
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_listings_coin_id_fkey"
+            columns: ["coin_id"]
+            isOneToOne: false
+            referencedRelation: "user_coins"
             referencedColumns: ["id"]
           },
         ]
