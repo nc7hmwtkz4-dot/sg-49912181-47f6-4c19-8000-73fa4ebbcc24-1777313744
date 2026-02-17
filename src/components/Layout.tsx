@@ -105,6 +105,17 @@ export function Layout({ children }: LayoutProps) {
                 </Link>
 
                 <Link 
+                  href="/listings"
+                  className={`px-4 py-2 rounded-lg transition-all font-medium ${
+                    router.pathname === "/listings"
+                      ? "bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-lg"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
+                  }`}
+                >
+                  Listings
+                </Link>
+
+                <Link 
                   href="/sales"
                   className={`px-4 py-2 rounded-lg transition-all font-medium ${
                     router.pathname === "/sales"
@@ -154,6 +165,12 @@ export function Layout({ children }: LayoutProps) {
                       <Link href="/collection" className="flex items-center gap-2 w-full cursor-pointer">
                         <Coins className="w-4 h-4" />
                         <span>My Collection</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/listings" className="flex items-center gap-2 w-full cursor-pointer">
+                        <Package className="w-4 h-4" />
+                        <span>Active Listings</span>
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>

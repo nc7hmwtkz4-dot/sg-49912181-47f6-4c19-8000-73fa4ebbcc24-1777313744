@@ -41,12 +41,26 @@ export async function createListing(data: CreateListingData): Promise<{ data: Li
       return { data: null, error: new Error("User not authenticated") };
     }
 
+    // Fetch coin details first to get SKU
+    const { data: coin, error: coinError } = await supabase
+      .from("user_coins")
+      .select("sku, coinName")
+      .eq("id", data.coinId)
+      .single();
+
+    if (coinError || !coin) {
+      return { data: null, error: new Error("Coin not found or could not be retrieved") };
+    }
+
     // Insert listing
     const { data: listing, error: listingError } = await supabase
       .from("user_listings")
       .insert({
         user_id: user.id,
         coin_id: data.coinId,
+        sku: coin.sku,
+        coin_name: coin.coinName,
+        listing_date: new Date().toISOString().split('T')[0],
         platform: data.platform,
         starting_price: data.startingPrice,
         current_bid: data.currentBid,

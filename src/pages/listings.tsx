@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
-import Layout from "@/components/Layout";
+import { Layout } from "@/components/Layout";
 import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,8 +13,8 @@ import { AlertCircle, Plus, Edit, Trash2, DollarSign, TrendingUp, Package, Check
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { getActiveListings, updateListing, deleteListing, type ListingWithCoin } from "@/services/listingService";
 import { ImageViewer } from "@/components/ImageViewer";
-import { getUserCoins } from "@/services/userCoinService";
-import { createSale } from "@/services/userSalesService";
+import { userCoinService } from "@/services/userCoinService";
+import { userSalesService } from "@/services/userSalesService";
 import type { Coin } from "@/types/coin";
 
 export default function ListingsPage() {
@@ -22,6 +22,9 @@ export default function ListingsPage() {
   const [listings, setListings] = useState<ListingWithCoin[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Image Viewer State
+  const [viewImage, setViewImage] = useState<{ url: string; alt: string } | null>(null);
   
   // Edit listing dialog
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -136,7 +139,7 @@ export default function ListingsPage() {
       notes: completeSaleData.notes
     };
 
-    const { error: saleError } = await createSale(saleData);
+    const { error: saleError } = await userSalesService.addSale(saleData);
     if (saleError) {
       setError(saleError.message);
       return;
@@ -284,17 +287,19 @@ export default function ListingsPage() {
                     {(coin.obverseImageUrl || coin.reverseImageUrl) && (
                       <div className="flex gap-2">
                         {coin.obverseImageUrl && (
-                          <ImageViewer
+                          <img
                             src={coin.obverseImageUrl}
                             alt={`${coin.coinName} obverse`}
                             className="w-20 h-20 rounded-md object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                            onClick={() => setViewImage({ url: coin.obverseImageUrl!, alt: `${coin.coinName} obverse` })}
                           />
                         )}
                         {coin.reverseImageUrl && (
-                          <ImageViewer
+                          <img
                             src={coin.reverseImageUrl}
                             alt={`${coin.coinName} reverse`}
                             className="w-20 h-20 rounded-md object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                            onClick={() => setViewImage({ url: coin.reverseImageUrl!, alt: `${coin.coinName} reverse` })}
                           />
                         )}
                       </div>
@@ -500,6 +505,16 @@ export default function ListingsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Image Viewer Modal */}
+      {viewImage && (
+        <ImageViewer
+          isOpen={!!viewImage}
+          onClose={() => setViewImage(null)}
+          imageUrl={viewImage.url}
+          alt={viewImage.alt}
+        />
+      )}
     </Layout>
   );
 }
