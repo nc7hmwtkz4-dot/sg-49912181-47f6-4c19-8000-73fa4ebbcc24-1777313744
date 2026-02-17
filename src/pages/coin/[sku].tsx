@@ -651,6 +651,21 @@ export default function CoinDetail() {
                             <Badge variant="secondary" className="bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
                               Sold
                             </Badge>
+                          ) : coin.listingId ? (
+                            <>
+                              <Badge className="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 border-0">
+                                Listed for Sale
+                              </Badge>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleRecordSale(coin.id)}
+                                className="ml-2 text-blue-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                              >
+                                <DollarSign className="w-4 h-4 mr-1" />
+                                Sell
+                              </Button>
+                            </>
                           ) : (
                             <>
                               <Badge className="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-0">
@@ -719,8 +734,17 @@ export default function CoinDetail() {
                                 </Button>
                               </>
                             )}
-                            {coin.listingId && (
-                              <Badge className="bg-blue-500 text-white">Listed</Badge>
+                            {!coin.isSold && coin.listingId && (
+                              <>
+                                <Badge className="bg-blue-500 text-white">Listed</Badge>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleEditIndividualCoin(coin)}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                              </>
                             )}
                           </div>
                         </TableCell>
