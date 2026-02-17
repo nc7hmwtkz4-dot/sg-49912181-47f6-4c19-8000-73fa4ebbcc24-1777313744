@@ -89,21 +89,38 @@ export default function Dashboard() {
     
     const totalInvestment = unsoldCoins.reduce((sum, coin) => sum + (coin.purchase_price || 0), 0);
     
-    // Calculate total profit from actual sales data - matching sales page logic
-    const totalProfit = salesData.reduce((sum, sale) => {
-      // Each sale record has sale_price and purchase_price from the database
-      const profit = (sale.sale_price || 0) - (sale.purchase_price || 0);
-      console.log(`Sale ${sale.id}: sale_price=${sale.sale_price}, purchase_price=${sale.purchase_price}, profit=${profit}`);
+    // Calculate total profit - EXACTLY matching sales page logic
+    // Map database sales to Sale objects first, then calculate profit
+    const mappedSales: Sale[] = salesData.map((s: any) => ({
+      id: s.id,
+      coinId: s.coin_id,
+      saleDate: s.sale_date,
+      salePrice: s.sale_price,
+      buyerInfo: s.buyer_info,
+      notes: s.notes,
+      sku: s.sku || "",
+      coinName: s.coin_name || "",
+      purchasePrice: s.purchase_price || 0,
+      profit: s.profit || 0,
+      markupPercentage: s.markup_percentage || 0
+    }));
+    
+    // Calculate profit exactly like sales page does
+    const totalProfit = mappedSales.reduce((sum, sale) => {
+      // Use salePrice and purchasePrice from the mapped Sale object
+      const profit = sale.salePrice - sale.purchasePrice;
+      console.log(`Sale ${sale.id}: salePrice=${sale.salePrice}, purchasePrice=${sale.purchasePrice}, profit=${profit}`);
       return sum + profit;
     }, 0);
     
     console.log("Dashboard Total Profit:", totalProfit);
+    console.log("Sales data count:", mappedSales.length);
     
     const unrealizedPL = totalBullionValue - totalInvestment;
     const unrealizedPLPercent = totalInvestment > 0 ? (unrealizedPL / totalInvestment) * 100 : 0;
     
     // Calculate profit margin based on total sales investment
-    const totalSalesInvestment = salesData.reduce((sum, sale) => sum + (sale.purchase_price || 0), 0);
+    const totalSalesInvestment = mappedSales.reduce((sum, sale) => sum + sale.purchasePrice, 0);
     const profitMargin = totalSalesInvestment > 0 ? (totalProfit / totalSalesInvestment) * 100 : 0;
     
     const countryDistribution: Record<string, number> = {};
@@ -268,7 +285,7 @@ export default function Dashboard() {
                 <TrendingUp className="h-5 w-5 text-blue-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-xl font-bold text-white break-words">
+                <div className="text-xl font-bold text-white whitespace-nowrap overflow-hidden text-ellipsis">
                   {spotPriceService.formatCHF(stats.totalBullionValue)}
                 </div>
                 <p className="text-xs text-slate-500 mt-1">Unsold coins only</p>
@@ -283,7 +300,7 @@ export default function Dashboard() {
                 <TrendingUp className="h-5 w-5 text-green-500" />
               </CardHeader>
               <CardContent>
-                <div className={`text-xl font-bold break-words ${stats.unrealizedPL >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                <div className={`text-xl font-bold whitespace-nowrap overflow-hidden text-ellipsis ${stats.unrealizedPL >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                   {spotPriceService.formatCHF(stats.unrealizedPL)}
                 </div>
                 <p className="text-xs text-slate-500 mt-1">
@@ -300,7 +317,7 @@ export default function Dashboard() {
                 <ShoppingCart className="h-5 w-5 text-orange-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-xl font-bold text-white break-words">
+                <div className="text-xl font-bold text-white whitespace-nowrap overflow-hidden text-ellipsis">
                   {spotPriceService.formatCHF(stats.totalInvestment)}
                 </div>
                 <p className="text-xs text-slate-500 mt-1">Purchase cost</p>
@@ -332,7 +349,7 @@ export default function Dashboard() {
                 <ShoppingCart className="h-5 w-5 text-orange-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-xl font-bold text-white break-words">
+                <div className="text-xl font-bold text-white whitespace-nowrap overflow-hidden text-ellipsis">
                   {spotPriceService.formatCHF(listingStats.totalPurchaseValue)}
                 </div>
                 <p className="text-xs text-slate-500 mt-1">Cost of listed coins</p>
@@ -345,7 +362,7 @@ export default function Dashboard() {
                 <DollarSign className="h-5 w-5 text-blue-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-xl font-bold text-white break-words">
+                <div className="text-xl font-bold text-white whitespace-nowrap overflow-hidden text-ellipsis">
                   {spotPriceService.formatCHF(listingStats.totalListingValue)}
                 </div>
                 <p className="text-xs text-slate-500 mt-1">Initial listing prices</p>
@@ -358,7 +375,7 @@ export default function Dashboard() {
                 <TrendingUp className="h-5 w-5 text-green-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-xl font-bold text-white break-words">
+                <div className="text-xl font-bold text-white whitespace-nowrap overflow-hidden text-ellipsis">
                   {spotPriceService.formatCHF(listingStats.totalListingValue)}
                 </div>
                 <p className="text-xs text-slate-500 mt-1">Highest of starting/bid</p>
@@ -379,7 +396,7 @@ export default function Dashboard() {
                 <DollarSign className="h-5 w-5 text-green-500" />
               </CardHeader>
               <CardContent>
-                <div className={`text-2xl font-bold break-words ${stats.totalProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                <div className={`text-2xl font-bold whitespace-nowrap overflow-hidden text-ellipsis ${stats.totalProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                   {spotPriceService.formatCHF(stats.totalProfit)}
                 </div>
                 <p className="text-xs text-slate-500 mt-1">
