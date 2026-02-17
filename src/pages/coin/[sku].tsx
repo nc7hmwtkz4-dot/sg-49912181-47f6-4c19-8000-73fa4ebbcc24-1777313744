@@ -382,88 +382,12 @@ export default function CoinDetail() {
 
     const { error: listingError } = await createListing(data);
     if (listingError) {
-      setError(listingError.message);
+      alert(`Error creating listing: ${listingError.message}`);
     } else {
       setIsCreateListingDialogOpen(false);
       loadCoins(); // Reload to show updated status
     }
   }
-
-  {/* Create Listing Dialog */}
-      <Dialog open={isCreateListingDialogOpen} onOpenChange={setIsCreateListingDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>List Coin for Sale</DialogTitle>
-            <DialogDescription>
-              {listingCoin && `${listingCoin.coinName} (${listingCoin.sku})`}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="platform">Platform/Venue *</Label>
-              <Input
-                id="platform"
-                value={listingFormData.platform}
-                onChange={(e) => setListingFormData({ ...listingFormData, platform: e.target.value })}
-                placeholder="e.g., eBay, Heritage Auctions"
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor="starting-price">Starting Price (CHF) *</Label>
-              <Input
-                id="starting-price"
-                type="number"
-                step="0.01"
-                value={listingFormData.startingPrice}
-                onChange={(e) => setListingFormData({ ...listingFormData, startingPrice: e.target.value })}
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor="current-bid">Current Bid (CHF)</Label>
-              <Input
-                id="current-bid"
-                type="number"
-                step="0.01"
-                value={listingFormData.currentBid}
-                onChange={(e) => setListingFormData({ ...listingFormData, currentBid: e.target.value })}
-                placeholder="Optional - update as bids come in"
-              />
-            </div>
-            <div>
-              <Label htmlFor="end-date">Expected End Date</Label>
-              <Input
-                id="end-date"
-                type="date"
-                value={listingFormData.expectedEndDate}
-                onChange={(e) => setListingFormData({ ...listingFormData, expectedEndDate: e.target.value })}
-              />
-            </div>
-            <div>
-              <Label htmlFor="listing-notes">Notes</Label>
-              <Textarea
-                id="listing-notes"
-                value={listingFormData.notes}
-                onChange={(e) => setListingFormData({ ...listingFormData, notes: e.target.value })}
-                placeholder="Additional information about this listing"
-                rows={3}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsCreateListingDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleCreateListing}
-              disabled={!listingFormData.platform || !listingFormData.startingPrice}
-            >
-              Create Listing
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
   if (!sku || coins.length === 0) {
     return (
@@ -1261,6 +1185,82 @@ export default function CoinDetail() {
               </Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Listing Dialog */}
+      <Dialog open={isCreateListingDialogOpen} onOpenChange={setIsCreateListingDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>List Coin for Sale</DialogTitle>
+            <DialogDescription>
+              {listingCoin && `${listingCoin.coinName} (${listingCoin.sku})`}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="platform">Platform/Venue *</Label>
+              <Input
+                id="platform"
+                value={listingFormData.platform}
+                onChange={(e) => setListingFormData({ ...listingFormData, platform: e.target.value })}
+                placeholder="e.g., eBay, Heritage Auctions"
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="starting-price">Starting Price (CHF) *</Label>
+              <Input
+                id="starting-price"
+                type="number"
+                step="0.01"
+                value={listingFormData.startingPrice}
+                onChange={(e) => setListingFormData({ ...listingFormData, startingPrice: e.target.value })}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="current-bid">Current Bid (CHF)</Label>
+              <Input
+                id="current-bid"
+                type="number"
+                step="0.01"
+                value={listingFormData.currentBid}
+                onChange={(e) => setListingFormData({ ...listingFormData, currentBid: e.target.value })}
+                placeholder="Optional - update as bids come in"
+              />
+            </div>
+            <div>
+              <Label htmlFor="end-date">Expected End Date</Label>
+              <Input
+                id="end-date"
+                type="date"
+                value={listingFormData.expectedEndDate}
+                onChange={(e) => setListingFormData({ ...listingFormData, expectedEndDate: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label htmlFor="listing-notes">Notes</Label>
+              <Textarea
+                id="listing-notes"
+                value={listingFormData.notes}
+                onChange={(e) => setListingFormData({ ...listingFormData, notes: e.target.value })}
+                placeholder="Additional information about this listing"
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCreateListingDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleCreateListing}
+              disabled={!listingFormData.platform || !listingFormData.startingPrice}
+            >
+              Create Listing
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

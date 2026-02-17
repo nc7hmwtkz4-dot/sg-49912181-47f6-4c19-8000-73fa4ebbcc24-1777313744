@@ -8,7 +8,7 @@ import { spotPriceService, SpotPrices } from "@/lib/spotPrices";
 import { Coin, Sale, COUNTRY_CODES } from "@/types/coin";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Coins, TrendingUp, DollarSign, Package, Globe, PieChart, Sparkles, RefreshCw } from "lucide-react";
+import { Coins, TrendingUp, DollarSign, Package, Globe, PieChart, Sparkles, RefreshCw, ShoppingCart, BarChart3 } from "lucide-react";
 import { Treemap, ResponsiveContainer, Tooltip } from "recharts";
 
 export default function Dashboard() {
@@ -18,29 +18,40 @@ export default function Dashboard() {
   const [spotPrices, setSpotPrices] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  
+  // Statistics
   const [stats, setStats] = useState({
     totalCoins: 0,
-    totalUnsold: 0,
-    totalSold: 0,
+    unsoldCoins: 0,
+    soldCoins: 0,
     totalBullionValue: 0,
-    totalCost: 0,
+    totalInvestment: 0,
     totalProfit: 0,
     profitMargin: 0,
-    unrealizedProfitLoss: 0,
-    unrealizedProfitLossPercentage: 0,
-    countryDistribution: [] as { country: string; count: number; percentage: number }[],
-    metalDistribution: [] as { metal: string; count: number; percentage: number }[]
+    unrealizedPL: 0,
+    unrealizedPLPercent: 0,
+    countryDistribution: {} as Record<string, number>,
+    metalComposition: {} as Record<string, number>
+  });
+  
+  const [listingStats, setListingStats] = useState({
+    coinsListed: 0,
+    totalPurchaseValue: 0,
+    totalListingValue: 0
   });
 
   useEffect(() => {
     async function loadDashboardData() {
-      const [coinsResult, salesResult, listingsResult, prices] = await Promise.all([
+      setIsLoading(true);
+      
+      const [coinsResult, salesResult, listingsResult] = await Promise.all([
         userCoinService.getUserCoins(),
         userSalesService.getUserSales(),
-        getActiveListings(),
-        spotPriceService.getSpotPrices()
+        getActiveListings()
       ]);
-
+      
+      const prices = await spotPriceService.getSpotPrices();
+      
       if (coinsResult.data) setCoins(coinsResult.data);
       if (salesResult.data) setSales(salesResult.data);
       if (listingsResult.data) setListings(listingsResult.data);
@@ -50,6 +61,78 @@ export default function Dashboard() {
 
     loadDashboardData();
   }, []);
+
+  useEffect(() => {
+    if (coins.length > 0 && spotPrices) {
+      calculateStats(coins, sales, spotPrices);
+    }
+    if (listings.length > 0) {
+      calculateListingStats(listings);
+    }
+  }, [coins, sales, spotPrices, listings]);
+
+  const calculateStats = (coinsData: any[], salesData: any[], prices: any) => {
+    const unsoldCoins = coinsData.filter(c => !c.is_sold);
+    const soldCoins = coinsData.filter(c => c.is_sold);
+    
+    const totalBullionValue = unsoldCoins.reduce((sum, coin) => {
+      return sum + spotPriceService.calculateBullionValue(
+        coin.metal,
+        coin.weight,
+        coin.purity,
+        prices
+      );
+    }, 0);
+    
+    const totalInvestment = unsoldCoins.reduce((sum, coin) => sum + (coin.purchase_price || 0), 0);
+    const totalProfit = salesData.reduce((sum, sale) => sum + (sale.profit || 0), 0);
+    const unrealizedPL = totalBullionValue - totalInvestment;
+    const unrealizedPLPercent = totalInvestment > 0 ? (unrealizedPL / totalInvestment) * 100 : 0;
+    const profitMargin = totalInvestment > 0 ? (totalProfit / totalInvestment) * 100 : 0;
+    
+    const countryDistribution: Record<string, number> = {};
+    coinsData.forEach(coin => {
+      const country = coin.country_code || 'Unknown';
+      countryDistribution[country] = (countryDistribution[country] || 0) + 1;
+    });
+    
+    const metalComposition: Record<string, number> = {};
+    coinsData.forEach(coin => {
+      const metal = coin.metal || 'unknown';
+      metalComposition[metal] = (metalComposition[metal] || 0) + 1;
+    });
+    
+    setStats({
+      totalCoins: coinsData.length,
+      unsoldCoins: unsoldCoins.length,
+      soldCoins: soldCoins.length,
+      totalBullionValue,
+      totalInvestment,
+      totalProfit,
+      profitMargin,
+      unrealizedPL,
+      unrealizedPLPercent,
+      countryDistribution,
+      metalComposition
+    });
+  };
+
+  const calculateListingStats = (listingsData: any[]) => {
+    const coinsListed = listingsData.length;
+    const totalPurchaseValue = listingsData.reduce((sum, listing) => {
+      return sum + (listing.coin?.purchase_price || 0);
+    }, 0);
+    const totalListingValue = listingsData.reduce((sum, listing) => {
+      const highestPrice = Math.max(listing.starting_price || 0, listing.current_bid || 0);
+      return sum + highestPrice;
+    }, 0);
+    
+    setListingStats({
+      coinsListed,
+      totalPurchaseValue,
+      totalListingValue
+    });
+  };
 
   const loadData = async () => {
     const { data: coinsData } = await userCoinService.getUserCoins();
@@ -111,99 +194,6 @@ export default function Dashboard() {
     await loadSpotPrices(true);
   };
 
-  useEffect(() => {
-    if (spotPrices) {
-      calculateStats(coins, sales, spotPrices);
-    }
-  }, [coins, sales, spotPrices]);
-
-  const calculateBullionValue = (coin: Coin, prices: SpotPrices): number => {
-    const value = spotPriceService.calculateBullionValue(
-      coin.metal,
-      coin.weight,
-      coin.purity,
-      prices
-    );
-    console.log(`Bullion value for ${coin.sku}:`, {
-      metal: coin.metal,
-      weight: coin.weight,
-      purity: coin.purity,
-      spotPrice: prices[coin.metal.toLowerCase() as keyof SpotPrices],
-      calculatedValue: value
-    });
-    return value;
-  };
-
-  const calculateStats = (coins: Coin[], sales: Sale[], prices: SpotPrices) => {
-    const totalCoins = coins.length;
-    const unsoldCoins = coins.filter(c => !c.isSold);
-    const totalUnsold = unsoldCoins.length;
-    const totalSold = coins.filter(c => c.isSold).length;
-    
-    const totalBullionValue = unsoldCoins.reduce((sum, coin) => sum + calculateBullionValue(coin, prices), 0);
-    
-    const totalCost = coins.reduce((sum, coin) => sum + coin.purchasePrice, 0);
-    
-    // Calculate unrealized profit/loss for unsold coins (current bullion value - purchase price)
-    const unsoldCost = unsoldCoins.reduce((sum, coin) => sum + coin.purchasePrice, 0);
-    const unrealizedProfitLoss = totalBullionValue - unsoldCost;
-    const unrealizedProfitLossPercentage = unsoldCost > 0 
-      ? ((unrealizedProfitLoss / unsoldCost) * 100) 
-      : 0;
-    
-    const totalSalesAmount = sales.reduce((sum, sale) => sum + sale.salePrice, 0);
-    
-    const totalProfit = sales.reduce((sum, sale) => {
-      const coin = coins.find(c => c.id === sale.coinId);
-      return sum + (sale.salePrice - (coin?.purchasePrice || 0));
-    }, 0);
-    
-    const profitMargin = totalSalesAmount > 0 
-      ? ((totalProfit / totalSalesAmount) * 100) 
-      : 0;
-    
-    // Calculate distributions - ONLY UNSOLD COINS
-    const coinsByCountry = unsoldCoins.reduce((acc, coin) => {
-      acc[coin.countryCode] = (acc[coin.countryCode] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-
-    const countryDistribution = Object.entries(coinsByCountry)
-      .map(([code, count]) => ({
-        country: COUNTRY_CODES[code] || code,
-        count,
-        percentage: totalUnsold > 0 ? (count / totalUnsold) * 100 : 0
-      }))
-      .sort((a, b) => b.count - a.count);
-    
-    const coinsByMetal = unsoldCoins.reduce((acc, coin) => {
-      acc[coin.metal] = (acc[coin.metal] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-
-    const metalDistribution = Object.entries(coinsByMetal)
-      .map(([metal, count]) => ({
-        metal,
-        count,
-        percentage: totalUnsold > 0 ? (count / totalUnsold) * 100 : 0
-      }))
-      .sort((a, b) => b.count - a.count);
-
-    setStats({
-      totalCoins,
-      totalUnsold,
-      totalSold,
-      totalBullionValue,
-      totalCost,
-      totalProfit,
-      profitMargin,
-      unrealizedProfitLoss,
-      unrealizedProfitLossPercentage,
-      countryDistribution,
-      metalDistribution
-    });
-  };
-
   const refreshStats = () => {
     // Legacy function removed, using calculateStats via useEffect
   };
@@ -236,233 +226,206 @@ export default function Dashboard() {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
-          {/* Total Coins */}
-          <Card className="glass-card hover-lift">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Coins</p>
-                  <p className="text-3xl font-bold text-foreground mt-1">{stats.totalCoins}</p>
-                  <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
-                    <span>Unsold: {stats.totalUnsold}</span>
-                    <span>Sold: {stats.totalSold}</span>
-                  </div>
-                </div>
-                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <Coins className="w-6 h-6 text-primary" />
-                </div>
-              </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+          <Card className="bg-slate-800/50 border-slate-700">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-slate-400">
+                Total Coins
+              </CardTitle>
+              <Package className="h-5 w-5 text-amber-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-white">{stats.totalCoins}</div>
+              <p className="text-xs text-slate-500 mt-1">
+                Unsold: {stats.unsoldCoins} | Sold: {stats.soldCoins}
+              </p>
             </CardContent>
           </Card>
 
-          {/* Bullion Value */}
-          <Card className="glass-card hover-lift">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Bullion Value</p>
-                  <p className="text-3xl font-bold text-foreground mt-1">
-                    {stats.totalBullionValue.toFixed(2)} CHF
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-2">Unsold coins only</p>
-                </div>
-                <div className="w-12 h-12 rounded-lg bg-secondary/10 flex items-center justify-center">
-                  <TrendingUp className="w-6 h-6 text-secondary" />
-                </div>
+          <Card className="bg-slate-800/50 border-slate-700">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-slate-400">
+                Bullion Value
+              </CardTitle>
+              <TrendingUp className="h-5 w-5 text-blue-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-white">
+                {spotPriceService.formatCHF(stats.totalBullionValue)}
               </div>
+              <p className="text-xs text-slate-500 mt-1">Unsold coins only</p>
             </CardContent>
           </Card>
 
-          {/* Unrealized P/L */}
-          <Card className="glass-card hover-lift">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Unrealized P/L</p>
-                  <p className={`text-3xl font-bold mt-1 ${stats.unrealizedProfitLoss >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                    {stats.unrealizedProfitLoss >= 0 ? '+' : ''}{stats.unrealizedProfitLoss.toFixed(2)} CHF
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    {stats.unrealizedProfitLossPercentage >= 0 ? '+' : ''}{stats.unrealizedProfitLossPercentage.toFixed(1)}% vs cost
-                  </p>
-                </div>
-                <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${stats.unrealizedProfitLoss >= 0 ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
-                  <TrendingUp className={`w-6 h-6 ${stats.unrealizedProfitLoss >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`} />
-                </div>
+          <Card className="bg-slate-800/50 border-slate-700">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-slate-400">
+                Unrealized P/L
+              </CardTitle>
+              <TrendingUp className="h-5 w-5 text-green-500" />
+            </CardHeader>
+            <CardContent>
+              <div className={`text-3xl font-bold ${stats.unrealizedPL >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {spotPriceService.formatCHF(stats.unrealizedPL)}
               </div>
+              <p className="text-xs text-slate-500 mt-1">
+                {stats.unrealizedPLPercent >= 0 ? '+' : ''}{stats.unrealizedPLPercent.toFixed(1)}% vs cost
+              </p>
             </CardContent>
           </Card>
 
-          {/* Total Investment */}
-          <Card className="glass-card hover-lift">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Investment</p>
-                  <p className="text-3xl font-bold text-foreground mt-1">
-                    {stats.totalCost.toFixed(2)} CHF
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-2">Purchase cost</p>
-                </div>
-                <div className="w-12 h-12 rounded-lg bg-accent/10 flex items-center justify-center">
-                  <Package className="w-6 h-6 text-accent" />
-                </div>
+          <Card className="bg-slate-800/50 border-slate-700">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-slate-400">
+                Total Investment
+              </CardTitle>
+              <ShoppingCart className="h-5 w-5 text-orange-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-white">
+                {spotPriceService.formatCHF(stats.totalInvestment)}
               </div>
+              <p className="text-xs text-slate-500 mt-1">Purchase cost</p>
             </CardContent>
           </Card>
 
-          {/* Total Profit */}
-          <Card className="glass-card hover-lift">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Profit</p>
-                  <p className={`text-3xl font-bold mt-1 ${stats.totalProfit >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                    {stats.totalProfit >= 0 ? '+' : ''}{stats.totalProfit.toFixed(2)} CHF
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Margin: {stats.profitMargin.toFixed(1)}%
-                  </p>
-                </div>
-                <div className="w-12 h-12 rounded-lg bg-green-500/10 flex items-center justify-center">
-                  <DollarSign className="w-6 h-6 text-green-600 dark:text-green-400" />
-                </div>
+          <Card className="bg-slate-800/50 border-slate-700">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-slate-400">
+                Total Profit
+              </CardTitle>
+              <DollarSign className="h-5 w-5 text-green-500" />
+            </CardHeader>
+            <CardContent>
+              <div className={`text-3xl font-bold ${stats.totalProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {spotPriceService.formatCHF(stats.totalProfit)}
               </div>
+              <p className="text-xs text-slate-500 mt-1">
+                Margin: {stats.profitMargin.toFixed(1)}%
+              </p>
             </CardContent>
           </Card>
         </div>
 
         {/* Active Listings Section */}
         <div>
-          <h2 className="text-2xl font-bold text-white mb-4">Active Listings</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <h2 className="text-2xl font-semibold text-white mb-4">Active Listings</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <Card className="bg-slate-800/50 border-slate-700">
-              <CardHeader className="pb-3">
-                <CardDescription className="text-slate-400">Coins Listed</CardDescription>
-                <CardTitle className="text-3xl text-white">{listings.length}</CardTitle>
+              <CardHeader>
+                <CardTitle className="text-slate-400 text-sm">Coins Listed</CardTitle>
               </CardHeader>
+              <CardContent>
+                <p className="text-3xl font-bold text-white">{listingStats.coinsListed}</p>
+              </CardContent>
             </Card>
 
             <Card className="bg-slate-800/50 border-slate-700">
-              <CardHeader className="pb-3">
-                <CardDescription className="text-slate-400">Purchase Value</CardDescription>
-                <CardTitle className="text-3xl text-white">
-                  {spotPriceService.formatCHF(
-                    listings.reduce((sum, listing) => sum + (listing.coin?.purchasePrice || 0), 0)
-                  )}
-                </CardTitle>
+              <CardHeader>
+                <CardTitle className="text-slate-400 text-sm">Purchase Value</CardTitle>
               </CardHeader>
+              <CardContent>
+                <p className="text-3xl font-bold text-white">
+                  {spotPriceService.formatCHF(listingStats.totalPurchaseValue)}
+                </p>
+              </CardContent>
             </Card>
 
             <Card className="bg-slate-800/50 border-slate-700">
-              <CardHeader className="pb-3">
-                <CardDescription className="text-slate-400">Starting Prices</CardDescription>
-                <CardTitle className="text-3xl text-white">
-                  {spotPriceService.formatCHF(
-                    listings.reduce((sum, listing) => sum + (listing.starting_price || 0), 0)
-                  )}
-                </CardTitle>
+              <CardHeader>
+                <CardTitle className="text-slate-400 text-sm">Starting Prices</CardTitle>
               </CardHeader>
+              <CardContent>
+                <p className="text-3xl font-bold text-white">
+                  {spotPriceService.formatCHF(listingStats.totalListingValue)}
+                </p>
+              </CardContent>
             </Card>
 
             <Card className="bg-slate-800/50 border-slate-700">
-              <CardHeader className="pb-3">
-                <CardDescription className="text-slate-400">Current Market Value</CardDescription>
-                <CardTitle className="text-3xl text-white">
-                  {spotPriceService.formatCHF(
-                    listings.reduce((sum, listing) => {
-                      const highestPrice = Math.max(listing.starting_price || 0, listing.current_bid || 0);
-                      return sum + highestPrice;
-                    }, 0)
-                  )}
-                </CardTitle>
+              <CardHeader>
+                <CardTitle className="text-slate-400 text-sm">Current Market Value</CardTitle>
               </CardHeader>
+              <CardContent>
+                <p className="text-3xl font-bold text-white">
+                  {spotPriceService.formatCHF(listingStats.totalListingValue)}
+                </p>
+                <p className="text-xs text-slate-500 mt-1">Highest of starting/bid prices</p>
+              </CardContent>
             </Card>
           </div>
         </div>
 
-        {/* Distribution Charts */}
+        {/* Statistics Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Country Distribution */}
-          <Card className="glass-card">
+          <Card className="bg-slate-800/50 border-slate-700">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-foreground">
-                <Globe className="w-5 h-5 text-primary" />
+              <CardTitle className="text-white flex items-center gap-2">
+                <Globe className="h-5 w-5 text-amber-500" />
                 Country Distribution
               </CardTitle>
-              <CardDescription>Top 5 countries in your collection</CardDescription>
+              <p className="text-slate-400 text-sm">Top 5 countries in your collection</p>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {stats.countryDistribution.slice(0, 5).map((item, index) => (
-                  <div key={item.country} className="space-y-2">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="font-medium text-foreground">{item.country}</span>
-                      <span className="text-muted-foreground">
-                        {item.count} coins ({item.percentage.toFixed(1)}%)
-                      </span>
+            <CardContent className="space-y-4">
+              {Object.entries(stats.countryDistribution)
+                .sort(([, a], [, b]) => b - a)
+                .slice(0, 5)
+                .map(([country, count]) => {
+                  const percentage = stats.totalCoins > 0 ? ((count / stats.totalCoins) * 100).toFixed(1) : '0.0';
+                  return (
+                    <div key={country} className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-300">{country}</span>
+                        <span className="text-slate-400">{count} coins ({percentage}%)</span>
+                      </div>
+                      <div className="w-full bg-slate-700 rounded-full h-2">
+                        <div
+                          className="bg-gradient-to-r from-amber-500 to-orange-500 h-2 rounded-full transition-all duration-500"
+                          style={{ width: `${percentage}%` }}
+                        />
+                      </div>
                     </div>
-                    <div className="h-2 bg-muted rounded-full overflow-hidden">
-                      <div 
-                        className={`h-full rounded-full transition-all duration-500 ${
-                          index === 0 ? 'bg-primary' :
-                          index === 1 ? 'bg-secondary' :
-                          index === 2 ? 'bg-accent' :
-                          'bg-muted-foreground'
-                        }`}
-                        style={{ width: `${item.percentage}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-                {stats.countryDistribution.length === 0 && (
-                  <p className="text-center text-muted-foreground py-8">
-                    No coins in collection yet
-                  </p>
-                )}
-              </div>
+                  );
+                })}
             </CardContent>
           </Card>
 
-          {/* Metal Distribution */}
-          <Card className="glass-card">
+          <Card className="bg-slate-800/50 border-slate-700">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-foreground">
-                <PieChart className="w-5 h-5 text-secondary" />
+              <CardTitle className="text-white flex items-center gap-2">
+                <BarChart3 className="h-5 w-5 text-blue-500" />
                 Metal Composition
               </CardTitle>
-              <CardDescription>Breakdown by metal type</CardDescription>
+              <p className="text-slate-400 text-sm">Breakdown by metal type</p>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {stats.metalDistribution.map((item, index) => (
-                  <div key={item.metal} className="space-y-2">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="font-medium text-foreground capitalize">{item.metal}</span>
-                      <span className="text-muted-foreground">
-                        {item.count} coins ({item.percentage.toFixed(1)}%)
-                      </span>
+            <CardContent className="space-y-4">
+              {Object.entries(stats.metalComposition)
+                .sort(([, a], [, b]) => b - a)
+                .map(([metal, count]) => {
+                  const percentage = stats.totalCoins > 0 ? ((count / stats.totalCoins) * 100).toFixed(1) : '0.0';
+                  const metalColors: Record<string, string> = {
+                    gold: 'from-yellow-500 to-amber-500',
+                    silver: 'from-slate-400 to-slate-500',
+                    copper: 'from-orange-600 to-red-600',
+                    platinum: 'from-slate-300 to-slate-400',
+                    palladium: 'from-slate-500 to-slate-600',
+                    other: 'from-gray-500 to-gray-600'
+                  };
+                  return (
+                    <div key={metal} className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-300 capitalize">{metal}</span>
+                        <span className="text-slate-400">{count} coins ({percentage}%)</span>
+                      </div>
+                      <div className="w-full bg-slate-700 rounded-full h-2">
+                        <div
+                          className={`bg-gradient-to-r ${metalColors[metal] || metalColors.other} h-2 rounded-full transition-all duration-500`}
+                          style={{ width: `${percentage}%` }}
+                        />
+                      </div>
                     </div>
-                    <div className="h-2 bg-muted rounded-full overflow-hidden">
-                      <div 
-                        className={`h-full rounded-full transition-all duration-500 ${
-                          item.metal === 'gold' ? 'gradient-gold' :
-                          item.metal === 'silver' ? 'gradient-silver' :
-                          item.metal === 'platinum' ? 'bg-gradient-to-r from-slate-300 to-slate-500' :
-                          'bg-gradient-to-r from-gray-400 to-gray-600'
-                        }`}
-                        style={{ width: `${item.percentage}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-                {stats.metalDistribution.length === 0 && (
-                  <p className="text-center text-muted-foreground py-8">
-                    No coins in collection yet
-                  </p>
-                )}
-              </div>
+                  );
+                })}
             </CardContent>
           </Card>
         </div>
