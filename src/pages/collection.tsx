@@ -122,6 +122,7 @@ export default function Collection() {
     sheldonGrade: "",
     purchaseDate: new Date().toISOString().split("T")[0],
     purchasePrice: 0,
+    quantity: 1,
     notes: ""
   });
   
@@ -467,6 +468,11 @@ export default function Collection() {
       return;
     }
 
+    if (registerFormData.quantity < 1) {
+      alert("Quantity must be at least 1.");
+      return;
+    }
+
     try {
       setIsRegisteringPurchase(true);
 
@@ -477,7 +483,7 @@ export default function Collection() {
         throw new Error("Failed to fetch reference coin details");
       }
 
-      const newCoinData = {
+      const baseCoinData = {
         sku: registerFormData.sku,
         coin_name: registerFormData.coinName,
         country_code: registerFormData.countryCode,
@@ -496,13 +502,21 @@ export default function Collection() {
         is_sold: false
       };
 
-      const { error } = await userCoinService.addUserCoin(newCoinData);
-
-      if (error) {
-        throw new Error(error.message);
+      // Create multiple entries based on quantity
+      const insertPromises = [];
+      for (let i = 0; i < registerFormData.quantity; i++) {
+        insertPromises.push(userCoinService.addUserCoin(baseCoinData));
       }
 
-      alert("Purchase registered successfully!");
+      const results = await Promise.all(insertPromises);
+      
+      // Check if any insertion failed
+      const failedInserts = results.filter(result => result.error);
+      if (failedInserts.length > 0) {
+        throw new Error(`Failed to register ${failedInserts.length} coin(s)`);
+      }
+
+      alert(`Successfully registered ${registerFormData.quantity} coin(s)!`);
       
       // Close dialog and reset form
       setIsRegisterPurchaseOpen(false);
@@ -519,6 +533,7 @@ export default function Collection() {
         sheldonGrade: "",
         purchaseDate: new Date().toISOString().split("T")[0],
         purchasePrice: 0,
+        quantity: 1,
         notes: ""
       });
       setReferenceFilter("");
@@ -1111,6 +1126,22 @@ export default function Collection() {
                         required
                       />
                     </div>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="register-quantity" className="text-slate-300">Quantity *</Label>
+                    <Input
+                      id="register-quantity"
+                      type="number"
+                      min="1"
+                      value={registerFormData.quantity}
+                      onChange={(e) => setRegisterFormData({ ...registerFormData, quantity: parseInt(e.target.value) || 1 })}
+                      className="bg-slate-800 border-slate-700 text-white"
+                      required
+                    />
+                    <p className="text-slate-500 text-xs mt-1">
+                      Number of identical coins to register (will create {registerFormData.quantity} individual {registerFormData.quantity === 1 ? 'entry' : 'entries'})
+                    </p>
                   </div>
 
                   <div>
