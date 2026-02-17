@@ -137,10 +137,12 @@ export default function Collection() {
 
   // Load all user coins
   const loadCoins = async () => {
+    setIsLoading(true);
     const { data, error } = await userCoinService.getUserCoins();
     
     if (error) {
       console.error("Error loading coins:", error);
+      setIsLoading(false);
       return;
     }
 
@@ -170,11 +172,44 @@ export default function Collection() {
       setCoins(mappedCoins);
       setFilteredCoins(mappedCoins);
     }
+    setIsLoading(false);
   };
 
-  const loadSpotPrices = async () => {
-    const prices = await spotPriceService.getSpotPrices();
+  useEffect(() => {
+    loadCoins();
+    loadSpotPrices();
+  }, []);
+
+  useEffect(() => {
+    let filtered = coins;
+    
+    if (searchTerm) {
+      filtered = filtered.filter(coin => 
+        coin.coinName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        coin.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        coin.countryCode.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    
+    if (countryFilter !== "all") {
+      filtered = filtered.filter(coin => coin.countryCode === countryFilter);
+    }
+    
+    if (metalFilter !== "all") {
+      filtered = filtered.filter(coin => coin.metal === metalFilter);
+    }
+    
+    setFilteredCoins(filtered);
+  }, [searchTerm, countryFilter, metalFilter, coins]);
+
+  const loadSpotPrices = async (forceRefresh = false) => {
+    const prices = await spotPriceService.getSpotPrices(forceRefresh);
     setSpotPrices(prices);
+    console.log("Loaded spot prices:", prices);
+  };
+
+  const handleForceRefresh = async () => {
+    await loadSpotPrices(true);
   };
 
   const handleObverseImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -681,11 +716,6 @@ export default function Collection() {
         </div>
       </Layout>
     );
-  }
-
-  // Don't render collection content if not authenticated
-  if (!isAuthenticated) {
-    return null;
   }
 
   return (
