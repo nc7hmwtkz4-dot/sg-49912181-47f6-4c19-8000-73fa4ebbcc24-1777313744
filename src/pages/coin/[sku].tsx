@@ -12,13 +12,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Edit, Plus, DollarSign, Trash2, ArrowLeft, Upload, Eye, EyeOff } from "lucide-react";
+import { Edit, Plus, DollarSign, Trash2, ArrowLeft, Upload, Eye, EyeOff, Gavel } from "lucide-react";
 import Link from "next/link";
+import { createListing } from "@/services/listingService";
 
 export default function CoinDetail() {
   const router = useRouter();
@@ -63,6 +64,7 @@ export default function CoinDetail() {
   
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState<{ url: string; alt: string } | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const getCoinById = (coinId: string): Coin | undefined => {
     return coins.find(c => c.id === coinId);
@@ -342,6 +344,126 @@ export default function CoinDetail() {
       }
     }
   };
+
+  // Create listing dialog state
+  const [isCreateListingDialogOpen, setIsCreateListingDialogOpen] = useState(false);
+  const [listingCoin, setListingCoin] = useState<Coin | null>(null);
+  const [listingFormData, setListingFormData] = useState({
+    platform: "",
+    startingPrice: "",
+    currentBid: "",
+    expectedEndDate: "",
+    notes: ""
+  });
+
+  function openCreateListingDialog(coin: Coin) {
+    setListingCoin(coin);
+    setListingFormData({
+      platform: "",
+      startingPrice: coin.purchasePrice.toString(),
+      currentBid: "",
+      expectedEndDate: "",
+      notes: ""
+    });
+    setIsCreateListingDialogOpen(true);
+  }
+
+  async function handleCreateListing() {
+    if (!listingCoin) return;
+
+    const data = {
+      coinId: listingCoin.id,
+      platform: listingFormData.platform,
+      startingPrice: parseFloat(listingFormData.startingPrice),
+      currentBid: listingFormData.currentBid ? parseFloat(listingFormData.currentBid) : undefined,
+      expectedEndDate: listingFormData.expectedEndDate || undefined,
+      notes: listingFormData.notes || undefined
+    };
+
+    const { error: listingError } = await createListing(data);
+    if (listingError) {
+      setError(listingError.message);
+    } else {
+      setIsCreateListingDialogOpen(false);
+      loadCoins(); // Reload to show updated status
+    }
+  }
+
+  {/* Create Listing Dialog */}
+      <Dialog open={isCreateListingDialogOpen} onOpenChange={setIsCreateListingDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>List Coin for Sale</DialogTitle>
+            <DialogDescription>
+              {listingCoin && `${listingCoin.coinName} (${listingCoin.sku})`}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="platform">Platform/Venue *</Label>
+              <Input
+                id="platform"
+                value={listingFormData.platform}
+                onChange={(e) => setListingFormData({ ...listingFormData, platform: e.target.value })}
+                placeholder="e.g., eBay, Heritage Auctions"
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="starting-price">Starting Price (CHF) *</Label>
+              <Input
+                id="starting-price"
+                type="number"
+                step="0.01"
+                value={listingFormData.startingPrice}
+                onChange={(e) => setListingFormData({ ...listingFormData, startingPrice: e.target.value })}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="current-bid">Current Bid (CHF)</Label>
+              <Input
+                id="current-bid"
+                type="number"
+                step="0.01"
+                value={listingFormData.currentBid}
+                onChange={(e) => setListingFormData({ ...listingFormData, currentBid: e.target.value })}
+                placeholder="Optional - update as bids come in"
+              />
+            </div>
+            <div>
+              <Label htmlFor="end-date">Expected End Date</Label>
+              <Input
+                id="end-date"
+                type="date"
+                value={listingFormData.expectedEndDate}
+                onChange={(e) => setListingFormData({ ...listingFormData, expectedEndDate: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label htmlFor="listing-notes">Notes</Label>
+              <Textarea
+                id="listing-notes"
+                value={listingFormData.notes}
+                onChange={(e) => setListingFormData({ ...listingFormData, notes: e.target.value })}
+                placeholder="Additional information about this listing"
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCreateListingDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleCreateListing}
+              disabled={!listingFormData.platform || !listingFormData.startingPrice}
+            >
+              Create Listing
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
   if (!sku || coins.length === 0) {
     return (
@@ -644,23 +766,38 @@ export default function CoinDetail() {
                           {coin.notes || "-"}
                         </TableCell>
                         <TableCell>
-                          <div className="flex gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleEditIndividualCoin(coin)}
-                              className="text-blue-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleDeleteCoin(coin.id)}
-                              className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
+                          <div className="flex items-center gap-2">
+                            {!coin.isSold && !coin.listingId && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => openCreateListingDialog(coin)}
+                                  className="text-blue-500 hover:text-blue-600"
+                                >
+                                  <Gavel className="h-4 w-4 mr-1" />
+                                  List for Sale
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleEditIndividualCoin(coin)}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleDeleteCoin(coin.id)}
+                                  className="text-red-500 hover:text-red-600"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </>
+                            )}
+                            {coin.listingId && (
+                              <Badge className="bg-blue-500 text-white">Listed</Badge>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -1127,12 +1264,15 @@ export default function CoinDetail() {
         </DialogContent>
       </Dialog>
 
-      <ImageViewer
-        isOpen={imageViewerOpen}
-        onClose={() => setImageViewerOpen(false)}
-        imageUrl={selectedImage?.url || referenceCoin?.obverseImageUrl || referenceCoin?.reverseImageUrl || ""}
-        alt={selectedImage?.alt || referenceCoin?.coinName || ""}
-      />
+      {/* Image Viewer */}
+      {selectedImage && (
+        <ImageViewer
+          isOpen={imageViewerOpen}
+          onClose={() => setImageViewerOpen(false)}
+          imageUrl={selectedImage.url}
+          alt={selectedImage.alt}
+        />
+      )}
     </Layout>
   );
 }
