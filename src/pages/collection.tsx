@@ -1,26 +1,24 @@
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/router";
-import { Layout } from "@/components/Layout";
 import { SEO } from "@/components/SEO";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertCircle, Plus, Edit, Trash2, TrendingUp, Package, DollarSign, Eye, Gavel, ShoppingCart, Search } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Layout } from "@/components/Layout";
 import { userCoinService } from "@/services/userCoinService";
 import { userSalesService } from "@/services/userSalesService";
-import { imageService } from "@/services/imageService";
-import { spotPriceService } from "@/lib/spotPrices";
-import { supabase } from "@/integrations/supabase/client";
-import { ImageViewer } from "@/components/ImageViewer";
 import { coinReferenceService } from "@/services/coinReferenceService";
-import { createListing } from "@/services/listingService";
-import { type Coin, type SheldonGrade, SHELDON_GRADES, COUNTRY_CODES } from "@/types/coin";
+import { spotPriceService } from "@/lib/spotPrices";
+import { imageService } from "@/services/imageService";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { Search, Plus, Eye, Upload, Trash2, ShoppingCart, Package } from "lucide-react";
+import { ImageViewer } from "@/components/ImageViewer";
+import { SheldonGrade, SHELDON_GRADES, COUNTRY_CODES } from "@/types/coin";
+import type { Coin } from "@/types/coin";
 
 export default function Collection() {
   const router = useRouter();
@@ -134,96 +132,10 @@ export default function Collection() {
   const [referenceFilter, setReferenceFilter] = useState("");
   const [isLoadingReferences, setIsLoadingReferences] = useState(false);
 
-  // Create listing dialog state
-  const [isCreateListingDialogOpen, setIsCreateListingDialogOpen] = useState(false);
-  const [listingCoin, setListingCoin] = useState<Coin | null>(null);
-  const [listingFormData, setListingFormData] = useState({
-    platform: "",
-    startingPrice: "",
-    currentBid: "",
-    expectedEndDate: "",
-    notes: ""
-  });
-
   // Image viewer state
   const [viewImage, setViewImage] = useState<{ url: string; alt: string } | null>(null);
 
-  // Check authentication on mount
-  useEffect(() => {
-    checkAuth();
-  }, []);
-
-  const checkAuth = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        router.push("/");
-        return;
-      }
-      
-      setIsAuthenticated(true);
-      setIsLoading(false);
-    } catch (error) {
-      console.error("Auth check error:", error);
-      router.push("/");
-    }
-  };
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      loadCoins();
-      loadSpotPrices();
-    }
-  }, [isAuthenticated]);
-
-  useEffect(() => {
-    let filtered = coins;
-    
-    if (searchTerm) {
-      filtered = filtered.filter(coin => 
-        coin.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        coin.coinName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        coin.countryCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        coin.kmNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        COUNTRY_CODES[coin.countryCode]?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-    
-    if (countryFilter !== "all") {
-      filtered = filtered.filter(coin => coin.countryCode === countryFilter);
-    }
-    
-    if (metalFilter !== "all") {
-      filtered = filtered.filter(coin => coin.metal === metalFilter);
-    }
-    
-    setFilteredCoins(filtered);
-  }, [searchTerm, countryFilter, metalFilter, coins]);
-
-  // Search reference coins with debounce
-  useEffect(() => {
-    const timer = setTimeout(async () => {
-      if (referenceSearchTerm.trim().length >= 2) {
-        setIsSearching(true);
-        console.log("Searching for:", referenceSearchTerm);
-        const { data, error } = await coinReferenceService.searchReferences(referenceSearchTerm);
-        
-        console.log("Search results:", { data, error });
-        if (!error && data) {
-          setReferenceSearchResults(data);
-        } else {
-          console.error("Search error:", error);
-        }
-        setIsSearching(false);
-      } else {
-        setReferenceSearchResults([]);
-      }
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [referenceSearchTerm]);
-
+  // Load all user coins
   const loadCoins = async () => {
     const { data, error } = await userCoinService.getUserCoins();
     
@@ -509,39 +421,6 @@ export default function Collection() {
     setIsAddDialogOpen(true);
   }
 
-  function openCreateListingDialog(coin: Coin) {
-    setListingCoin(coin);
-    setListingFormData({
-      platform: "",
-      startingPrice: coin.purchasePrice.toString(),
-      currentBid: "",
-      expectedEndDate: "",
-      notes: ""
-    });
-    setIsCreateListingDialogOpen(true);
-  }
-
-  async function handleCreateListing() {
-    if (!listingCoin) return;
-
-    const data = {
-      coinId: listingCoin.id,
-      platform: listingFormData.platform,
-      startingPrice: parseFloat(listingFormData.startingPrice),
-      currentBid: listingFormData.currentBid ? parseFloat(listingFormData.currentBid) : undefined,
-      expectedEndDate: listingFormData.expectedEndDate || undefined,
-      notes: listingFormData.notes || undefined
-    };
-
-    const { error: listingError } = await createListing(data);
-    if (listingError) {
-      setError(listingError.message);
-    } else {
-      setIsCreateListingDialogOpen(false);
-      loadCoins(); // Reload to show updated status
-    }
-  }
-
   // Handle Register Purchase
   const handleRegisterPurchase = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -767,6 +646,12 @@ export default function Collection() {
   const handleImageClick = (imageUrl: string, coinName: string) => {
     setSelectedImage({ url: imageUrl, alt: coinName });
     setImageViewerOpen(true);
+  };
+
+  const handleViewDetails = (skuCoins: Coin[]) => {
+    if (skuCoins.length > 0) {
+      router.push(`/coin/${encodeURIComponent(skuCoins[0].sku)}`);
+    }
   };
 
   // Group coins by SKU
@@ -1318,9 +1203,9 @@ export default function Collection() {
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {countryCoins.map(({ sku, coins: skuCoins }) => {
-                      const coin = skuCoins[0];
-                      const unsoldCoins = skuCoins.filter(c => !c.isSold);
+                    {countryCoins.map(({ sku, coins: coinBySku }) => {
+                      const coin = coinBySku[0];
+                      const unsoldCoins = coinBySku.filter(c => !c.isSold);
                       const totalBullionValue = unsoldCoins.reduce((sum, c) => sum + calculateBullionValue(c), 0);
                       const totalCost = unsoldCoins.reduce((sum, c) => sum + c.purchasePrice, 0);
 
@@ -1410,42 +1295,13 @@ export default function Collection() {
 
                             <div className="flex gap-2 pt-2">
                               <Button
-                                size="sm"
                                 variant="outline"
-                                onClick={() => router.push(`/coin/${coin.sku}`)}
-                                className="flex-1"
+                                className="flex-1 border-slate-700 text-slate-300 hover:bg-slate-800"
+                                onClick={() => handleViewDetails(coinBySku)}
                               >
-                                <Eye className="h-4 w-4 mr-1" />
+                                <Eye className="w-4 h-4 mr-2" />
                                 View Details
                               </Button>
-                              {!coin.isSold && !coin.listingId && (
-                                <Button
-                                  size="sm"
-                                  variant="default"
-                                  onClick={() => openCreateListingDialog(coin)}
-                                >
-                                  <Gavel className="h-4 w-4 mr-1" />
-                                  List for Sale
-                                </Button>
-                              )}
-                              {!coin.isSold && (
-                                <>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => openEditDialog(coin)}
-                                  >
-                                    <Edit className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => handleDeleteCoin(coin.id)}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </>
-                              )}
                             </div>
                           </CardContent>
                         </Card>
@@ -1704,83 +1560,7 @@ export default function Collection() {
         </DialogContent>
       </Dialog>
 
-      {/* Create Listing Dialog */}
-      <Dialog open={isCreateListingDialogOpen} onOpenChange={setIsCreateListingDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>List Coin for Sale</DialogTitle>
-            <DialogDescription>
-              {listingCoin && `${listingCoin.coinName} (${listingCoin.sku})`}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="platform">Platform/Venue *</Label>
-              <Input
-                id="platform"
-                value={listingFormData.platform}
-                onChange={(e) => setListingFormData({ ...listingFormData, platform: e.target.value })}
-                placeholder="e.g., eBay, Heritage Auctions"
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor="starting-price">Starting Price (CHF) *</Label>
-              <Input
-                id="starting-price"
-                type="number"
-                step="0.01"
-                value={listingFormData.startingPrice}
-                onChange={(e) => setListingFormData({ ...listingFormData, startingPrice: e.target.value })}
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor="current-bid">Current Bid (CHF)</Label>
-              <Input
-                id="current-bid"
-                type="number"
-                step="0.01"
-                value={listingFormData.currentBid}
-                onChange={(e) => setListingFormData({ ...listingFormData, currentBid: e.target.value })}
-                placeholder="Optional - update as bids come in"
-              />
-            </div>
-            <div>
-              <Label htmlFor="end-date">Expected End Date</Label>
-              <Input
-                id="end-date"
-                type="date"
-                value={listingFormData.expectedEndDate}
-                onChange={(e) => setListingFormData({ ...listingFormData, expectedEndDate: e.target.value })}
-              />
-            </div>
-            <div>
-              <Label htmlFor="listing-notes">Notes</Label>
-              <Textarea
-                id="listing-notes"
-                value={listingFormData.notes}
-                onChange={(e) => setListingFormData({ ...listingFormData, notes: e.target.value })}
-                placeholder="Additional information about this listing"
-                rows={3}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsCreateListingDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleCreateListing}
-              disabled={!listingFormData.platform || !listingFormData.startingPrice}
-            >
-              Create Listing
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Image Viewer Modal */}
+      {/* Image Viewer */}
       {viewImage && (
         <ImageViewer
           isOpen={!!viewImage}
