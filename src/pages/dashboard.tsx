@@ -3,6 +3,7 @@ import { SEO } from "@/components/SEO";
 import { Layout } from "@/components/Layout";
 import { userCoinService } from "@/services/userCoinService";
 import { userSalesService } from "@/services/userSalesService";
+import { getActiveListings } from "@/services/listingService";
 import { spotPriceService, SpotPrices } from "@/lib/spotPrices";
 import { Coin, Sale, COUNTRY_CODES } from "@/types/coin";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,9 +12,11 @@ import { Coins, TrendingUp, DollarSign, Package, Globe, PieChart, Sparkles, Refr
 import { Treemap, ResponsiveContainer, Tooltip } from "recharts";
 
 export default function Dashboard() {
-  const [coins, setCoins] = useState<Coin[]>([]);
-  const [sales, setSales] = useState<Sale[]>([]);
-  const [spotPrices, setSpotPrices] = useState<SpotPrices | null>(null);
+  const [coins, setCoins] = useState<any[]>([]);
+  const [sales, setSales] = useState<any[]>([]);
+  const [listings, setListings] = useState<any[]>([]);
+  const [spotPrices, setSpotPrices] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [stats, setStats] = useState({
     totalCoins: 0,
@@ -30,8 +33,22 @@ export default function Dashboard() {
   });
 
   useEffect(() => {
-    loadData();
-    loadSpotPrices();
+    async function loadDashboardData() {
+      const [coinsResult, salesResult, listingsResult, prices] = await Promise.all([
+        userCoinService.getUserCoins(),
+        userSalesService.getUserSales(),
+        getActiveListings(),
+        spotPriceService.getSpotPrices()
+      ]);
+
+      if (coinsResult.data) setCoins(coinsResult.data);
+      if (salesResult.data) setSales(salesResult.data);
+      if (listingsResult.data) setListings(listingsResult.data);
+      setSpotPrices(prices);
+      setIsLoading(false);
+    }
+
+    loadDashboardData();
   }, []);
 
   const loadData = async () => {
@@ -314,6 +331,55 @@ export default function Dashboard() {
               </div>
             </CardContent>
           </Card>
+        </div>
+
+        {/* Active Listings Section */}
+        <div>
+          <h2 className="text-2xl font-bold text-white mb-4">Active Listings</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card className="bg-slate-800/50 border-slate-700">
+              <CardHeader className="pb-3">
+                <CardDescription className="text-slate-400">Coins Listed</CardDescription>
+                <CardTitle className="text-3xl text-white">{listings.length}</CardTitle>
+              </CardHeader>
+            </Card>
+
+            <Card className="bg-slate-800/50 border-slate-700">
+              <CardHeader className="pb-3">
+                <CardDescription className="text-slate-400">Purchase Value</CardDescription>
+                <CardTitle className="text-3xl text-white">
+                  {spotPriceService.formatCHF(
+                    listings.reduce((sum, listing) => sum + (listing.coin?.purchasePrice || 0), 0)
+                  )}
+                </CardTitle>
+              </CardHeader>
+            </Card>
+
+            <Card className="bg-slate-800/50 border-slate-700">
+              <CardHeader className="pb-3">
+                <CardDescription className="text-slate-400">Starting Prices</CardDescription>
+                <CardTitle className="text-3xl text-white">
+                  {spotPriceService.formatCHF(
+                    listings.reduce((sum, listing) => sum + (listing.starting_price || 0), 0)
+                  )}
+                </CardTitle>
+              </CardHeader>
+            </Card>
+
+            <Card className="bg-slate-800/50 border-slate-700">
+              <CardHeader className="pb-3">
+                <CardDescription className="text-slate-400">Current Market Value</CardDescription>
+                <CardTitle className="text-3xl text-white">
+                  {spotPriceService.formatCHF(
+                    listings.reduce((sum, listing) => {
+                      const highestPrice = Math.max(listing.starting_price || 0, listing.current_bid || 0);
+                      return sum + highestPrice;
+                    }, 0)
+                  )}
+                </CardTitle>
+              </CardHeader>
+            </Card>
+          </div>
         </div>
 
         {/* Distribution Charts */}
