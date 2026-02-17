@@ -85,10 +85,19 @@ export default function Dashboard() {
     }, 0);
     
     const totalInvestment = unsoldCoins.reduce((sum, coin) => sum + (coin.purchase_price || 0), 0);
-    const totalProfit = salesData.reduce((sum, sale) => sum + (sale.profit || 0), 0);
+    
+    // Calculate total profit from actual sales data with proper field names
+    const totalProfit = salesData.reduce((sum, sale) => {
+      // Use the profit field from the database (calculated by trigger)
+      return sum + (sale.profit || 0);
+    }, 0);
+    
     const unrealizedPL = totalBullionValue - totalInvestment;
     const unrealizedPLPercent = totalInvestment > 0 ? (unrealizedPL / totalInvestment) * 100 : 0;
-    const profitMargin = totalInvestment > 0 ? (totalProfit / totalInvestment) * 100 : 0;
+    
+    // Calculate profit margin based on total sales investment
+    const totalSalesInvestment = salesData.reduce((sum, sale) => sum + (sale.purchase_price || 0), 0);
+    const profitMargin = totalSalesInvestment > 0 ? (totalProfit / totalSalesInvestment) * 100 : 0;
     
     const countryDistribution: Record<string, number> = {};
     coinsData.forEach(coin => {
@@ -225,138 +234,169 @@ export default function Dashboard() {
           </button>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-          <Card className="bg-slate-800/50 border-slate-700">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-slate-400">
-                Total Coins
-              </CardTitle>
-              <Package className="h-5 w-5 text-amber-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-white">{stats.totalCoins}</div>
-              <p className="text-xs text-slate-500 mt-1">
-                Unsold: {stats.unsoldCoins} | Sold: {stats.soldCoins}
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-slate-800/50 border-slate-700">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-slate-400">
-                Bullion Value
-              </CardTitle>
-              <TrendingUp className="h-5 w-5 text-blue-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-white">
-                {spotPriceService.formatCHF(stats.totalBullionValue)}
-              </div>
-              <p className="text-xs text-slate-500 mt-1">Unsold coins only</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-slate-800/50 border-slate-700">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-slate-400">
-                Unrealized P/L
-              </CardTitle>
-              <TrendingUp className="h-5 w-5 text-green-500" />
-            </CardHeader>
-            <CardContent>
-              <div className={`text-3xl font-bold ${stats.unrealizedPL >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                {spotPriceService.formatCHF(stats.unrealizedPL)}
-              </div>
-              <p className="text-xs text-slate-500 mt-1">
-                {stats.unrealizedPLPercent >= 0 ? '+' : ''}{stats.unrealizedPLPercent.toFixed(1)}% vs cost
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-slate-800/50 border-slate-700">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-slate-400">
-                Total Investment
-              </CardTitle>
-              <ShoppingCart className="h-5 w-5 text-orange-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-white">
-                {spotPriceService.formatCHF(stats.totalInvestment)}
-              </div>
-              <p className="text-xs text-slate-500 mt-1">Purchase cost</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-slate-800/50 border-slate-700">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-slate-400">
-                Total Profit
-              </CardTitle>
-              <DollarSign className="h-5 w-5 text-green-500" />
-            </CardHeader>
-            <CardContent>
-              <div className={`text-3xl font-bold ${stats.totalProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                {spotPriceService.formatCHF(stats.totalProfit)}
-              </div>
-              <p className="text-xs text-slate-500 mt-1">
-                Margin: {stats.profitMargin.toFixed(1)}%
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Active Listings Section */}
+        {/* Collection Overview Section */}
         <div>
-          <h2 className="text-2xl font-semibold text-white mb-4">Active Listings</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <h2 className="text-2xl font-semibold text-white mb-4">Collection Overview</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
             <Card className="bg-slate-800/50 border-slate-700">
-              <CardHeader>
-                <CardTitle className="text-slate-400 text-sm">Coins Listed</CardTitle>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-slate-400">
+                  Total Coins
+                </CardTitle>
+                <Package className="h-5 w-5 text-amber-500" />
               </CardHeader>
               <CardContent>
-                <p className="text-3xl font-bold text-white">{listingStats.coinsListed}</p>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-slate-800/50 border-slate-700">
-              <CardHeader>
-                <CardTitle className="text-slate-400 text-sm">Purchase Value</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-3xl font-bold text-white">
-                  {spotPriceService.formatCHF(listingStats.totalPurchaseValue)}
+                <div className="text-3xl font-bold text-white">{stats.totalCoins}</div>
+                <p className="text-xs text-slate-500 mt-1">
+                  Unsold: {stats.unsoldCoins} | Sold: {stats.soldCoins}
                 </p>
               </CardContent>
             </Card>
 
             <Card className="bg-slate-800/50 border-slate-700">
-              <CardHeader>
-                <CardTitle className="text-slate-400 text-sm">Starting Prices</CardTitle>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-slate-400">
+                  Bullion Value
+                </CardTitle>
+                <TrendingUp className="h-5 w-5 text-blue-500" />
               </CardHeader>
               <CardContent>
-                <p className="text-3xl font-bold text-white">
-                  {spotPriceService.formatCHF(listingStats.totalListingValue)}
+                <div className="text-2xl font-bold text-white break-words">
+                  {spotPriceService.formatCHF(stats.totalBullionValue)}
+                </div>
+                <p className="text-xs text-slate-500 mt-1">Unsold coins only</p>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-slate-800/50 border-slate-700">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-slate-400">
+                  Unrealized P/L
+                </CardTitle>
+                <TrendingUp className="h-5 w-5 text-green-500" />
+              </CardHeader>
+              <CardContent>
+                <div className={`text-2xl font-bold break-words ${stats.unrealizedPL >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                  {spotPriceService.formatCHF(stats.unrealizedPL)}
+                </div>
+                <p className="text-xs text-slate-500 mt-1">
+                  {stats.unrealizedPLPercent >= 0 ? '+' : ''}{stats.unrealizedPLPercent.toFixed(1)}% vs cost
                 </p>
               </CardContent>
             </Card>
 
             <Card className="bg-slate-800/50 border-slate-700">
-              <CardHeader>
-                <CardTitle className="text-slate-400 text-sm">Current Market Value</CardTitle>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-slate-400">
+                  Total Investment
+                </CardTitle>
+                <ShoppingCart className="h-5 w-5 text-orange-500" />
               </CardHeader>
               <CardContent>
-                <p className="text-3xl font-bold text-white">
-                  {spotPriceService.formatCHF(listingStats.totalListingValue)}
-                </p>
-                <p className="text-xs text-slate-500 mt-1">Highest of starting/bid prices</p>
+                <div className="text-2xl font-bold text-white break-words">
+                  {spotPriceService.formatCHF(stats.totalInvestment)}
+                </div>
+                <p className="text-xs text-slate-500 mt-1">Purchase cost</p>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-slate-800/50 border-slate-700">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-slate-400">
+                  Coins Listed
+                </CardTitle>
+                <BarChart3 className="h-5 w-5 text-purple-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-white">{listingStats.coinsListed}</div>
+                <p className="text-xs text-slate-500 mt-1">Active listings</p>
               </CardContent>
             </Card>
           </div>
         </div>
 
-        {/* Statistics Grid */}
+        {/* Active Listings Section */}
+        <div>
+          <h2 className="text-2xl font-semibold text-white mb-4">Active Listings</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <Card className="bg-slate-800/50 border-slate-700">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-slate-400">Purchase Value</CardTitle>
+                <ShoppingCart className="h-5 w-5 text-orange-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-white break-words">
+                  {spotPriceService.formatCHF(listingStats.totalPurchaseValue)}
+                </div>
+                <p className="text-xs text-slate-500 mt-1">Cost of listed coins</p>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-slate-800/50 border-slate-700">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-slate-400">Starting Prices</CardTitle>
+                <DollarSign className="h-5 w-5 text-blue-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-white break-words">
+                  {spotPriceService.formatCHF(listingStats.totalListingValue)}
+                </div>
+                <p className="text-xs text-slate-500 mt-1">Initial listing prices</p>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-slate-800/50 border-slate-700">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-slate-400">Current Market Value</CardTitle>
+                <TrendingUp className="h-5 w-5 text-green-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-white break-words">
+                  {spotPriceService.formatCHF(listingStats.totalListingValue)}
+                </div>
+                <p className="text-xs text-slate-500 mt-1">Highest of starting/bid</p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        {/* Sales Performance Section */}
+        <div>
+          <h2 className="text-2xl font-semibold text-white mb-4">Sales Performance</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card className="bg-slate-800/50 border-slate-700">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-slate-400">
+                  Total Profit
+                </CardTitle>
+                <DollarSign className="h-5 w-5 text-green-500" />
+              </CardHeader>
+              <CardContent>
+                <div className={`text-2xl font-bold break-words ${stats.totalProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                  {spotPriceService.formatCHF(stats.totalProfit)}
+                </div>
+                <p className="text-xs text-slate-500 mt-1">
+                  Margin: {stats.profitMargin.toFixed(1)}%
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-slate-800/50 border-slate-700">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-slate-400">
+                  Coins Sold
+                </CardTitle>
+                <Coins className="h-5 w-5 text-amber-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-white">{stats.soldCoins}</div>
+                <p className="text-xs text-slate-500 mt-1">Completed sales</p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        {/* Statistics Grid - Country & Metal Distribution */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card className="bg-slate-800/50 border-slate-700">
             <CardHeader>
