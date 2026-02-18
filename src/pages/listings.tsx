@@ -124,33 +124,16 @@ export default function ListingsPage() {
     if (!completingListing || !completingListing.coin) return;
 
     const salePrice = parseFloat(completeSaleData.salePrice);
-    const purchasePrice = completingListing.coin.purchasePrice;
-    const profit = salePrice - purchasePrice;
-    const markupPercentage = purchasePrice > 0 ? (profit / purchasePrice) * 100 : 0;
+    
+    const result = await markListingAsSold(
+      completingListing.id,
+      salePrice,
+      completeSaleData.saleDate,
+      completingListing.platform
+    );
 
-    const saleData = {
-      coin_id: completingListing.coin_id,
-      sku: completingListing.coin.sku,
-      coin_name: completingListing.coin.coinName,
-      sale_date: completeSaleData.saleDate,
-      sale_price: salePrice,
-      purchase_price: purchasePrice,
-      profit,
-      markup_percentage: markupPercentage,
-      buyer_info: completeSaleData.buyerInfo,
-      notes: completeSaleData.notes
-    };
-
-    const { error: saleError } = await userSalesService.addSale(saleData);
-    if (saleError) {
-      setError(saleError.message);
-      return;
-    }
-
-    // Delete the listing
-    const { error: deleteError } = await deleteListing(completingListing.id, completingListing.coin_id);
-    if (deleteError) {
-      setError(deleteError.message);
+    if (!result.success) {
+      setError(result.error || "Unknown error occurred");
     } else {
       setIsCompleteSaleDialogOpen(false);
       loadListings();

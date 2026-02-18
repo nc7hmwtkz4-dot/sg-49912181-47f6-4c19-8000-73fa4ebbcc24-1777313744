@@ -267,3 +267,87 @@ export async function getListingStats(): Promise<{
     };
   }
 }
+
+export async function markListingAsSold(
+  listingId: string,
+  salePrice: number,
+  saleDate: string,
+  platform: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return { success: false, error: "User not authenticated" };
+    }
+
+    // 1. Get the listing to find the coin_id and details
+    const { data: listing, error: fetchError } = await supabase
+      .from("user_listings")
+      .select(`
+        *,
+        coin:user_coins!user_listings_coin_id_fkey(
+          purchase_price,
+          sku,
+          coin_name
+        )
+      `)
+      .eq("id", listingId)
+      .single();
+
+    if (fetchError) throw fetchError;
+    if (!listing) throw new Error("Listing not found");
+
+    const coinData = Array.isArray(listing.coin) ? listing.coin[0] : listing.coin;
+    // @ts-ignore
+    const purchasePrice = coinData?.purchase_price || 0;
+    // @ts-ignore
+    const sku = coinData?.sku || listing.sku;
+    // @ts-ignore
+    const coinName = coinData?.coin_name || listing.coin_name;
+
+    const profit = salePrice - purchasePrice;
+    const markupPercentage = purchasePrice > 0 ? (profit / purchasePrice) * 100 : 0;
+
+    // 2. Update the coin's status in user_coins
+    const { error: coinUpdateError } = await supabase
+      .from("user_coins")
+      .update({ 
+        is_sold: true,
+        listing_id: null 
+      })
+      .eq("id", listing.coin_id);
+
+    if (coinUpdateError) throw coinUpdateError;
+
+    // 3. Create a sale record
+    const { error: saleError } = await supabase
+      .from("user_sales")
+      .insert({
+        user_id: user.id,
+        coin_id: listing.coin_id,
+        sale_price: salePrice,
+        sale_date: saleDate,
+        purchase_price: purchasePrice,
+        profit: profit,
+        markup_percentage: markupPercentage,
+        sku: sku,
+        coin_name: coinName,
+        notes: listing.notes ? `Platform: ${platform}. Notes: ${listing.notes}` : `Platform: ${platform}`
+      });
+
+    if (saleError) throw saleError;
+
+    // 4. Delete the listing
+    const { error: deleteError } = await supabase
+      .from("user_listings")
+      .delete()
+      .eq("id", listingId);
+
+    if (deleteError) throw deleteError;
+
+    return { success: true };
+  } catch (error: any) {
+    console.error("Error marking listing as sold:", error);
+    return { success: false, error: error.message };
+  }
+}
