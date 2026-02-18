@@ -128,12 +128,7 @@ export async function getActiveListings(): Promise<{ data: ListingWithCoin[]; er
 
     // Transform the data to match ListingWithCoin interface
     const listings: ListingWithCoin[] = (data || []).map(listing => {
-      // Handle the joined data which could be an array or single object
-      // and map snake_case DB columns to camelCase interface properties
       const coinData = Array.isArray(listing.coin) ? listing.coin[0] : listing.coin;
-      
-      // We need to cast the coinData to any to access snake_case properties 
-      // because the type inference might be tricky with the join
       const rawCoin = coinData as any;
       
       return {

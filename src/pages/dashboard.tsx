@@ -53,10 +53,7 @@ export default function Dashboard() {
       const prices = await spotPriceService.getSpotPrices();
       
       if (coinsResult.data) setCoins(coinsResult.data);
-      if (salesResult.data) {
-        console.log("Dashboard sales data:", salesResult.data);
-        setSales(salesResult.data);
-      }
+      if (salesResult.data) setSales(salesResult.data);
       if (listingsResult.data) setListings(listingsResult.data);
       setSpotPrices(prices);
       setIsLoading(false);
@@ -69,7 +66,7 @@ export default function Dashboard() {
     if (coins.length > 0 && spotPrices) {
       calculateStats(coins, sales, spotPrices);
     }
-    if (listings.length > 0) {
+    if (listings.length >= 0) {
       calculateListingStats(listings);
     }
   }, [coins, sales, spotPrices, listings]);
@@ -89,38 +86,17 @@ export default function Dashboard() {
     
     const totalInvestment = unsoldCoins.reduce((sum, coin) => sum + (coin.purchase_price || 0), 0);
     
-    // Calculate total profit - EXACTLY matching sales page logic
-    // Map database sales to Sale objects first, then calculate profit
-    const mappedSales: Sale[] = salesData.map((s: any) => ({
-      id: s.id,
-      coinId: s.coin_id,
-      saleDate: s.sale_date,
-      salePrice: s.sale_price,
-      buyerInfo: s.buyer_info,
-      notes: s.notes,
-      sku: s.sku || "",
-      coinName: s.coin_name || "",
-      purchasePrice: s.purchase_price || 0,
-      profit: s.profit || 0,
-      markupPercentage: s.markup_percentage || 0
-    }));
-    
-    // Calculate profit exactly like sales page does
-    const totalProfit = mappedSales.reduce((sum, sale) => {
-      // Use salePrice and purchasePrice from the mapped Sale object
-      const profit = sale.salePrice - sale.purchasePrice;
-      console.log(`Sale ${sale.id}: salePrice=${sale.salePrice}, purchasePrice=${sale.purchasePrice}, profit=${profit}`);
-      return sum + profit;
+    // Calculate total profit using the EXACT data from user_sales table
+    // The profit column is already calculated by the database trigger
+    const totalProfit = salesData.reduce((sum, sale) => {
+      return sum + (sale.profit || 0);
     }, 0);
-    
-    console.log("Dashboard Total Profit:", totalProfit);
-    console.log("Sales data count:", mappedSales.length);
     
     const unrealizedPL = totalBullionValue - totalInvestment;
     const unrealizedPLPercent = totalInvestment > 0 ? (unrealizedPL / totalInvestment) * 100 : 0;
     
     // Calculate profit margin based on total sales investment
-    const totalSalesInvestment = mappedSales.reduce((sum, sale) => sum + sale.purchasePrice, 0);
+    const totalSalesInvestment = salesData.reduce((sum, sale) => sum + (sale.purchase_price || 0), 0);
     const profitMargin = totalSalesInvestment > 0 ? (totalProfit / totalSalesInvestment) * 100 : 0;
     
     const countryDistribution: Record<string, number> = {};
@@ -152,9 +128,12 @@ export default function Dashboard() {
 
   const calculateListingStats = (listingsData: any[]) => {
     const coinsListed = listingsData.length;
+    
     const totalPurchaseValue = listingsData.reduce((sum, listing) => {
-      return sum + (listing.coin?.purchase_price || 0);
+      const coinData = listing.coin;
+      return sum + (coinData?.purchasePrice || 0);
     }, 0);
+    
     const totalListingValue = listingsData.reduce((sum, listing) => {
       const highestPrice = Math.max(listing.starting_price || 0, listing.current_bid || 0);
       return sum + highestPrice;
@@ -167,56 +146,10 @@ export default function Dashboard() {
     });
   };
 
-  const loadData = async () => {
-    const { data: coinsData } = await userCoinService.getUserCoins();
-    const { data: salesData } = await userSalesService.getUserSales();
-    
-    if (coinsData) {
-      const mappedCoins: Coin[] = coinsData.map((c: any) => ({
-        id: c.id,
-        sku: c.sku,
-        coinName: c.coin_name,
-        countryCode: c.country_code,
-        kmNumber: c.km_number,
-        year: c.year,
-        mintmark: c.mintmark,
-        metal: c.metal,
-        purity: c.purity,
-        weight: c.weight,
-        sheldonGrade: c.sheldon_grade,
-        purchasePrice: c.purchase_price,
-        purchaseDate: c.purchase_date,
-        notes: c.notes,
-        obverseImageUrl: c.obverse_image_url,
-        reverseImageUrl: c.reverse_image_url,
-        isSold: c.is_sold
-      }));
-      setCoins(mappedCoins);
-    }
-
-    if (salesData) {
-      const mappedSales: Sale[] = salesData.map((s: any) => ({
-        id: s.id,
-        coinId: s.coin_id,
-        saleDate: s.sale_date,
-        salePrice: s.sale_price,
-        buyerInfo: s.buyer_info,
-        notes: s.notes,
-        sku: s.sku || "",
-        coinName: s.coin_name || "",
-        purchasePrice: s.purchase_price || 0,
-        profit: s.profit || 0
-      }));
-      setSales(mappedSales);
-    }
-  };
-
   const loadSpotPrices = async (forceRefresh = false) => {
     setIsRefreshing(true);
     const prices = await spotPriceService.getSpotPrices(forceRefresh);
     setSpotPrices(prices);
-    console.log("Loaded spot prices:", prices);
-    // Recalculate stats when spot prices are loaded
     if (coins.length > 0) {
       calculateStats(coins, sales, prices);
     }
@@ -225,10 +158,6 @@ export default function Dashboard() {
 
   const handleForceRefresh = async () => {
     await loadSpotPrices(true);
-  };
-
-  const refreshStats = () => {
-    // Legacy function removed, using calculateStats via useEffect
   };
 
   return (
@@ -285,7 +214,7 @@ export default function Dashboard() {
                 <TrendingUp className="h-5 w-5 text-blue-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-xl font-bold text-white whitespace-nowrap overflow-hidden text-ellipsis">
+                <div className="text-xl font-bold text-white whitespace-nowrap">
                   {spotPriceService.formatCHF(stats.totalBullionValue)}
                 </div>
                 <p className="text-xs text-slate-500 mt-1">Unsold coins only</p>
@@ -300,7 +229,7 @@ export default function Dashboard() {
                 <TrendingUp className="h-5 w-5 text-green-500" />
               </CardHeader>
               <CardContent>
-                <div className={`text-xl font-bold whitespace-nowrap overflow-hidden text-ellipsis ${stats.unrealizedPL >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                <div className={`text-xl font-bold whitespace-nowrap ${stats.unrealizedPL >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                   {spotPriceService.formatCHF(stats.unrealizedPL)}
                 </div>
                 <p className="text-xs text-slate-500 mt-1">
@@ -317,7 +246,7 @@ export default function Dashboard() {
                 <ShoppingCart className="h-5 w-5 text-orange-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-xl font-bold text-white whitespace-nowrap overflow-hidden text-ellipsis">
+                <div className="text-xl font-bold text-white whitespace-nowrap">
                   {spotPriceService.formatCHF(stats.totalInvestment)}
                 </div>
                 <p className="text-xs text-slate-500 mt-1">Purchase cost</p>
@@ -349,7 +278,7 @@ export default function Dashboard() {
                 <ShoppingCart className="h-5 w-5 text-orange-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-xl font-bold text-white whitespace-nowrap overflow-hidden text-ellipsis">
+                <div className="text-xl font-bold text-white whitespace-nowrap">
                   {spotPriceService.formatCHF(listingStats.totalPurchaseValue)}
                 </div>
                 <p className="text-xs text-slate-500 mt-1">Cost of listed coins</p>
@@ -362,7 +291,7 @@ export default function Dashboard() {
                 <DollarSign className="h-5 w-5 text-blue-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-xl font-bold text-white whitespace-nowrap overflow-hidden text-ellipsis">
+                <div className="text-xl font-bold text-white whitespace-nowrap">
                   {spotPriceService.formatCHF(listingStats.totalListingValue)}
                 </div>
                 <p className="text-xs text-slate-500 mt-1">Initial listing prices</p>
@@ -375,7 +304,7 @@ export default function Dashboard() {
                 <TrendingUp className="h-5 w-5 text-green-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-xl font-bold text-white whitespace-nowrap overflow-hidden text-ellipsis">
+                <div className="text-xl font-bold text-white whitespace-nowrap">
                   {spotPriceService.formatCHF(listingStats.totalListingValue)}
                 </div>
                 <p className="text-xs text-slate-500 mt-1">Highest of starting/bid</p>
@@ -396,7 +325,7 @@ export default function Dashboard() {
                 <DollarSign className="h-5 w-5 text-green-500" />
               </CardHeader>
               <CardContent>
-                <div className={`text-2xl font-bold whitespace-nowrap overflow-hidden text-ellipsis ${stats.totalProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                <div className={`text-2xl font-bold whitespace-nowrap ${stats.totalProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                   {spotPriceService.formatCHF(stats.totalProfit)}
                 </div>
                 <p className="text-xs text-slate-500 mt-1">
