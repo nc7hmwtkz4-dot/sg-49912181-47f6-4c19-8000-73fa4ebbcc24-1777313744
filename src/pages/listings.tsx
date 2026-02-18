@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { AlertCircle, Plus, Edit, Trash2, DollarSign, TrendingUp, Package, CheckCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { getActiveListings, updateListing, deleteListing, type ListingWithCoin } from "@/services/listingService";
+import { getActiveListings, updateListing, deleteListing, markListingAsSold, type ListingWithCoin } from "@/services/listingService";
 import { ImageViewer } from "@/components/ImageViewer";
 import { userCoinService } from "@/services/userCoinService";
 import { userSalesService } from "@/services/userSalesService";
