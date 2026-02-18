@@ -23,6 +23,58 @@ const FALLBACK_PRICES: SpotPrices = {
 // Cache duration: 24 hours (86400000 milliseconds)
 const CACHE_DURATION_MS = 24 * 60 * 60 * 1000;
 
+const METAL_PRICE_API_KEY = 'a4c341c9c8b69969cba65382941825cf';
+const API_URL = 'https://api.metalpriceapi.com/v1/latest';
+
+// Constants for conversions
+const TROY_OZ_TO_GRAMS = 31.1034768; // 1 troy oz = 31.1034768 grams
+const USD_TO_CHF_RATE = 0.88; // Approximate rate, you can make this dynamic later
+
+interface MetalPrices {
+  gold: number;
+  silver: number;
+  copper: number;
+  platinum: number;
+  timestamp: number;
+}
+
+export async function fetchSpotPrices(): Promise<MetalPrices | null> {
+  try {
+    const response = await fetch(
+      `${API_URL}?api_key=${METAL_PRICE_API_KEY}&base=USD&currencies=XAU,XAG,XCU,XPT`
+    );
+
+    if (!response.ok) {
+      console.error('Failed to fetch spot prices:', response.statusText);
+      return null;
+    }
+
+    const data = await response.json();
+    
+    if (!data.rates) {
+      console.error('Invalid API response:', data);
+      return null;
+    }
+
+    // Convert from USD per troy oz to CHF per gram
+    // API returns rates as USD per unit, we need to invert and convert
+    const convertToChfPerGram = (usdPerTroyOz: number) => {
+      return (1 / usdPerTroyOz) * USD_TO_CHF_RATE * TROY_OZ_TO_GRAMS;
+    };
+
+    return {
+      gold: convertToChfPerGram(data.rates.XAU || 0),
+      silver: convertToChfPerGram(data.rates.XAG || 0),
+      copper: convertToChfPerGram(data.rates.XCU || 0),
+      platinum: convertToChfPerGram(data.rates.XPT || 0),
+      timestamp: data.timestamp || Date.now()
+    };
+  } catch (error) {
+    console.error('Error fetching spot prices:', error);
+    return null;
+  }
+}
+
 export const spotPriceService = {
   // Fetch current spot prices from Metal Price API via our API route
   // Cached for 24 hours to limit API calls

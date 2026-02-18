@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { SEO } from "@/components/SEO";
 import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Package, TrendingUp, ShoppingCart, Coins, BarChart3, DollarSign, Activity, ShoppingBag, Tag } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Package, TrendingUp, ShoppingCart, Coins, BarChart3, DollarSign, Activity, ShoppingBag, Tag, RefreshCw } from "lucide-react";
 import { userCoinService } from "@/services/userCoinService";
 import { userSalesService } from "@/services/userSalesService";
 import { getListingStats } from "@/services/listingService";
@@ -237,7 +238,7 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold text-slate-100">
-                  CHF {stats.bullionValue.toFixed(2)}
+                  CHF {stats.bullionValue.toLocaleString('de-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
                 <p className="text-xs text-slate-400 mt-1">Unsold coins only</p>
               </CardContent>
@@ -250,7 +251,7 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent>
                 <div className={`text-3xl font-bold ${stats.unrealizedPL >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                  CHF {stats.unrealizedPL.toFixed(2)}
+                  CHF {stats.unrealizedPL.toLocaleString('de-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
                 <p className="text-xs text-slate-400 mt-1">
                   {stats.unrealizedPLPercentage >= 0 ? '+' : ''}{stats.unrealizedPLPercentage.toFixed(2)}% vs cost
@@ -265,13 +266,75 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold text-slate-100">
-                  CHF {stats.totalInvestment.toFixed(2)}
+                  CHF {stats.totalInvestment.toLocaleString('de-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
                 <p className="text-xs text-slate-400 mt-1">Purchase cost</p>
               </CardContent>
             </Card>
           </div>
         </div>
+
+        {/* Spot Prices Section */}
+        {spotPrices && (
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-2xl font-semibold">Current Metal Spot Prices</h2>
+              <Button onClick={fetchSpotPrices} variant="outline" size="sm">
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Refresh Prices
+              </Button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Card className="bg-yellow-500/10 border-yellow-500/20">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Gold (Au)</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
+                    CHF {spotPrices.gold.toLocaleString('de-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">per gram</p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-gray-400/10 border-gray-400/20">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Silver (Ag)</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-2xl font-bold text-gray-600 dark:text-gray-400">
+                    CHF {spotPrices.silver.toLocaleString('de-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">per gram</p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-orange-500/10 border-orange-500/20">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Copper (Cu)</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                    CHF {spotPrices.copper.toLocaleString('de-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">per gram</p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-slate-500/10 border-slate-500/20">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Platinum (Pt)</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-2xl font-bold text-slate-600 dark:text-slate-400">
+                    CHF {spotPrices.platinum.toLocaleString('de-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">per gram</p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        )}
 
         {/* Active Listings Section */}
         <div>
@@ -280,47 +343,42 @@ export default function Dashboard() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Coins Listed</CardTitle>
-                <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                <Tag className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold text-primary">
-                  {listingStats.coinsListed}
-                </p>
+                <p className="text-2xl font-bold text-primary">{listingStats.coinsListed}</p>
                 <p className="text-xs text-muted-foreground">Active listings</p>
               </CardContent>
             </Card>
 
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Purchase Value</CardTitle>
-                <ShoppingBag className="h-4 w-4 text-muted-foreground" />
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Purchase Value</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold">
+                <p className="text-2xl font-bold text-primary">
                   CHF {listingStats.totalPurchaseValue.toLocaleString('de-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </p>
               </CardContent>
             </Card>
 
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Starting Prices</CardTitle>
-                <Tag className="h-4 w-4 text-muted-foreground" />
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Starting Prices</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold">
+                <p className="text-2xl font-bold text-primary">
                   CHF {listingStats.totalStartingPrice.toLocaleString('de-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </p>
               </CardContent>
             </Card>
 
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Current Market Value</CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Current Market Value</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold">
+                <p className="text-2xl font-bold text-primary">
                   CHF {listingStats.totalListingValue.toLocaleString('de-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </p>
               </CardContent>
