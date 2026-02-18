@@ -24,6 +24,7 @@ import { createListing } from "@/services/listingService";
 export default function CoinDetail() {
   const router = useRouter();
   const { sku } = router.query;
+  const [isLoading, setIsLoading] = useState(true);
   const [coins, setCoins] = useState<Coin[]>([]);
   const [spotPrices, setSpotPrices] = useState<any>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -88,6 +89,9 @@ export default function CoinDetail() {
   }, [sku]);
 
   const loadCoins = async () => {
+    if (!sku) return;
+    
+    setIsLoading(true);
     const { data } = await userCoinService.getCoinsBySku(sku as string);
     if (data) {
       const mappedCoins: Coin[] = data.map((c: any) => ({
@@ -111,6 +115,7 @@ export default function CoinDetail() {
       }));
       setCoins(mappedCoins);
     }
+    setIsLoading(false);
   };
 
   const loadSpotPrices = async () => {
@@ -647,9 +652,21 @@ export default function CoinDetail() {
                         </TableCell>
                         <TableCell className="text-slate-600 dark:text-slate-400">{spotPriceService.formatCHF(coin.purchasePrice)}</TableCell>
                         <TableCell>
-                          <Badge variant={coin.isSold ? "secondary" : coin.listingId ? "outline" : "default"}>
-                            {coin.isSold ? "Sold" : coin.listingId ? "Listed" : "In Collection"}
-                          </Badge>
+                          <div className="flex items-center gap-2">
+                            <span className="text-slate-400 text-sm">Status:</span>
+                            <Badge 
+                              variant={coin.isSold ? "secondary" : coin.listingId ? "outline" : "default"}
+                              className={
+                                coin.isSold 
+                                  ? "bg-red-900/50 text-red-200 border-red-800"
+                                  : coin.listingId
+                                  ? "bg-blue-900/50 text-blue-200 border-blue-800"
+                                  : "bg-green-900/50 text-green-200 border-green-800"
+                              }
+                            >
+                              {coin.isSold ? "Sold" : coin.listingId ? "Listed" : "In Collection"}
+                            </Badge>
+                          </div>
                         </TableCell>
                         <TableCell className="text-slate-600 dark:text-slate-400">
                           {sale ? (
@@ -676,58 +693,58 @@ export default function CoinDetail() {
                           <div className="flex items-center gap-2">
                             {/* Actions */}
                             <div className="flex gap-2 pt-2">
-                              {!coin.isSold && !coin.listingId && (
+                              {!coin.isSold ? (
                                 <>
+                                  {!coin.listingId ? (
+                                    <>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="flex-1 border-slate-600 text-slate-300"
+                                        onClick={() => openCreateListingDialog(coin)}
+                                      >
+                                        <ShoppingCart className="w-4 h-4 mr-2" />
+                                        List for Sale
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="flex-1 border-slate-600 text-slate-300"
+                                        onClick={() => handleRecordSale(coin.id)}
+                                      >
+                                        <DollarSign className="w-4 h-4 mr-2" />
+                                        Sell
+                                      </Button>
+                                    </>
+                                  ) : (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="flex-1 border-blue-600 text-blue-300"
+                                      onClick={() => router.push('/listings')}
+                                    >
+                                      <Eye className="w-4 h-4 mr-2" />
+                                      View Listing
+                                    </Button>
+                                  )}
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    onClick={() => openCreateListingDialog(coin)}
-                                    className="flex-1"
-                                  >
-                                    <ShoppingCart className="h-4 w-4 mr-1" />
-                                    List for Sale
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => handleRecordSale(coin.id)}
-                                    className="flex-1"
-                                  >
-                                    <DollarSign className="h-4 w-4 mr-1" />
-                                    Sell
-                                  </Button>
-                                </>
-                              )}
-                              {!coin.isSold && coin.listingId && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => router.push("/listings")}
-                                  className="flex-1"
-                                >
-                                  <Package className="h-4 w-4 mr-1" />
-                                  View Listing
-                                </Button>
-                              )}
-                              {!coin.isSold && (
-                                <>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
+                                    className="border-slate-600 text-slate-300"
                                     onClick={() => handleEditIndividualCoin(coin)}
                                   >
-                                    <Edit className="h-4 w-4" />
+                                    <Edit className="w-4 h-4" />
                                   </Button>
                                   <Button
                                     size="sm"
                                     variant="outline"
+                                    className="border-red-600 text-red-300"
                                     onClick={() => handleDeleteCoin(coin.id)}
                                   >
-                                    <Trash2 className="h-4 w-4" />
+                                    <Trash2 className="w-4 h-4" />
                                   </Button>
                                 </>
-                              )}
-                              {coin.isSold && (
+                              ) : (
                                 <div className="flex-1 text-center text-sm text-muted-foreground py-2">
                                   This coin has been sold
                                 </div>
