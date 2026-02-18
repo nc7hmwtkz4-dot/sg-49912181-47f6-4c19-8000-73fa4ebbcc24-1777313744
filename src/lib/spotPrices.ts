@@ -1,5 +1,4 @@
 const METAL_PRICE_API_KEY = 'a4c341c9c8b69969cba65382941825cf';
-const USD_TO_CHF = 0.88; // Approximate conversion rate
 const TROY_OZ_TO_GRAMS = 31.1034768;
 
 export interface SpotPrices {
@@ -17,10 +16,10 @@ const FALLBACK_PRICES: SpotPrices = {
   platinum: 28.5,
 };
 
-export async function fetchSpotPrices(): Promise<SpotPrices | null> {
+export async function fetchSpotPrices(force?: boolean): Promise<SpotPrices | null> {
   try {
     const response = await fetch(
-      `https://api.metalpriceapi.com/v1/latest?api_key=${METAL_PRICE_API_KEY}&base=USD&currencies=XAU,XAG,XPT,XCU`
+      `https://api.metalpriceapi.com/v1/latest?api_key=${METAL_PRICE_API_KEY}&base=CHF&currencies=XAU,XAG,XPT,XCU`
     );
 
     if (!response.ok) {
@@ -36,13 +35,13 @@ export async function fetchSpotPrices(): Promise<SpotPrices | null> {
     }
 
     // Convert rates to CHF per gram
-    // API returns: 1 USD = X oz of metal (so 1 oz = 1/X USD)
-    // Convert: USD/oz -> CHF/oz -> CHF/g
+    // API returns: 1 CHF = X oz of metal (so 1 oz = 1/X CHF)
+    // Convert: CHF/oz -> CHF/g
     const prices: SpotPrices = {
-      gold: data.rates.XAU ? ((1 / data.rates.XAU) * USD_TO_CHF) / TROY_OZ_TO_GRAMS : FALLBACK_PRICES.gold,
-      silver: data.rates.XAG ? ((1 / data.rates.XAG) * USD_TO_CHF) / TROY_OZ_TO_GRAMS : FALLBACK_PRICES.silver,
-      copper: data.rates.XCU ? ((1 / data.rates.XCU) * USD_TO_CHF) / TROY_OZ_TO_GRAMS : FALLBACK_PRICES.copper,
-      platinum: data.rates.XPT ? ((1 / data.rates.XPT) * USD_TO_CHF) / TROY_OZ_TO_GRAMS : FALLBACK_PRICES.platinum,
+      gold: data.rates.CHFXAU ? (1 / data.rates.CHFXAU) / TROY_OZ_TO_GRAMS : FALLBACK_PRICES.gold,
+      silver: data.rates.CHFXAG ? (1 / data.rates.CHFXAG) / TROY_OZ_TO_GRAMS : FALLBACK_PRICES.silver,
+      copper: data.rates.CHFXCU ? (1 / data.rates.CHFXCU) / TROY_OZ_TO_GRAMS : FALLBACK_PRICES.copper,
+      platinum: data.rates.CHFXPT ? (1 / data.rates.CHFXPT) / TROY_OZ_TO_GRAMS : FALLBACK_PRICES.platinum,
     };
 
     return prices;
@@ -91,6 +90,26 @@ export function calculateTotalMetalValue(
   }, 0);
 }
 
+export function formatCHF(amount: number): string {
+  return new Intl.NumberFormat('de-CH', {
+    style: 'currency',
+    currency: 'CHF',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(amount).replace('CHF', 'CHF '); // Ensure space after symbol if needed, though standard format is usually fine
+}
+
+export function calculateBullionValue(
+  weight: number,
+  purity: number,
+  metal: string,
+  spotPrices: SpotPrices | null
+): number {
+  return calculateMetalValue(weight, purity, metal as any, spotPrices);
+}
+
 export const spotPriceService = {
-  getSpotPrices: fetchSpotPrices
+  getSpotPrices: fetchSpotPrices,
+  calculateBullionValue,
+  formatCHF
 };

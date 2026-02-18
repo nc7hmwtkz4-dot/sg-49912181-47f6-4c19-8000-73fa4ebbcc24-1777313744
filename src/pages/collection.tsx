@@ -334,9 +334,9 @@ export default function Collection() {
   const calculateBullionValue = (coin: Coin): number => {
     if (!spotPrices) return 0;
     return spotPriceService.calculateBullionValue(
-      coin.metal,
       coin.weight,
       coin.purity,
+      coin.metal,
       spotPrices
     );
   };
