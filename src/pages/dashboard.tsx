@@ -388,96 +388,129 @@ export default function Dashboard() {
 
         {/* Distribution Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Country Distribution */}
           <Card>
             <CardHeader>
-              <CardTitle>Collection Distribution by Country</CardTitle>
+              <CardTitle>Country Distribution</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {stats.countryDistribution.map((item) => (
-                  <div key={item.country} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-primary" />
-                      <span className="text-sm">{item.country}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">{item.count}</span>
-                      <span className="text-xs text-muted-foreground">
-                        ({item.percentage.toFixed(1)}%)
-                      </span>
-                    </div>
-                  </div>
-                ))}
+              <div className="space-y-4">
+                {stats.countryDistribution
+                  .sort((a, b) => b.count - a.count)
+                  .map((country) => {
+                    const percentage = stats.totalCoins > 0
+                      ? (country.count / stats.totalCoins) * 100
+                      : 0;
+                    return (
+                      <div key={country.country}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-sm font-medium">
+                            {country.country}
+                          </span>
+                          <span className="text-sm text-muted-foreground">
+                            {country.count} ({percentage.toFixed(1)}%)
+                          </span>
+                        </div>
+                        <div className="w-full bg-secondary rounded-full h-2.5">
+                          <div
+                            className="bg-primary h-2.5 rounded-full transition-all"
+                            style={{ width: `${percentage}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
               </div>
             </CardContent>
           </Card>
 
+          {/* Metal Distribution */}
           <Card>
             <CardHeader>
-              <CardTitle>Collection Distribution by Metal</CardTitle>
+              <CardTitle>Metal Distribution</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-col items-center">
-                {stats.metalDistribution.length > 0 && (
-                  <>
-                    <svg viewBox="0 0 200 200" className="w-48 h-48">
-                      {(() => {
-                        const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
-                        let currentAngle = -90;
-                        
-                        return stats.metalDistribution.map((item, index) => {
-                          const percentage = item.percentage;
-                          const angle = (percentage / 100) * 360;
-                          const startAngle = currentAngle * (Math.PI / 180);
-                          const endAngle = (currentAngle + angle) * (Math.PI / 180);
+              <div className="flex flex-col items-center justify-center p-4">
+                {/* SVG Pie Chart */}
+                <div className="relative w-48 h-48 mb-6">
+                  <svg viewBox="0 0 100 100" className="w-full h-full transform -rotate-90">
+                    {(() => {
+                      let accumulatedPercent = 0;
+                      return stats.metalDistribution
+                        .sort((a, b) => b.count - a.count)
+                        .map((metal, index) => {
+                          const percentage = stats.totalCoins > 0
+                            ? (metal.count / stats.totalCoins) * 100
+                            : 0;
                           
-                          const x1 = 100 + 80 * Math.cos(startAngle);
-                          const y1 = 100 + 80 * Math.sin(startAngle);
-                          const x2 = 100 + 80 * Math.cos(endAngle);
-                          const y2 = 100 + 80 * Math.sin(endAngle);
+                          if (percentage === 0) return null;
+
+                          // Calculate dash array and offset for the stroke
+                          const radius = 40;
+                          const circumference = 2 * Math.PI * radius;
+                          const strokeDasharray = `${(percentage / 100) * circumference} ${circumference}`;
+                          const strokeDashoffset = -((accumulatedPercent / 100) * circumference);
                           
-                          const largeArc = angle > 180 ? 1 : 0;
-                          const path = `M 100 100 L ${x1} ${y1} A 80 80 0 ${largeArc} 1 ${x2} ${y2} Z`;
-                          
-                          currentAngle += angle;
-                          
+                          accumulatedPercent += percentage;
+
+                          // Metal colors
+                          const metalColors: Record<string, string> = {
+                            gold: '#EAB308', // yellow-500
+                            silver: '#9CA3AF', // gray-400
+                            copper: '#EA580C', // orange-600
+                            platinum: '#64748B', // slate-500
+                            bronze: '#B45309', // amber-700
+                            nickel: '#6B7280', // gray-500
+                          };
+
                           return (
-                            <path
-                              key={item.metal}
-                              d={path}
-                              fill={colors[index % colors.length]}
-                              stroke="rgb(15, 23, 42)"
-                              strokeWidth="1"
+                            <circle
+                              key={metal.metal}
+                              cx="50"
+                              cy="50"
+                              r="40"
+                              fill="transparent"
+                              stroke={metalColors[metal.metal.toLowerCase()] || '#3B82F6'}
+                              strokeWidth="20"
+                              strokeDasharray={strokeDasharray}
+                              strokeDashoffset={strokeDashoffset}
+                              className="transition-all duration-1000 ease-out hover:opacity-80"
                             />
                           );
                         });
-                      })()}
-                    </svg>
-                    
-                    <div className="mt-6 space-y-2 w-full">
-                      {stats.metalDistribution.map((item, index) => {
-                        const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
-                        return (
-                          <div key={item.metal} className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <div 
-                                className="w-3 h-3 rounded-full" 
-                                style={{ backgroundColor: colors[index % colors.length] }}
-                              />
-                              <span className="text-sm">{item.metal}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-medium">{item.count}</span>
-                              <span className="text-xs text-muted-foreground">
-                                ({item.percentage.toFixed(1)}%)
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </>
-                )}
+                    })()}
+                  </svg>
+                </div>
+
+                {/* Legend */}
+                <div className="grid grid-cols-2 gap-x-8 gap-y-2 w-full">
+                  {stats.metalDistribution
+                    .sort((a, b) => b.count - a.count)
+                    .map((metal) => {
+                      const percentage = stats.totalCoins > 0
+                        ? (metal.count / stats.totalCoins) * 100
+                        : 0;
+                      
+                      const metalColors: Record<string, string> = {
+                        gold: 'bg-yellow-500',
+                        silver: 'bg-gray-400',
+                        copper: 'bg-orange-600',
+                        platinum: 'bg-slate-500',
+                        bronze: 'bg-amber-700',
+                        nickel: 'bg-gray-500',
+                      };
+
+                      return (
+                        <div key={metal.metal} className="flex items-center gap-2">
+                          <div className={`w-3 h-3 rounded-full ${metalColors[metal.metal.toLowerCase()] || 'bg-primary'}`} />
+                          <span className="text-sm font-medium capitalize">{metal.metal}</span>
+                          <span className="text-sm text-muted-foreground ml-auto">
+                            {Math.round(percentage)}%
+                          </span>
+                        </div>
+                      );
+                    })}
+                </div>
               </div>
             </CardContent>
           </Card>
