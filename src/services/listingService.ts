@@ -27,9 +27,9 @@ export interface CreateListingData {
 
 export interface UpdateListingData {
   platform?: string;
-  startingPrice?: number;
-  currentBid?: number;
-  expectedEndDate?: string;
+  starting_price?: number;
+  current_bid?: number;
+  expected_end_date?: string;
   notes?: string;
 }
 
