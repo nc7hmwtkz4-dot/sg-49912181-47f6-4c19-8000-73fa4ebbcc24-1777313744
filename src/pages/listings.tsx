@@ -80,9 +80,9 @@ export default function ListingsPage() {
 
     const updates = {
       platform: editFormData.platform,
-      startingPrice: parseFloat(editFormData.startingPrice),
-      currentBid: editFormData.currentBid ? parseFloat(editFormData.currentBid) : undefined,
-      expectedEndDate: editFormData.expectedEndDate || undefined,
+      starting_price: parseFloat(editFormData.startingPrice),
+      current_bid: editFormData.currentBid ? parseFloat(editFormData.currentBid) : undefined,
+      expected_end_date: editFormData.expectedEndDate || undefined,
       notes: editFormData.notes || undefined
     };
 

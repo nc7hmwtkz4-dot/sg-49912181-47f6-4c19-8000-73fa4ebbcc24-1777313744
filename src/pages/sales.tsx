@@ -244,6 +244,20 @@ export default function Sales() {
   }, 0);
   const averageMarkup = totalCost > 0 ? ((totalRevenue - totalCost) / totalCost) * 100 : 0;
 
+  console.log("Sales Page Total Profit Calculation:");
+  console.log("Sales count:", sales.length);
+  console.log("Sales data:", sales.map(s => {
+    const coin = getCoinById(s.coinId);
+    const profit = s.salePrice - (coin?.purchasePrice || 0);
+    return {
+      id: s.id,
+      salePrice: s.salePrice,
+      purchasePrice: coin?.purchasePrice,
+      calculatedProfit: profit
+    };
+  }));
+  console.log("Total Profit:", totalProfit);
+
   return (
     <Layout>
       <SEO 

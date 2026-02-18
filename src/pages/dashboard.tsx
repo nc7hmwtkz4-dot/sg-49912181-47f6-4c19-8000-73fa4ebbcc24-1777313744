@@ -86,18 +86,19 @@ export default function Dashboard() {
     
     const totalInvestment = unsoldCoins.reduce((sum, coin) => sum + (coin.purchase_price || 0), 0);
     
-    // Calculate total profit using the EXACT data from user_sales table
-    // The profit column is already calculated by the database trigger
-    const totalProfit = salesData.reduce((sum, sale) => {
-      return sum + (sale.profit || 0);
-    }, 0);
+    // Use the same calculation function as sales page
+    const salesStats = calculateSalesStats(salesData);
+    const totalProfit = salesStats.totalProfit;
+    const profitMargin = salesStats.averageMargin;
+    
+    console.log("Dashboard using sales stats:", salesStats);
     
     const unrealizedPL = totalBullionValue - totalInvestment;
     const unrealizedPLPercent = totalInvestment > 0 ? (unrealizedPL / totalInvestment) * 100 : 0;
     
     // Calculate profit margin based on total sales investment
     const totalSalesInvestment = salesData.reduce((sum, sale) => sum + (sale.purchase_price || 0), 0);
-    const profitMargin = totalSalesInvestment > 0 ? (totalProfit / totalSalesInvestment) * 100 : 0;
+    const profitMarginCalc = totalSalesInvestment > 0 ? (totalProfit / totalSalesInvestment) * 100 : 0;
     
     const countryDistribution: Record<string, number> = {};
     coinsData.forEach(coin => {
@@ -158,6 +159,46 @@ export default function Dashboard() {
 
   const handleForceRefresh = async () => {
     await loadSpotPrices(true);
+  };
+
+  const calculateSalesStats = (salesData: any[]) => {
+    // Map sales data EXACTLY like sales page does
+    const mappedSales = salesData.map((s: any) => ({
+      id: s.id,
+      coinId: s.coin_id,
+      saleDate: s.sale_date,
+      salePrice: s.sale_price,
+      purchasePrice: s.purchase_price,
+      profit: s.profit,
+      coin: s.user_coins
+    }));
+
+    // Calculate EXACTLY like sales page
+    const totalRevenue = mappedSales.reduce((sum, sale) => sum + sale.salePrice, 0);
+    const totalCost = mappedSales.reduce((sum, sale) => sum + sale.purchasePrice, 0);
+    const totalProfit = mappedSales.reduce((sum, sale) => {
+      const profit = sale.salePrice - sale.purchasePrice;
+      return sum + profit;
+    }, 0);
+    const averageMargin = totalCost > 0 ? (totalProfit / totalCost) * 100 : 0;
+    const salesCount = mappedSales.length;
+
+    console.log("Dashboard Sales Stats:", {
+      totalRevenue,
+      totalCost,
+      totalProfit,
+      averageMargin,
+      salesCount,
+      salesData: mappedSales
+    });
+
+    return {
+      totalRevenue,
+      totalCost,
+      totalProfit,
+      averageMargin,
+      salesCount
+    };
   };
 
   return (
@@ -329,7 +370,7 @@ export default function Dashboard() {
                   {spotPriceService.formatCHF(stats.totalProfit)}
                 </div>
                 <p className="text-xs text-slate-500 mt-1">
-                  Margin: {stats.profitMargin.toFixed(1)}%
+                  Margin: {stats.profitMargin.toFixed(2)}%
                 </p>
               </CardContent>
             </Card>
