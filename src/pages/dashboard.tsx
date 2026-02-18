@@ -12,10 +12,12 @@ interface Stats {
   totalCoins: number;
   unsoldCoins: number;
   soldCoins: number;
-  totalBullionValue: number;
   totalInvestment: number;
+  bullionValue: number;
   unrealizedPL: number;
-  unrealizedPLPercent: number;
+  unrealizedPLPercentage: number;
+  countryDistribution: Array<{ country: string; count: number; percentage: number }>;
+  metalDistribution: Array<{ metal: string; count: number; percentage: number }>;
 }
 
 interface SalesStats {
@@ -37,10 +39,12 @@ export default function Dashboard() {
     totalCoins: 0,
     unsoldCoins: 0,
     soldCoins: 0,
-    totalBullionValue: 0,
     totalInvestment: 0,
+    bullionValue: 0,
     unrealizedPL: 0,
-    unrealizedPLPercent: 0
+    unrealizedPLPercentage: 0,
+    countryDistribution: [],
+    metalDistribution: []
   });
   const [salesStats, setSalesStats] = useState<SalesStats>({
     totalRevenue: 0,
@@ -76,33 +80,57 @@ export default function Dashboard() {
         const unsoldCoins = coinsData.data.filter(c => !c.is_sold);
         const soldCoins = coinsData.data.filter(c => c.is_sold);
 
-        let totalBullionValue = 0;
+        // Track country and metal distribution
+        const countryCount: Record<string, number> = {};
+        const metalCount: Record<string, number> = {};
+        
+        coinsData.data.forEach(coin => {
+          // Count by country
+          const country = coin.country_code || "Unknown";
+          countryCount[country] = (countryCount[country] || 0) + 1;
+          
+          // Count by metal
+          const metal = coin.metal || "Unknown";
+          metalCount[metal] = (metalCount[metal] || 0) + 1;
+        });
+
         let totalInvestment = 0;
+        let bullionValue = 0;
 
         if (spotPrices) {
           unsoldCoins.forEach(coin => {
             totalInvestment += coin.purchase_price;
 
-            if (coin.metal_content) {
-              const metalPrice = spotPrices[coin.metal_content.toLowerCase()];
-              if (metalPrice) {
-                totalBullionValue += coin.weight * metalPrice;
+            if (coin.metal) {
+              const metalPrice = spotPrices[coin.metal.toLowerCase()];
+              if (metalPrice && coin.weight) {
+                bullionValue += coin.weight * metalPrice;
               }
             }
           });
         }
 
-        const unrealizedPL = totalBullionValue - totalInvestment;
-        const unrealizedPLPercent = totalInvestment > 0 ? (unrealizedPL / totalInvestment) * 100 : 0;
+        const unrealizedPL = bullionValue - totalInvestment;
+        const unrealizedPLPercentage = totalInvestment > 0 ? (unrealizedPL / totalInvestment) * 100 : 0;
 
         setStats({
           totalCoins: coinsData.data.length,
           unsoldCoins: unsoldCoins.length,
           soldCoins: soldCoins.length,
-          totalBullionValue,
           totalInvestment,
+          bullionValue,
           unrealizedPL,
-          unrealizedPLPercent
+          unrealizedPLPercentage,
+          countryDistribution: Object.entries(countryCount).map(([country, count]) => ({
+            country,
+            count,
+            percentage: (count / coinsData.data.length) * 100
+          })).sort((a, b) => b.count - a.count),
+          metalDistribution: Object.entries(metalCount).map(([metal, count]) => ({
+            metal,
+            count,
+            percentage: (count / coinsData.data.length) * 100
+          })).sort((a, b) => b.count - a.count)
         });
       }
 
@@ -136,11 +164,11 @@ export default function Dashboard() {
       }
 
       // Set listing stats
-      if (listingsData.success) {
+      if (listingsData.data) {
         setListingStats({
-          coinsListed: listingsData.coinsListed || 0,
-          totalPurchaseValue: listingsData.totalPurchaseValue || 0,
-          totalListingValue: listingsData.totalListingValue || 0
+          coinsListed: listingsData.data.totalListings || 0,
+          totalPurchaseValue: listingsData.data.totalPurchaseValue || 0,
+          totalListingValue: listingsData.data.totalListingValue || 0
         });
       }
     } catch (error) {
@@ -206,7 +234,7 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold text-slate-100">
-                  CHF {stats.totalBullionValue.toFixed(2)}
+                  CHF {stats.bullionValue.toFixed(2)}
                 </div>
                 <p className="text-xs text-slate-400 mt-1">Unsold coins only</p>
               </CardContent>
@@ -222,7 +250,7 @@ export default function Dashboard() {
                   CHF {stats.unrealizedPL.toFixed(2)}
                 </div>
                 <p className="text-xs text-slate-400 mt-1">
-                  {stats.unrealizedPLPercent >= 0 ? '+' : ''}{stats.unrealizedPLPercent.toFixed(2)}% vs cost
+                  {stats.unrealizedPLPercentage >= 0 ? '+' : ''}{stats.unrealizedPLPercentage.toFixed(2)}% vs cost
                 </p>
               </CardContent>
             </Card>
@@ -244,91 +272,111 @@ export default function Dashboard() {
 
         {/* Active Listings Section */}
         <div>
-          <h2 className="text-2xl font-semibold mb-4 text-slate-200">Active Listings</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <Card className="bg-slate-800/50 border-slate-700">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-slate-400">Coins Listed</CardTitle>
-                <BarChart3 className="h-4 w-4 text-purple-500" />
+          <h2 className="text-2xl font-bold mb-4">Active Listings</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Coins Listed</CardTitle>
+                <BarChart3 className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-slate-100">{listingStats.coinsListed}</div>
-                <p className="text-xs text-slate-400 mt-1">Active listings</p>
+                <div className="text-2xl font-bold">{listingStats.coinsListed}</div>
+                <p className="text-xs text-muted-foreground">Active listings</p>
               </CardContent>
             </Card>
 
-            <Card className="bg-slate-800/50 border-slate-700">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-slate-400">Purchase Value</CardTitle>
-                <ShoppingCart className="h-4 w-4 text-orange-500" />
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Purchase Value</CardTitle>
+                <ShoppingCart className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-slate-100">
-                  CHF {listingStats.totalPurchaseValue.toFixed(2)}
-                </div>
-                <p className="text-xs text-slate-400 mt-1">Cost of listed coins</p>
+                <div className="text-2xl font-bold">CHF {listingStats.totalPurchaseValue.toFixed(2)}</div>
+                <p className="text-xs text-muted-foreground">Cost of listed coins</p>
               </CardContent>
             </Card>
 
-            <Card className="bg-slate-800/50 border-slate-700">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-slate-400">Starting Prices</CardTitle>
-                <DollarSign className="h-4 w-4 text-blue-500" />
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Starting Prices</CardTitle>
+                <DollarSign className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-slate-100">
-                  CHF {listingStats.totalListingValue.toFixed(2)}
-                </div>
-                <p className="text-xs text-slate-400 mt-1">Initial listing prices</p>
+                <div className="text-2xl font-bold">CHF {listingStats.totalListingValue.toFixed(2)}</div>
+                <p className="text-xs text-muted-foreground">Initial listing prices</p>
               </CardContent>
             </Card>
 
-            <Card className="bg-slate-800/50 border-slate-700">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-slate-400">Current Market Value</CardTitle>
-                <TrendingUp className="h-4 w-4 text-green-500" />
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Current Market Value</CardTitle>
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-slate-100">
-                  CHF {listingStats.totalListingValue.toFixed(2)}
-                </div>
-                <p className="text-xs text-slate-400 mt-1">Highest of starting/bid</p>
+                <div className="text-2xl font-bold">CHF {listingStats.totalListingValue.toFixed(2)}</div>
+                <p className="text-xs text-muted-foreground">Highest of starting/bid</p>
               </CardContent>
             </Card>
           </div>
         </div>
 
-        {/* Sales Performance Section */}
-        <div>
-          <h2 className="text-2xl font-semibold mb-4 text-slate-200">Sales Performance</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card className="bg-slate-800/50 border-slate-700">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-slate-400">Total Profit</CardTitle>
-                <DollarSign className="h-4 w-4 text-green-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-green-500">
-                  CHF {salesStats.totalProfit.toFixed(2)}
-                </div>
-                <p className="text-xs text-slate-400 mt-1">
-                  Margin: {salesStats.averageMargin.toFixed(2)}%
-                </p>
-              </CardContent>
-            </Card>
+        {/* Collection Distribution by Country */}
+        {stats.countryDistribution && stats.countryDistribution.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Collection Distribution by Country</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {stats.countryDistribution.map((item) => (
+                  <div key={item.country}>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium">{item.country}</span>
+                      <span className="text-sm text-muted-foreground">
+                        {item.count} coins ({item.percentage.toFixed(1)}%)
+                      </span>
+                    </div>
+                    <div className="w-full bg-secondary rounded-full h-2">
+                      <div
+                        className="bg-primary h-2 rounded-full transition-all"
+                        style={{ width: `${item.percentage}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
-            <Card className="bg-slate-800/50 border-slate-700">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-slate-400">Coins Sold</CardTitle>
-                <Coins className="h-4 w-4 text-amber-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-amber-500">{salesStats.salesCount}</div>
-                <p className="text-xs text-slate-400 mt-1">Completed sales</p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+        {/* Collection Distribution by Metal */}
+        {stats.metalDistribution && stats.metalDistribution.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Collection Distribution by Metal</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {stats.metalDistribution.map((item) => (
+                  <div key={item.metal}>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium capitalize">{item.metal}</span>
+                      <span className="text-sm text-muted-foreground">
+                        {item.count} coins ({item.percentage.toFixed(1)}%)
+                      </span>
+                    </div>
+                    <div className="w-full bg-secondary rounded-full h-2">
+                      <div
+                        className="bg-primary h-2 rounded-full transition-all"
+                        style={{ width: `${item.percentage}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </Layout>
   );
