@@ -298,11 +298,11 @@ export async function markListingAsSold(
     if (!listing) throw new Error("Listing not found");
 
     const coinData = Array.isArray(listing.coin) ? listing.coin[0] : listing.coin;
-    // @ts-expect-error
+    
     const purchasePrice = coinData?.purchase_price || 0;
-    // @ts-expect-error
+    
     const sku = coinData?.sku || listing.sku;
-    // @ts-expect-error
+    
     const coinName = coinData?.coin_name || listing.coin_name;
 
     const profit = salePrice - purchasePrice;

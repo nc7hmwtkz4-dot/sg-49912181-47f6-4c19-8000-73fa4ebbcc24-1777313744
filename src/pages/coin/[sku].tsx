@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Edit, Plus, DollarSign, Trash2, ArrowLeft, Upload, Eye, EyeOff, Gavel } from "lucide-react";
+import { Edit, Plus, DollarSign, Trash2, ArrowLeft, Upload, Eye, EyeOff, Gavel, ShoppingCart, Package } from "lucide-react";
 import Link from "next/link";
 import { createListing } from "@/services/listingService";
 
@@ -647,41 +647,9 @@ export default function CoinDetail() {
                         </TableCell>
                         <TableCell className="text-slate-600 dark:text-slate-400">{spotPriceService.formatCHF(coin.purchasePrice)}</TableCell>
                         <TableCell>
-                          {coin.isSold ? (
-                            <Badge variant="secondary" className="bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
-                              Sold
-                            </Badge>
-                          ) : coin.listingId ? (
-                            <>
-                              <Badge className="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 border-0">
-                                Listed for Sale
-                              </Badge>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleRecordSale(coin.id)}
-                                className="ml-2 text-blue-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
-                              >
-                                <DollarSign className="w-4 h-4 mr-1" />
-                                Sell
-                              </Button>
-                            </>
-                          ) : (
-                            <>
-                              <Badge className="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-0">
-                                In Collection
-                              </Badge>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleRecordSale(coin.id)}
-                                className="ml-2 text-blue-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
-                              >
-                                <DollarSign className="w-4 h-4 mr-1" />
-                                Sell
-                              </Button>
-                            </>
-                          )}
+                          <Badge variant={coin.isSold ? "secondary" : coin.listingId ? "outline" : "default"}>
+                            {coin.isSold ? "Sold" : coin.listingId ? "Listed" : "In Collection"}
+                          </Badge>
                         </TableCell>
                         <TableCell className="text-slate-600 dark:text-slate-400">
                           {sale ? (
@@ -706,46 +674,65 @@ export default function CoinDetail() {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            {!coin.isSold && !coin.listingId && (
-                              <>
+                            {/* Actions */}
+                            <div className="flex gap-2 pt-2">
+                              {!coin.isSold && !coin.listingId && (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => openCreateListingDialog(coin)}
+                                    className="flex-1"
+                                  >
+                                    <ShoppingCart className="h-4 w-4 mr-1" />
+                                    List for Sale
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleRecordSale(coin.id)}
+                                    className="flex-1"
+                                  >
+                                    <DollarSign className="h-4 w-4 mr-1" />
+                                    Sell
+                                  </Button>
+                                </>
+                              )}
+                              {!coin.isSold && coin.listingId && (
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  onClick={() => openCreateListingDialog(coin)}
-                                  className="text-blue-500 hover:text-blue-600"
+                                  onClick={() => router.push("/listings")}
+                                  className="flex-1"
                                 >
-                                  <Gavel className="h-4 w-4 mr-1" />
-                                  List for Sale
+                                  <Package className="h-4 w-4 mr-1" />
+                                  View Listing
                                 </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handleEditIndividualCoin(coin)}
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handleDeleteCoin(coin.id)}
-                                  className="text-red-500 hover:text-red-600"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </>
-                            )}
-                            {!coin.isSold && coin.listingId && (
-                              <>
-                                <Badge className="bg-blue-500 text-white">Listed</Badge>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handleEditIndividualCoin(coin)}
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                              </>
-                            )}
+                              )}
+                              {!coin.isSold && (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleEditIndividualCoin(coin)}
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleDeleteCoin(coin.id)}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </>
+                              )}
+                              {coin.isSold && (
+                                <div className="flex-1 text-center text-sm text-muted-foreground py-2">
+                                  This coin has been sold
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </TableCell>
                       </TableRow>
