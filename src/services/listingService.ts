@@ -212,6 +212,7 @@ export async function getListingStats(): Promise<{
   data: {
     totalListings: number;
     totalPurchaseValue: number;
+    totalStartingPrice: number;
     totalListingValue: number;
   };
   error: Error | null;
@@ -220,7 +221,7 @@ export async function getListingStats(): Promise<{
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       return {
-        data: { totalListings: 0, totalPurchaseValue: 0, totalListingValue: 0 },
+        data: { totalListings: 0, totalPurchaseValue: 0, totalStartingPrice: 0, totalListingValue: 0 },
         error: new Error("User not authenticated")
       };
     }
@@ -238,7 +239,7 @@ export async function getListingStats(): Promise<{
     if (error) {
       console.error("Error fetching listing stats:", error);
       return {
-        data: { totalListings: 0, totalPurchaseValue: 0, totalListingValue: 0 },
+        data: { totalListings: 0, totalPurchaseValue: 0, totalStartingPrice: 0, totalListingValue: 0 },
         error
       };
     }
@@ -250,19 +251,20 @@ export async function getListingStats(): Promise<{
       const rawCoin = coinData as any;
       return sum + (rawCoin?.purchase_price || 0);
     }, 0);
+    const totalStartingPrice = listings.reduce((sum, listing) => sum + (listing.starting_price || 0), 0);
     const totalListingValue = listings.reduce((sum, listing) => {
       const highestPrice = Math.max(listing.starting_price, listing.current_bid || 0);
       return sum + highestPrice;
     }, 0);
 
     return {
-      data: { totalListings, totalPurchaseValue, totalListingValue },
+      data: { totalListings, totalPurchaseValue, totalStartingPrice, totalListingValue },
       error: null
     };
   } catch (err) {
     console.error("Unexpected error in getListingStats:", err);
     return {
-      data: { totalListings: 0, totalPurchaseValue: 0, totalListingValue: 0 },
+      data: { totalListings: 0, totalPurchaseValue: 0, totalStartingPrice: 0, totalListingValue: 0 },
       error: err as Error
     };
   }
@@ -272,7 +274,8 @@ export async function markListingAsSold(
   listingId: string,
   salePrice: number,
   saleDate: string,
-  platform: string
+  buyerInfo?: string,
+  notes?: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const { data: { user } } = await supabase.auth.getUser();
@@ -280,74 +283,88 @@ export async function markListingAsSold(
       return { success: false, error: "User not authenticated" };
     }
 
-    // 1. Get the listing to find the coin_id and details
-    const { data: listing, error: fetchError } = await supabase
+    // Step 1: Get the listing details
+    const { data: listing, error: listingError } = await supabase
       .from("user_listings")
-      .select(`
-        *,
-        coin:user_coins!user_listings_coin_id_fkey(
-          purchase_price,
-          sku,
-          coin_name
-        )
-      `)
+      .select("*")
       .eq("id", listingId)
       .single();
 
-    if (fetchError) throw fetchError;
-    if (!listing) throw new Error("Listing not found");
+    if (listingError || !listing) {
+      console.error("Error fetching listing:", listingError);
+      return { success: false, error: "Failed to fetch listing details" };
+    }
 
-    const coinData = Array.isArray(listing.coin) ? listing.coin[0] : listing.coin;
-    
-    const purchasePrice = coinData?.purchase_price || 0;
-    
-    const sku = coinData?.sku || listing.sku;
-    
-    const coinName = coinData?.coin_name || listing.coin_name;
+    const coinId = listing.coin_id;
 
+    // Step 2: Get the coin details for purchase price
+    const { data: coin, error: coinError } = await supabase
+      .from("user_coins")
+      .select("*")
+      .eq("id", coinId)
+      .single();
+
+    if (coinError || !coin) {
+      console.error("Error fetching coin:", coinError);
+      return { success: false, error: "Failed to fetch coin details" };
+    }
+
+    const purchasePrice = coin.purchase_price;
     const profit = salePrice - purchasePrice;
     const markupPercentage = purchasePrice > 0 ? (profit / purchasePrice) * 100 : 0;
 
-    // 2. Update the coin's status in user_coins
-    const { error: coinUpdateError } = await supabase
+    // Step 3: Update the coin to mark as sold and clear listing_id
+    const { error: updateError } = await supabase
       .from("user_coins")
-      .update({ 
+      .update({
         is_sold: true,
-        listing_id: null 
+        listing_id: null,
+        updated_at: new Date().toISOString()
       })
-      .eq("id", listing.coin_id);
+      .eq("id", coinId);
 
-    if (coinUpdateError) throw coinUpdateError;
+    if (updateError) {
+      console.error("Error updating coin:", updateError);
+      return { success: false, error: "Failed to update coin status" };
+    }
 
-    // 3. Create a sale record
+    // Step 4: Create sale record
     const { error: saleError } = await supabase
       .from("user_sales")
       .insert({
         user_id: user.id,
-        coin_id: listing.coin_id,
-        sale_price: salePrice,
+        coin_id: coinId,
+        sku: coin.sku,
+        coin_name: coin.coin_name,
         sale_date: saleDate,
+        sale_price: salePrice,
         purchase_price: purchasePrice,
         profit: profit,
         markup_percentage: markupPercentage,
-        sku: sku,
-        coin_name: coinName,
-        notes: listing.notes ? `Platform: ${platform}. Notes: ${listing.notes}` : `Platform: ${platform}`
+        buyer_info: buyerInfo || "",
+        notes: notes ? `Platform: ${listing.platform}\n${notes}` : `Platform: ${listing.platform}`
       });
 
-    if (saleError) throw saleError;
+    if (saleError) {
+      console.error("Error creating sale record:", saleError);
+      return { success: false, error: "Failed to create sale record" };
+    }
 
-    // 4. Delete the listing
+    // Step 5: Delete the listing
     const { error: deleteError } = await supabase
       .from("user_listings")
       .delete()
       .eq("id", listingId);
 
-    if (deleteError) throw deleteError;
+    if (deleteError) {
+      console.error("Error deleting listing:", deleteError);
+      return { success: false, error: "Failed to delete listing" };
+    }
 
+    console.log("Successfully marked listing as sold:", { coinId, salePrice, saleDate });
     return { success: true };
   } catch (error: any) {
-    console.error("Error marking listing as sold:", error);
+    console.error("Unexpected error marking listing as sold:", error);
     return { success: false, error: error.message };
   }
 }

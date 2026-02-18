@@ -73,11 +73,12 @@ export default function CoinDetail() {
 
   const [salesData, setSalesData] = useState<any[]>([]);
 
+  const loadSalesData = async () => {
+    const { data } = await userSalesService.getUserSales();
+    if (data) setSalesData(data);
+  };
+
   useEffect(() => {
-    const loadSalesData = async () => {
-      const { data } = await userSalesService.getUserSales();
-      if (data) setSalesData(data);
-    };
     loadSalesData();
   }, [coins]);
 
@@ -111,7 +112,8 @@ export default function CoinDetail() {
         notes: c.notes,
         obverseImageUrl: c.obverse_image_url,
         reverseImageUrl: c.reverse_image_url,
-        isSold: c.is_sold
+        isSold: c.is_sold,  // THIS IS CRITICAL - map is_sold to isSold
+        listingId: c.listing_id
       }));
       setCoins(mappedCoins);
     }

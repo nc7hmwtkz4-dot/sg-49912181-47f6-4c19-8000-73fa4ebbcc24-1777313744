@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { SEO } from "@/components/SEO";
 import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Package, TrendingUp, ShoppingCart, Coins, BarChart3, DollarSign } from "lucide-react";
+import { Package, TrendingUp, ShoppingCart, Coins, BarChart3, DollarSign, Activity, ShoppingBag, Tag } from "lucide-react";
 import { userCoinService } from "@/services/userCoinService";
 import { userSalesService } from "@/services/userSalesService";
 import { getListingStats } from "@/services/listingService";
@@ -31,6 +31,7 @@ interface SalesStats {
 interface ListingStats {
   coinsListed: number;
   totalPurchaseValue: number;
+  totalStartingPrice: number;
   totalListingValue: number;
 }
 
@@ -56,6 +57,7 @@ export default function Dashboard() {
   const [listingStats, setListingStats] = useState<ListingStats>({
     coinsListed: 0,
     totalPurchaseValue: 0,
+    totalStartingPrice: 0,
     totalListingValue: 0
   });
   const [spotPrices, setSpotPrices] = useState<any>(null);
@@ -168,6 +170,7 @@ export default function Dashboard() {
         setListingStats({
           coinsListed: listingsData.data.totalListings || 0,
           totalPurchaseValue: listingsData.data.totalPurchaseValue || 0,
+          totalStartingPrice: listingsData.data.totalStartingPrice || 0,
           totalListingValue: listingsData.data.totalListingValue || 0
         });
       }
@@ -280,7 +283,9 @@ export default function Dashboard() {
                 <BarChart3 className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{listingStats.coinsListed}</div>
+                <p className="text-2xl font-bold text-primary">
+                  {listingStats.coinsListed}
+                </p>
                 <p className="text-xs text-muted-foreground">Active listings</p>
               </CardContent>
             </Card>
@@ -288,22 +293,24 @@ export default function Dashboard() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Purchase Value</CardTitle>
-                <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+                <ShoppingBag className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">CHF {listingStats.totalPurchaseValue.toFixed(2)}</div>
-                <p className="text-xs text-muted-foreground">Cost of listed coins</p>
+                <p className="text-2xl font-bold">
+                  CHF {listingStats.totalPurchaseValue.toLocaleString('de-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Starting Prices</CardTitle>
-                <DollarSign className="h-4 w-4 text-muted-foreground" />
+                <Tag className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">CHF {listingStats.totalListingValue.toFixed(2)}</div>
-                <p className="text-xs text-muted-foreground">Initial listing prices</p>
+                <p className="text-2xl font-bold">
+                  CHF {listingStats.totalStartingPrice.toLocaleString('de-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </p>
               </CardContent>
             </Card>
 
@@ -313,70 +320,110 @@ export default function Dashboard() {
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">CHF {listingStats.totalListingValue.toFixed(2)}</div>
-                <p className="text-xs text-muted-foreground">Highest of starting/bid</p>
+                <p className="text-2xl font-bold">
+                  CHF {listingStats.totalListingValue.toLocaleString('de-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </p>
               </CardContent>
             </Card>
           </div>
         </div>
 
-        {/* Collection Distribution by Country */}
-        {stats.countryDistribution && stats.countryDistribution.length > 0 && (
+        {/* Distribution Charts */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card>
             <CardHeader>
               <CardTitle>Collection Distribution by Country</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {stats.countryDistribution.map((item) => (
-                  <div key={item.country}>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium">{item.country}</span>
-                      <span className="text-sm text-muted-foreground">
-                        {item.count} coins ({item.percentage.toFixed(1)}%)
-                      </span>
+                  <div key={item.country} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-primary" />
+                      <span className="text-sm">{item.country}</span>
                     </div>
-                    <div className="w-full bg-secondary rounded-full h-2">
-                      <div
-                        className="bg-primary h-2 rounded-full transition-all"
-                        style={{ width: `${item.percentage}%` }}
-                      />
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">{item.count}</span>
+                      <span className="text-xs text-muted-foreground">
+                        ({item.percentage.toFixed(1)}%)
+                      </span>
                     </div>
                   </div>
                 ))}
               </div>
             </CardContent>
           </Card>
-        )}
 
-        {/* Collection Distribution by Metal */}
-        {stats.metalDistribution && stats.metalDistribution.length > 0 && (
           <Card>
             <CardHeader>
               <CardTitle>Collection Distribution by Metal</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {stats.metalDistribution.map((item) => (
-                  <div key={item.metal}>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium capitalize">{item.metal}</span>
-                      <span className="text-sm text-muted-foreground">
-                        {item.count} coins ({item.percentage.toFixed(1)}%)
-                      </span>
+              <div className="flex flex-col items-center">
+                {stats.metalDistribution.length > 0 && (
+                  <>
+                    <svg viewBox="0 0 200 200" className="w-48 h-48">
+                      {(() => {
+                        const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+                        let currentAngle = -90;
+                        
+                        return stats.metalDistribution.map((item, index) => {
+                          const percentage = item.percentage;
+                          const angle = (percentage / 100) * 360;
+                          const startAngle = currentAngle * (Math.PI / 180);
+                          const endAngle = (currentAngle + angle) * (Math.PI / 180);
+                          
+                          const x1 = 100 + 80 * Math.cos(startAngle);
+                          const y1 = 100 + 80 * Math.sin(startAngle);
+                          const x2 = 100 + 80 * Math.cos(endAngle);
+                          const y2 = 100 + 80 * Math.sin(endAngle);
+                          
+                          const largeArc = angle > 180 ? 1 : 0;
+                          const path = `M 100 100 L ${x1} ${y1} A 80 80 0 ${largeArc} 1 ${x2} ${y2} Z`;
+                          
+                          currentAngle += angle;
+                          
+                          return (
+                            <path
+                              key={item.metal}
+                              d={path}
+                              fill={colors[index % colors.length]}
+                              stroke="rgb(15, 23, 42)"
+                              strokeWidth="1"
+                            />
+                          );
+                        });
+                      })()}
+                    </svg>
+                    
+                    <div className="mt-6 space-y-2 w-full">
+                      {stats.metalDistribution.map((item, index) => {
+                        const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+                        return (
+                          <div key={item.metal} className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <div 
+                                className="w-3 h-3 rounded-full" 
+                                style={{ backgroundColor: colors[index % colors.length] }}
+                              />
+                              <span className="text-sm">{item.metal}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium">{item.count}</span>
+                              <span className="text-xs text-muted-foreground">
+                                ({item.percentage.toFixed(1)}%)
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                    <div className="w-full bg-secondary rounded-full h-2">
-                      <div
-                        className="bg-primary h-2 rounded-full transition-all"
-                        style={{ width: `${item.percentage}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
+                  </>
+                )}
               </div>
             </CardContent>
           </Card>
-        )}
+        </div>
       </div>
     </Layout>
   );
