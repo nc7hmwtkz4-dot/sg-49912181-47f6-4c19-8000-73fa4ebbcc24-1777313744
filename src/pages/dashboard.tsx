@@ -3,7 +3,7 @@ import { SEO } from "@/components/SEO";
 import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Package, TrendingUp, ShoppingCart, Coins, BarChart3, DollarSign, Activity, ShoppingBag, Tag, RefreshCw } from "lucide-react";
+import { Package, TrendingUp, ShoppingCart, BarChart3, Tag, RefreshCw } from "lucide-react";
 import { userCoinService } from "@/services/userCoinService";
 import { userSalesService } from "@/services/userSalesService";
 import { getListingStats } from "@/services/listingService";
@@ -19,14 +19,6 @@ interface Stats {
   unrealizedPLPercentage: number;
   countryDistribution: Array<{ country: string; count: number; percentage: number }>;
   metalDistribution: Array<{ metal: string; count: number; percentage: number }>;
-}
-
-interface SalesStats {
-  totalRevenue: number;
-  totalCost: number;
-  totalProfit: number;
-  averageMargin: number;
-  salesCount: number;
 }
 
 interface ListingStats {
@@ -48,21 +40,18 @@ export default function Dashboard() {
     countryDistribution: [],
     metalDistribution: []
   });
-  const [salesStats, setSalesStats] = useState<SalesStats>({
-    totalRevenue: 0,
-    totalCost: 0,
-    totalProfit: 0,
-    averageMargin: 0,
-    salesCount: 0
-  });
   const [listingStats, setListingStats] = useState<ListingStats>({
     coinsListed: 0,
     totalPurchaseValue: 0,
     totalStartingPrice: 0,
     totalListingValue: 0
   });
-  const [spotPrices, setSpotPrices] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [spotPrices, setSpotPrices] = useState<{
+    gold: number;
+    silver: number;
+    copper: number;
+    platinum: number;
+  } | null>(null);
 
   const fetchSpotPrices = async () => {
     const prices = await spotPriceService.getSpotPrices();
@@ -70,11 +59,9 @@ export default function Dashboard() {
   };
 
   const loadData = async () => {
-    setLoading(true);
     try {
-      const [coinsData, salesData, listingsData] = await Promise.all([
+      const [coinsData, listingsData] = await Promise.all([
         userCoinService.getUserCoins(),
-        userSalesService.getUserSales(),
         getListingStats()
       ]);
 
@@ -137,35 +124,6 @@ export default function Dashboard() {
         });
       }
 
-      // Calculate sales stats - EXACT COPY FROM SALES PAGE
-      if (salesData.data) {
-        const mappedSales = salesData.data.map((s: any) => ({
-          salePrice: s.sale_price,
-          purchasePrice: s.purchase_price
-        }));
-
-        const totalRevenue = mappedSales.reduce((sum: number, sale: any) => sum + sale.salePrice, 0);
-        const totalCost = mappedSales.reduce((sum: number, sale: any) => sum + sale.purchasePrice, 0);
-        const totalProfit = mappedSales.reduce((sum: number, sale: any) => sum + (sale.salePrice - sale.purchasePrice), 0);
-        const averageMargin = totalCost > 0 ? (totalProfit / totalCost) * 100 : 0;
-
-        console.log("Dashboard Sales Calculation:", {
-          totalRevenue,
-          totalCost,
-          totalProfit,
-          averageMargin,
-          salesCount: salesData.data.length
-        });
-
-        setSalesStats({
-          totalRevenue,
-          totalCost,
-          totalProfit,
-          averageMargin,
-          salesCount: salesData.data.length
-        });
-      }
-
       // Set listing stats
       if (listingsData.data) {
         setListingStats({
@@ -177,8 +135,6 @@ export default function Dashboard() {
       }
     } catch (error) {
       console.error("Error loading dashboard data:", error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -190,6 +146,7 @@ export default function Dashboard() {
     if (spotPrices) {
       loadData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [spotPrices]);
 
   return (
@@ -438,7 +395,7 @@ export default function Dashboard() {
                       let accumulatedPercent = 0;
                       return stats.metalDistribution
                         .sort((a, b) => b.count - a.count)
-                        .map((metal, index) => {
+                        .map((metal) => {
                           const percentage = stats.totalCoins > 0
                             ? (metal.count / stats.totalCoins) * 100
                             : 0;

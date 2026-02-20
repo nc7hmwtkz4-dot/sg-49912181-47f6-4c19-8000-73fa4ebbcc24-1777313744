@@ -27,68 +27,6 @@ export default function Sales() {
     loadData();
   }, []);
 
-  const loadSales = async () => {
-    const { data, error } = await userSalesService.getUserSales();
-    
-    if (error) {
-      console.error("Error loading sales:", error);
-      return;
-    }
-
-    if (data) {
-      // Map database sales to frontend Sale type
-      const mappedSales: Sale[] = data.map(s => ({
-        id: s.id,
-        coinId: s.coin_id,
-        sku: s.sku || "", // Handle potentially missing legacy data
-        coinName: s.coin_name || "",
-        saleDate: s.sale_date,
-        salePrice: s.sale_price,
-        purchasePrice: s.purchase_price,
-        profit: s.profit,
-        markupPercentage: s.markup_percentage,
-        buyerInfo: s.buyer_info || "",
-        notes: s.notes || ""
-      }));
-      
-      setSales(mappedSales);
-    }
-  };
-
-  const loadCoins = async () => {
-    const { data, error } = await userCoinService.getUserCoins();
-    
-    if (error) {
-      console.error("Error loading coins:", error);
-      return;
-    }
-
-    if (data) {
-      // Map database coins to frontend Coin type
-      const mappedCoins: Coin[] = data.map(c => ({
-        id: c.id,
-        sku: `${c.country_code}-${c.km_number}`,
-        coinName: c.coin_name || "",
-        countryCode: c.country_code,
-        kmNumber: c.km_number,
-        year: c.year,
-        mintmark: c.mintmark || "",
-        metal: c.metal as "gold" | "silver" | "copper" | "platinum" | "palladium" | "other",
-        purity: c.purity,
-        weight: c.weight,
-        sheldonGrade: c.grade as SheldonGrade,
-        purchasePrice: c.purchase_price,
-        purchaseDate: c.purchase_date,
-        notes: c.notes || "",
-        obverseImageUrl: c.obverse_image_url || "",
-        reverseImageUrl: c.reverse_image_url || "",
-        isSold: c.is_sold
-      }));
-      
-      setCoins(mappedCoins);
-    }
-  };
-
   const loadData = async () => {
     const { data: coinsData } = await userCoinService.getUserCoins();
     const { data: salesData } = await userSalesService.getUserSales();
