@@ -29,7 +29,6 @@ export default function Collection() {
   const [countryFilter, setCountryFilter] = useState("all");
   const [metalFilter, setMetalFilter] = useState("all");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [editingCoin, setEditingCoin] = useState<Coin | null>(null);
   const [spotPrices, setSpotPrices] = useState<{ gold: number; silver: number; copper: number; platinum: number } | null>(null);
   const [obverseImageFile, setObverseImageFile] = useState<File | null>(null);
   const [reverseImageFile, setReverseImageFile] = useState<File | null>(null);
@@ -39,7 +38,6 @@ export default function Collection() {
   // Reference coin search state
   const [referenceSearchTerm, setReferenceSearchTerm] = useState("");
   const [referenceSearchResults, setReferenceSearchResults] = useState<Array<{ sku: string; coin_name: string; country_code: string; km_number: string; metal: string; purity: number; weight: number; obverse_image_url?: string; reverse_image_url?: string }>>([]);
-  const [isSearching, setIsSearching] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const [formData, setFormData] = useState<Partial<Coin>>({
@@ -131,7 +129,6 @@ export default function Collection() {
   // Image viewer state
   const [viewImage, setViewImage] = useState<{ url: string; alt: string } | null>(null);
 
-  // Load all user coins
   const loadCoins = async () => {
     setIsLoading(true);
     const { data, error } = await userCoinService.getUserCoins();
@@ -155,7 +152,7 @@ export default function Collection() {
         metal: c.metal as "gold" | "silver" | "copper" | "platinum" | "palladium" | "other",
         purity: c.purity,
         weight: c.weight,
-        sheldonGrade: c.grade as any,
+        sheldonGrade: c.grade as SheldonGrade,
         purchasePrice: c.purchase_price,
         purchaseDate: c.purchase_date,
         notes: c.notes || "",
@@ -282,7 +279,7 @@ export default function Collection() {
           coin_name: formData.coinName ?? "",
           country_code: formData.countryCode ?? "",
           km_number: formData.kmNumber ?? "",
-          metal: formData.metal as "gold" | "silver" | "copper" | "platinum" | "palladium" | "other" ?? "silver",
+          metal: (formData.metal as "gold" | "silver" | "copper" | "platinum" | "palladium" | "other") ?? "silver",
           purity: formData.purity ?? 0,
           weight: formData.weight ?? 0,
           obverse_image_url: obverseImageUrl || null,
@@ -1246,24 +1243,30 @@ export default function Collection() {
                             {coin.obverseImageUrl || coin.reverseImageUrl ? (
                               <>
                                 {coin.obverseImageUrl ? (
-                                  <img 
-                                    src={coin.obverseImageUrl} 
-                                    alt={`${coin.coinName || sku} - Obverse`}
-                                    className="w-full h-full object-cover rounded group-hover:scale-105 transition-transform duration-300"
-                                    loading="lazy"
-                                  />
+                                  <div className="relative w-full h-48 bg-slate-900/50 rounded-lg overflow-hidden">
+                                    <Image 
+                                      src={coin.obverseImageUrl} 
+                                      alt={`${coin.coinName || sku} - Obverse`}
+                                      fill
+                                      className="object-contain"
+                                      loading="lazy"
+                                    />
+                                  </div>
                                 ) : (
                                   <div className="w-full h-full flex items-center justify-center bg-slate-800/50 rounded">
                                     <Package className="w-8 h-8 text-slate-700" />
                                   </div>
                                 )}
                                 {coin.reverseImageUrl ? (
-                                  <img 
-                                    src={coin.reverseImageUrl} 
-                                    alt={`${coin.coinName || sku} - Reverse`}
-                                    className="w-full h-full object-cover rounded group-hover:scale-105 transition-transform duration-300"
-                                    loading="lazy"
-                                  />
+                                  <div className="relative w-full h-48 bg-slate-900/50 rounded-lg overflow-hidden mt-2">
+                                    <Image 
+                                      src={coin.reverseImageUrl} 
+                                      alt={`${coin.coinName || sku} - Reverse`}
+                                      fill
+                                      className="object-contain"
+                                      loading="lazy"
+                                    />
+                                  </div>
                                 ) : (
                                   <div className="w-full h-full flex items-center justify-center bg-slate-800/50 rounded">
                                     <Package className="w-8 h-8 text-slate-700" />
@@ -1566,8 +1569,8 @@ export default function Collection() {
                 </div>
                 <div className="flex justify-between text-sm pt-2 border-t border-slate-700">
                   <span className="text-slate-400">Profit:</span>
-                  <span className={`font-bold ${saleFormData.salePrice - (availableCoinsForSale.find(c => c.id === selectedCoinForSale)?.purchasePrice ?? 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                    {spotPriceService.formatCHF(saleFormData.salePrice - (availableCoinsForSale.find(c => c.id === selectedCoinForSale)?.purchasePrice ?? 0))}
+                  <span className={`font-bold ${saleFormData.salePrice - (availableCoinsForSale.find(c => c.id === selectedCoinForSale)?.purchasePrice || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    {spotPriceService.formatCHF(saleFormData.salePrice - (availableCoinsForSale.find(c => c.id === selectedCoinForSale)?.purchasePrice || 0))}
                   </span>
                 </div>
               </div>
