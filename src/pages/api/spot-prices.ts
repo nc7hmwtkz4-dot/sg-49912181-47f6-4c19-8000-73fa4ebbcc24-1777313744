@@ -38,13 +38,14 @@ export default async function handler(
       throw new Error('Invalid API response: missing rates');
     }
 
-    // Convert rates to CHF per gram
-    // API returns rates like CHFXAU: 3834.56 (meaning 1 troy oz = 3834.56 CHF)
-    // Convert: CHF/oz -> CHF/g by dividing by troy oz to grams constant
+    // API returns rates like XAU: 0.000261 (meaning 1 CHF = 0.000261 troy oz)
+    // We need: 1 troy oz = X CHF, then convert to grams
+    // Step 1: Invert the rate to get CHF per troy oz
+    // Step 2: Divide by troy oz to grams constant to get CHF per gram
     const prices: SpotPrices = {
-      gold: data.rates.CHFXAU ? data.rates.CHFXAU / TROY_OZ_TO_GRAMS : FALLBACK_PRICES.gold,
-      silver: data.rates.CHFXAG ? data.rates.CHFXAG / TROY_OZ_TO_GRAMS : FALLBACK_PRICES.silver,
-      platinum: data.rates.CHFXPT ? data.rates.CHFXPT / TROY_OZ_TO_GRAMS : FALLBACK_PRICES.platinum,
+      gold: data.rates.XAU ? (1 / data.rates.XAU) / TROY_OZ_TO_GRAMS : FALLBACK_PRICES.gold,
+      silver: data.rates.XAG ? (1 / data.rates.XAG) / TROY_OZ_TO_GRAMS : FALLBACK_PRICES.silver,
+      platinum: data.rates.XPT ? (1 / data.rates.XPT) / TROY_OZ_TO_GRAMS : FALLBACK_PRICES.platinum,
     };
 
     console.log('Calculated prices per gram:', prices);
