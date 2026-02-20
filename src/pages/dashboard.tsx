@@ -48,7 +48,6 @@ export default function Dashboard() {
   const [spotPrices, setSpotPrices] = useState<{
     gold: number;
     silver: number;
-    copper: number;
     platinum: number;
   } | null>(null);
 

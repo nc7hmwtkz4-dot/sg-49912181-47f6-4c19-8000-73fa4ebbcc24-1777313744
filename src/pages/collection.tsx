@@ -29,7 +29,11 @@ export default function Collection() {
   const [countryFilter, setCountryFilter] = useState("all");
   const [metalFilter, setMetalFilter] = useState("all");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [spotPrices, setSpotPrices] = useState<{ gold: number; silver: number; copper: number; platinum: number } | null>(null);
+  const [spotPrices, setSpotPrices] = useState<{
+    gold: number;
+    silver: number;
+    platinum: number;
+  } | null>(null);
   const [obverseImageFile, setObverseImageFile] = useState<File | null>(null);
   const [reverseImageFile, setReverseImageFile] = useState<File | null>(null);
   const [obverseImagePreview, setObverseImagePreview] = useState<string>("");
