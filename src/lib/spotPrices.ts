@@ -29,13 +29,15 @@ export async function fetchSpotPrices(): Promise<SpotPrices | null> {
 
     const data = await response.json();
 
+    console.log('Metal Price API Response:', JSON.stringify(data, null, 2));
+
     if (!data.success || !data.rates) {
       console.error('Invalid API response format');
       return FALLBACK_PRICES;
     }
 
     // Convert rates to CHF per gram
-    // API returns: 1 troy ounce = X CHF
+    // API returns rates like CHFXAU: 3834.56 (meaning 1 troy oz = 3834.56 CHF)
     // Convert: CHF/oz -> CHF/g by dividing by troy oz to grams constant
     const prices: SpotPrices = {
       gold: data.rates.CHFXAU ? data.rates.CHFXAU / TROY_OZ_TO_GRAMS : FALLBACK_PRICES.gold,
@@ -43,6 +45,8 @@ export async function fetchSpotPrices(): Promise<SpotPrices | null> {
       copper: data.rates.CHFXCU ? data.rates.CHFXCU / TROY_OZ_TO_GRAMS : FALLBACK_PRICES.copper,
       platinum: data.rates.CHFXPT ? data.rates.CHFXPT / TROY_OZ_TO_GRAMS : FALLBACK_PRICES.platinum,
     };
+
+    console.log('Calculated prices per gram:', prices);
 
     return prices;
   } catch (error) {
@@ -96,7 +100,7 @@ export function formatCHF(amount: number): string {
     currency: 'CHF',
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
-  }).format(amount).replace('CHF', 'CHF '); // Ensure space after symbol if needed, though standard format is usually fine
+  }).format(amount).replace('CHF', 'CHF ');
 }
 
 export function calculateBullionValue(
