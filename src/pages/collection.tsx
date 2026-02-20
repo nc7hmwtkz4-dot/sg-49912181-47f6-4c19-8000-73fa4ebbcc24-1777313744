@@ -1349,7 +1349,7 @@ export default function Collection() {
         <DialogContent className="max-w-lg bg-slate-900 border-slate-700">
           <DialogHeader>
             <DialogTitle className="text-2xl text-white">
-              Record Sale - {selectedSKU}
+              Record Sale
             </DialogTitle>
           </DialogHeader>
           
