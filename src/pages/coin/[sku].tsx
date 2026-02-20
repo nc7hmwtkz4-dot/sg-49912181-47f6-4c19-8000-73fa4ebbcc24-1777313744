@@ -17,16 +17,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Edit, Plus, DollarSign, Trash2, ArrowLeft, Upload, Eye, EyeOff, Gavel, ShoppingCart, Package } from "lucide-react";
+import { Edit, Plus, DollarSign, Trash2, ArrowLeft, Eye, EyeOff, ShoppingCart } from "lucide-react";
 import Link from "next/link";
 import { createListing } from "@/services/listingService";
 
 export default function CoinDetail() {
   const router = useRouter();
   const { sku } = router.query;
-  const [isLoading, setIsLoading] = useState(true);
   const [coins, setCoins] = useState<Coin[]>([]);
-  const [spotPrices, setSpotPrices] = useState<any>(null);
+  const [spotPrices, setSpotPrices] = useState<SpotPrices | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isAddPurchaseOpen, setIsAddPurchaseOpen] = useState(false);
   const [isSaleDialogOpen, setIsSaleDialogOpen] = useState(false);
@@ -65,13 +64,14 @@ export default function CoinDetail() {
   
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState<{ url: string; alt: string } | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
-  const getCoinById = (coinId: string): Coin | undefined => {
-    return coins.find(c => c.id === coinId);
-  };
-
-  const [salesData, setSalesData] = useState<any[]>([]);
+  const [salesData, setSalesData] = useState<Array<{
+    coin_id: string;
+    sale_price: number;
+    sale_date: string;
+    buyer_info?: string;
+    notes?: string;
+  }>>();
 
   const loadSalesData = async () => {
     const { data } = await userSalesService.getUserSales();
@@ -87,15 +87,15 @@ export default function CoinDetail() {
       loadCoins();
       loadSpotPrices();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sku]);
 
   const loadCoins = async () => {
     if (!sku) return;
     
-    setIsLoading(true);
     const { data } = await userCoinService.getCoinsBySku(sku as string);
     if (data) {
-      const mappedCoins: Coin[] = data.map((c: any) => ({
+      const mappedCoins: Coin[] = data.map((c) => ({
         id: c.id,
         sku: c.sku,
         coinName: c.coin_name,
@@ -112,12 +112,11 @@ export default function CoinDetail() {
         notes: c.notes,
         obverseImageUrl: c.obverse_image_url,
         reverseImageUrl: c.reverse_image_url,
-        isSold: c.is_sold,  // THIS IS CRITICAL - map is_sold to isSold
+        isSold: c.is_sold,
         listingId: c.listing_id
       }));
       setCoins(mappedCoins);
     }
-    setIsLoading(false);
   };
 
   const loadSpotPrices = async () => {

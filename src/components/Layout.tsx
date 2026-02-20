@@ -1,7 +1,7 @@
 import { ReactNode, useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { Coins, LayoutDashboard, Package, TrendingUp, LogIn, LogOut, User } from "lucide-react";
+import { Coins, LayoutDashboard, Package, LogIn, LogOut, User } from "lucide-react";
 import { ThemeSwitch } from "./ThemeSwitch";
 import { Button } from "./ui/button";
 import { AuthModal } from "./AuthModal";
@@ -58,8 +58,6 @@ export function Layout({ children }: LayoutProps) {
     await authService.signOut();
     router.push("/");
   };
-
-  const isActive = (path: string) => router.pathname === path;
 
   return (
     <div className="min-h-screen bg-background">

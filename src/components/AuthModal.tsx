@@ -84,7 +84,7 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
         }
       } else {
         // Login flow with 2FA check
-        const { user, error: signInError, requires2FA: needs2FA } = await authService.signIn(email, password);
+        const { error: signInError, requires2FA: needs2FA } = await authService.signIn(email, password);
         
         if (signInError) {
           setError(signInError.message);

@@ -34,7 +34,7 @@ export default function ResetPasswordPage() {
         } else {
           setHasValidSession(true);
         }
-      } catch (err) {
+      } catch {
         setError("An error occurred while validating your reset link.");
         setHasValidSession(false);
       } finally {

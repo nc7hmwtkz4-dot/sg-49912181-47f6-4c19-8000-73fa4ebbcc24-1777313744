@@ -16,7 +16,7 @@ const FALLBACK_PRICES: SpotPrices = {
   platinum: 28.5,
 };
 
-export async function fetchSpotPrices(force?: boolean): Promise<SpotPrices | null> {
+export async function fetchSpotPrices(): Promise<SpotPrices | null> {
   try {
     const response = await fetch(
       `https://api.metalpriceapi.com/v1/latest?api_key=${METAL_PRICE_API_KEY}&base=CHF&currencies=XAU,XAG,XPT,XCU`
@@ -105,7 +105,8 @@ export function calculateBullionValue(
   metal: string,
   spotPrices: SpotPrices | null
 ): number {
-  return calculateMetalValue(weight, purity, metal as any, spotPrices);
+  const metalKey = metal.toLowerCase() as keyof SpotPrices;
+  return calculateMetalValue(weight, purity, metalKey, spotPrices);
 }
 
 export const spotPriceService = {

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { X, ZoomIn, ZoomOut, RotateCw } from "lucide-react";
+import { X, ZoomIn, ZoomOut } from "lucide-react";
 
 interface ImageViewerProps {
   isOpen: boolean;
@@ -12,14 +12,11 @@ interface ImageViewerProps {
 
 export function ImageViewer({ isOpen, onClose, imageUrl, alt }: ImageViewerProps) {
   const [zoom, setZoom] = useState(1);
-  const [rotation, setRotation] = useState(0);
 
   const handleZoomIn = () => setZoom(prev => Math.min(prev + 0.25, 3));
   const handleZoomOut = () => setZoom(prev => Math.max(prev - 0.25, 0.5));
-  const handleRotate = () => setRotation(prev => (prev + 90) % 360);
   const handleReset = () => {
     setZoom(1);
-    setRotation(0);
   };
 
   const handleClose = () => {
@@ -70,15 +67,6 @@ export function ImageViewer({ isOpen, onClose, imageUrl, alt }: ImageViewerProps
               className="text-white hover:bg-slate-800"
             >
               <ZoomIn className="w-5 h-5" />
-            </Button>
-
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleRotate}
-              className="text-white hover:bg-slate-800"
-            >
-              <RotateCw className="w-5 h-5" />
             </Button>
           </div>
 
