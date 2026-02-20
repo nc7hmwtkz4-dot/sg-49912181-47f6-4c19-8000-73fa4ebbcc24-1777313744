@@ -3,7 +3,6 @@ import type { NextApiRequest, NextApiResponse } from "next";
 export interface SpotPrices {
   gold: number;
   silver: number;
-  copper: number;
   platinum: number;
 }
 
@@ -14,7 +13,6 @@ const TROY_OZ_TO_GRAMS = 31.1034768;
 const FALLBACK_PRICES: SpotPrices = {
   gold: 75.5,
   silver: 0.89,
-  copper: 0.008,
   platinum: 28.5,
 };
 
@@ -24,7 +22,7 @@ export default async function handler(
 ) {
   try {
     const response = await fetch(
-      `https://api.metalpriceapi.com/v1/latest?api_key=${METAL_PRICE_API_KEY}&base=CHF&currencies=XAU,XAG,XPT,XCU`
+      `https://api.metalpriceapi.com/v1/latest?api_key=${METAL_PRICE_API_KEY}&base=CHF&currencies=XAU,XAG,XPT`
     );
 
     if (!response.ok) {
@@ -46,7 +44,6 @@ export default async function handler(
     const prices: SpotPrices = {
       gold: data.rates.CHFXAU ? data.rates.CHFXAU / TROY_OZ_TO_GRAMS : FALLBACK_PRICES.gold,
       silver: data.rates.CHFXAG ? data.rates.CHFXAG / TROY_OZ_TO_GRAMS : FALLBACK_PRICES.silver,
-      copper: data.rates.CHFXCU ? data.rates.CHFXCU / TROY_OZ_TO_GRAMS : FALLBACK_PRICES.copper,
       platinum: data.rates.CHFXPT ? data.rates.CHFXPT / TROY_OZ_TO_GRAMS : FALLBACK_PRICES.platinum,
     };
 

@@ -233,7 +233,7 @@ export default function Dashboard() {
                 Refresh Prices
               </Button>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <Card className="bg-yellow-500/10 border-yellow-500/20">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm font-medium text-muted-foreground">Gold (Au)</CardTitle>
@@ -253,18 +253,6 @@ export default function Dashboard() {
                 <CardContent>
                   <p className="text-2xl font-bold text-gray-600 dark:text-gray-400">
                     CHF {spotPrices.silver.toLocaleString('de-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">per gram</p>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-orange-500/10 border-orange-500/20">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">Copper (Cu)</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">
-                    CHF {spotPrices.copper.toLocaleString('de-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">per gram</p>
                 </CardContent>

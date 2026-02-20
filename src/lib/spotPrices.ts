@@ -4,7 +4,6 @@ const TROY_OZ_TO_GRAMS = 31.1034768;
 export interface SpotPrices {
   gold: number;
   silver: number;
-  copper: number;
   platinum: number;
 }
 
@@ -12,14 +11,13 @@ export interface SpotPrices {
 const FALLBACK_PRICES: SpotPrices = {
   gold: 75.5,
   silver: 0.89,
-  copper: 0.008,
   platinum: 28.5,
 };
 
 export async function fetchSpotPrices(): Promise<SpotPrices | null> {
   try {
     const response = await fetch(
-      `https://api.metalpriceapi.com/v1/latest?api_key=${METAL_PRICE_API_KEY}&base=CHF&currencies=XAU,XAG,XPT,XCU`
+      `https://api.metalpriceapi.com/v1/latest?api_key=${METAL_PRICE_API_KEY}&base=CHF&currencies=XAU,XAG,XPT`
     );
 
     if (!response.ok) {
@@ -42,7 +40,6 @@ export async function fetchSpotPrices(): Promise<SpotPrices | null> {
     const prices: SpotPrices = {
       gold: data.rates.CHFXAU ? data.rates.CHFXAU / TROY_OZ_TO_GRAMS : FALLBACK_PRICES.gold,
       silver: data.rates.CHFXAG ? data.rates.CHFXAG / TROY_OZ_TO_GRAMS : FALLBACK_PRICES.silver,
-      copper: data.rates.CHFXCU ? data.rates.CHFXCU / TROY_OZ_TO_GRAMS : FALLBACK_PRICES.copper,
       platinum: data.rates.CHFXPT ? data.rates.CHFXPT / TROY_OZ_TO_GRAMS : FALLBACK_PRICES.platinum,
     };
 
@@ -58,7 +55,7 @@ export async function fetchSpotPrices(): Promise<SpotPrices | null> {
 export function calculateMetalValue(
   weight: number,
   purity: number,
-  metal: 'gold' | 'silver' | 'copper' | 'platinum',
+  metal: 'gold' | 'silver' | 'platinum',
   spotPrices: SpotPrices | null
 ): number {
   if (!spotPrices) return 0;
