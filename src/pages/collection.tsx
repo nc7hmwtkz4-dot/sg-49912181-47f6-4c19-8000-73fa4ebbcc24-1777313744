@@ -48,7 +48,6 @@ export default function Collection() {
 
   // Purchase dialog state
   const [isAddPurchaseOpen, setIsAddPurchaseOpen] = useState(false);
-  const [selectedSKU, setSelectedSKU] = useState<string>("");
   const [purchaseFormData, setPurchaseFormData] = useState<{
     sku: string;
     coinName: string;
@@ -86,7 +85,7 @@ export default function Collection() {
   // Sale dialog state
   const [isSaleDialogOpen, setIsSaleDialogOpen] = useState(false);
   const [availableCoinsForSale, setAvailableCoinsForSale] = useState<Coin[]>([]);
-  const [selectedCoinForSale, setSelectedCoinForSale] = useState<string>("");
+  const [selectedCoinForSale, setSelectedCoinForSale] = useState("");
   const [saleFormData, setSaleFormData] = useState<{
     coinId: string;
     saleDate: string;
@@ -141,7 +140,25 @@ export default function Collection() {
 
     if (data) {
       // Map database coins to frontend Coin type
-      const mappedCoins: Coin[] = data.map(c => ({
+      const mappedCoins: Coin[] = data.map((c: {
+        id: string;
+        country_code: string;
+        km_number: string;
+        coin_name: string | null;
+        year: number;
+        mintmark: string | null;
+        metal: string;
+        purity: number;
+        weight: number;
+        grade: string;
+        purchase_price: number;
+        purchase_date: string;
+        notes: string | null;
+        obverse_image_url: string | null;
+        reverse_image_url: string | null;
+        is_sold: boolean;
+        listing_id: string | null;
+      }) => ({
         id: c.id,
         sku: `${c.country_code}-${c.km_number}`,
         coinName: c.coin_name || "",
@@ -442,7 +459,12 @@ export default function Collection() {
     if (!referenceFilter) return availableReferences;
     
     const searchLower = referenceFilter.toLowerCase();
-    return availableReferences.filter(ref => 
+    return availableReferences.filter((ref: {
+      sku: string;
+      coin_name: string;
+      km_number: string;
+      country_code: string;
+    }) => 
       ref.sku.toLowerCase().includes(searchLower) ||
       ref.coin_name.toLowerCase().includes(searchLower) ||
       ref.km_number.toLowerCase().includes(searchLower) ||
@@ -520,10 +542,6 @@ export default function Collection() {
       console.error("Error recording sale:", err);
       alert("An unexpected error occurred. Please try again.");
     }
-  };
-
-  const handleImageClick = (imageUrl: string, coinName: string) => {
-    setViewImage({ url: imageUrl, alt: coinName });
   };
 
   const handleViewDetails = (skuCoins: Coin[]) => {
@@ -1412,7 +1430,7 @@ export default function Collection() {
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-400">Purchase Price:</span>
                   <span className="text-white font-medium">
-                    {spotPriceService.formatCHF(availableCoinsForSale.find(c => c.id === selectedCoinForSale)!.purchasePrice)}
+                    {spotPriceService.formatCHF(availableCoinsForSale.find(c => c.id === selectedCoinForSale)?.purchasePrice ?? 0)}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
@@ -1421,8 +1439,8 @@ export default function Collection() {
                 </div>
                 <div className="flex justify-between text-sm pt-2 border-t border-slate-700">
                   <span className="text-slate-400">Profit:</span>
-                  <span className={`font-bold ${saleFormData.salePrice - (availableCoinsForSale.find(c => c.id === selectedCoinForSale)?.purchasePrice || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                    {spotPriceService.formatCHF(saleFormData.salePrice - (availableCoinsForSale.find(c => c.id === selectedCoinForSale)?.purchasePrice || 0))}
+                  <span className={`font-bold ${saleFormData.salePrice - (availableCoinsForSale.find(c => c.id === selectedCoinForSale)?.purchasePrice ?? 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    {spotPriceService.formatCHF(saleFormData.salePrice - (availableCoinsForSale.find(c => c.id === selectedCoinForSale)?.purchasePrice ?? 0))}
                   </span>
                 </div>
               </div>
