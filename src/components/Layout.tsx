@@ -140,9 +140,12 @@ export function Layout({ children }: LayoutProps) {
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="relative h-10 w-10 rounded-full hover:ring-2 hover:ring-amber-500/20 transition-all">
                       <Avatar className="h-10 w-10 border-2 border-amber-500/20">
-                        <AvatarImage src={user.user_metadata?.avatar_url} alt={user.user_metadata?.full_name || user.email} />
+                        <AvatarImage 
+                          src={user.user_metadata?.avatar_url as string} 
+                          alt={(user.user_metadata?.full_name as string) || user.email} 
+                        />
                         <AvatarFallback className="bg-gradient-to-br from-amber-500 to-yellow-600 text-white font-semibold">
-                          {(user.user_metadata?.full_name?.[0] || user.email[0]).toUpperCase()}
+                          {((user.user_metadata?.full_name as string)?.[0] || user.email[0]).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
                     </Button>
@@ -150,49 +153,30 @@ export function Layout({ children }: LayoutProps) {
                   <DropdownMenuContent className="w-56" align="end" forceMount>
                     <DropdownMenuLabel className="font-normal">
                       <div className="flex flex-col space-y-1">
-                        <p className="text-sm font-medium leading-none">{user.user_metadata?.full_name || "User"}</p>
+                        <p className="text-sm font-medium leading-none">{user.user_metadata?.full_name as string || "User"}</p>
                         <p className="text-xs leading-none text-muted-foreground">
                           {user.email}
                         </p>
                       </div>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                      <Link href="/dashboard" className="flex items-center gap-2 w-full cursor-pointer">
-                        <LayoutDashboard className="w-4 h-4" />
-                        <span>Dashboard</span>
-                      </Link>
+                    <DropdownMenuItem onClick={() => router.push("/profile")}>
+                      <User className="mr-2 h-4 w-4" />
+                      <span>Profile</span>
                     </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href="/collection" className="flex items-center gap-2 w-full cursor-pointer">
-                        <Coins className="w-4 h-4" />
-                        <span>My Collection</span>
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href="/listings" className="flex items-center gap-2 w-full cursor-pointer">
-                        <Package className="w-4 h-4" />
-                        <span>Active Listings</span>
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href="/profile" className="flex items-center gap-2 w-full cursor-pointer">
-                        <User className="w-4 h-4" />
-                        <span>Profile Settings</span>
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator className="bg-slate-200 dark:bg-slate-700" />
-                    <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive cursor-pointer">
+                    <DropdownMenuItem onClick={handleSignOut}>
                       <LogOut className="mr-2 h-4 w-4" />
                       <span>Log out</span>
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               ) : (
-                <Button onClick={() => setIsAuthModalOpen(true)} variant="outline" className="gap-2 border-amber-500/20 hover:border-amber-500/40 hover:bg-amber-500/5">
-                  <LogIn className="w-4 h-4" />
-                  Sign In
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button variant="ghost" size="sm" onClick={() => setIsAuthModalOpen(true)}>
+                    <LogIn className="h-4 w-4 mr-2" />
+                    Sign In
+                  </Button>
+                </div>
               )}
             </div>
           </div>

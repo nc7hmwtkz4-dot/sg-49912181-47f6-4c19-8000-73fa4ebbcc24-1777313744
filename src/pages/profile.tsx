@@ -56,7 +56,7 @@ export default function ProfilePage() {
       }
 
       setUser(authUser);
-      setFullName(authUser.user_metadata?.full_name || "");
+      setFullName((authUser.user_metadata?.full_name as string) || "");
       setEmail(authUser.email || "");
 
       // Check if user has 2FA enabled
@@ -548,7 +548,6 @@ export default function ProfilePage() {
                     setQrCode("");
                     setSecret("");
                     setVerificationCode("");
-                    setError("");
                   }}
                   className="w-full"
                 >
