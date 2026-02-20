@@ -140,26 +140,7 @@ export default function Collection() {
 
     if (data) {
       // Map database coins to frontend Coin type
-      const mappedCoins: Coin[] = data.map((coin: {
-        id: string;
-        country_code: string;
-        year: number;
-        coin_name: string;
-        km_number: string;
-        mintmark: string | null;
-        metal: string;
-        purity: number;
-        weight: number;
-        purchase_price: number;
-        purchase_date: string;
-        grade: string;
-        notes: string | null;
-        sku: string;
-        obverse_image_url: string | null;
-        reverse_image_url: string | null;
-        is_sold: boolean;
-        listing_id: string | null;
-      }) => ({
+      const mappedCoins: Coin[] = data.map((coin: any) => ({
         id: coin.id,
         sku: coin.sku,
         coinName: coin.coin_name || "",
@@ -460,13 +441,7 @@ export default function Collection() {
     if (!referenceFilter) return availableReferences;
     
     const searchLower = referenceFilter.toLowerCase();
-    return availableReferences.filter((ref: {
-      sku: string;
-      country_code: string;
-      year: number;
-      denomination: string;
-      metal: string;
-    }) =>
+    return availableReferences.filter((ref: any) =>
       ref.sku.toLowerCase().includes(searchLower) ||
       ref.denomination.toLowerCase().includes(searchLower) ||
       ref.year.toString().includes(searchLower) ||
