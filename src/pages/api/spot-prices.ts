@@ -44,10 +44,10 @@ export default async function handler(
     // API returns: 1 troy ounce = X CHF
     // Convert: CHF/oz -> CHF/g by dividing by troy oz to grams constant
     const prices: SpotPrices = {
-      gold: data.rates.XAU ? data.rates.XAU / TROY_OZ_TO_GRAMS : FALLBACK_PRICES.gold,
-      silver: data.rates.XAG ? data.rates.XAG / TROY_OZ_TO_GRAMS : FALLBACK_PRICES.silver,
-      copper: data.rates.XCU ? data.rates.XCU / TROY_OZ_TO_GRAMS : FALLBACK_PRICES.copper,
-      platinum: data.rates.XPT ? data.rates.XPT / TROY_OZ_TO_GRAMS : FALLBACK_PRICES.platinum,
+      gold: data.rates.CHFXAU ? data.rates.CHFXAU / TROY_OZ_TO_GRAMS : FALLBACK_PRICES.gold,
+      silver: data.rates.CHFXAG ? data.rates.CHFXAG / TROY_OZ_TO_GRAMS : FALLBACK_PRICES.silver,
+      copper: data.rates.CHFXCU ? data.rates.CHFXCU / TROY_OZ_TO_GRAMS : FALLBACK_PRICES.copper,
+      platinum: data.rates.CHFXPT ? data.rates.CHFXPT / TROY_OZ_TO_GRAMS : FALLBACK_PRICES.platinum,
     };
 
     return res.status(200).json(prices);
