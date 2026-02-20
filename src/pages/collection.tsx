@@ -418,6 +418,12 @@ export default function Collection() {
     }
   };
 
+  // Handle Add Purchase (adding another coin to existing SKU)
+  const handleAddPurchase = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsAddPurchaseOpen(false);
+  };
+
   // Load available reference coins for Register Purchase
   const loadAvailableReferences = async () => {
     setIsLoadingReferences(true);
@@ -1319,14 +1325,6 @@ export default function Collection() {
           </form>
         </DialogContent>
       </Dialog>
-
-      // Handle Add Purchase (adding another coin to existing SKU)
-      const handleAddPurchase = async (e: React.FormEvent) => {
-        e.preventDefault();
-        // Implementation to be added or restored if needed
-        // For now just closing to satisfy usage
-        setIsAddDialogOpen(false);
-      };
 
       {/* Record Sale Dialog */}
       <Dialog open={isSaleDialogOpen} onOpenChange={setIsSaleDialogOpen}>
