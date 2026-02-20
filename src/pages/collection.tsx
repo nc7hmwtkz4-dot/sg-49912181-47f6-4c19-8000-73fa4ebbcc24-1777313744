@@ -459,8 +459,8 @@ export default function Collection() {
     const searchLower = referenceFilter.toLowerCase();
     return availableReferences.filter((ref: any) =>
       ref.sku.toLowerCase().includes(searchLower) ||
-      ref.denomination.toLowerCase().includes(searchLower) ||
-      ref.year.toString().includes(searchLower) ||
+      ref.coin_name.toLowerCase().includes(searchLower) ||
+      ref.km_number.toLowerCase().includes(searchLower) ||
       ref.metal.toLowerCase().includes(searchLower) ||
       ref.country_code.toLowerCase().includes(searchLower)
     );
