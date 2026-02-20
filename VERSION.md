@@ -1,12 +1,59 @@
 # NumiVault Version History
 
-## Version 0.1.0 - Stable Baseline (2026-02-20)
+## Version 0.11 - Metal Prices & Stability Fix (2026-02-20)
 
-### 🎯 Milestone: First Stable Release
+### 🎯 Milestone: Metal Prices Integration & Crash Prevention
 
-This version represents the first stable baseline of NumiVault. All core features are working correctly and tested.
+This version fixes critical issues with metal prices calculation and Register Purchase dialog crashes.
 
-### ✅ Core Features Implemented
+### ✅ What's Fixed
+
+**Metal Prices API Integration:**
+- ✅ Correct API endpoint: `https://api.metalpriceapi.com/v1/latest`
+- ✅ Proper currency codes: `XAU`, `XAG`, `XPT`, `XCU` (not `CHFXAU` format)
+- ✅ Accurate conversion: CHF per Troy Ounce → CHF per Gramme
+- ✅ Formula: `Price per gram = (1 / API_Rate) / 31.1034768`
+- ✅ Real-time spot prices for Gold, Silver, Platinum, Copper
+
+**Register Purchase Dialog Fixes:**
+- ✅ Fixed crashes when searching for reference coins
+- ✅ Added proper null/undefined checks for coin properties
+- ✅ Safe property access with defensive programming
+- ✅ Improved authentication checks before loading reference coins
+- ✅ Better error handling for empty or missing data
+
+**Code Quality:**
+- ✅ Enhanced null safety throughout collection page
+- ✅ Type-safe property access for reference coins
+- ✅ Improved error boundaries and fallback handling
+
+### 🔧 Metal Prices Calculation
+
+**API Configuration:**
+```
+Endpoint: https://api.metalpriceapi.com/v1/latest
+Parameters: 
+  - api_key: a4c341c9c8b69969cba65382941825cf
+  - base: CHF
+  - currencies: XAU,XAG,XPT,XCU
+```
+
+**Conversion Formula:**
+```
+API Response: { "rates": { "XAU": 0.00000123 } } // 1 CHF = X troy oz
+Step 1: Troy Ounce Price = 1 / API_Rate
+Step 2: Gramme Price = Troy Ounce Price / 31.1034768
+Result: CHF per gramme
+```
+
+**Example Calculation:**
+```
+XAU API Rate: 0.000012345
+Troy Ounce Price: 1 / 0.000012345 = 81,037 CHF/oz
+Gramme Price: 81,037 / 31.1034768 = 2,605 CHF/g
+```
+
+### 📋 Core Features (Still Working)
 
 **Collection Management:**
 - Complete coin collection tracking system
@@ -40,50 +87,15 @@ This version represents the first stable baseline of NumiVault. All core feature
 - Password reset functionality
 - Email confirmation system
 
-**Technical Stack:**
+### 🛡️ Technical Stack
+
 - Next.js 15.5 (Page Router)
 - React 18.3
 - TypeScript
 - Tailwind CSS v3.4
 - Supabase (Database, Auth, Storage)
 - Shadcn/UI components
-
-### 🔧 Metal Prices Integration
-
-**API Configuration:**
-- Metal Price API integration: https://api.metalpriceapi.com
-- Real-time spot prices in CHF per gram
-- Supported metals: Gold (XAU), Silver (XAG), Platinum (XPT)
-- Automatic conversion from Troy Ounce to grams
-- Fallback prices for API unavailability
-
-**Calculation Formula:**
-```
-Price per gram (CHF) = API Rate (CHF/Troy Oz) ÷ 31.1034768
-Bullion Value = (Weight × Purity%) × Price per gram
-```
-
-### 📋 Database Schema
-
-**Tables:**
-- `profiles` - User profiles and settings
-- `user_coins` - Coin collection data
-- `user_sales` - Sales transaction history
-- `listings` - Marketplace listings
-- `coin_references` - Reference data for coins
-
-**Row Level Security (RLS):**
-- All tables protected with RLS policies
-- Users can only access their own data
-- Public read access for marketplace listings
-
-### 🛡️ Security Features
-
-- JWT-based authentication
-- Row Level Security (RLS) on all database tables
-- Secure file storage with access controls
-- Environment variable protection for API keys
-- Input validation and sanitization
+- Metal Price API integration
 
 ### 🔄 Rollback Instructions
 
@@ -91,38 +103,32 @@ If you need to rollback to this version:
 
 1. **Via Version History:**
    - Click "Version History" in the Softgen interface
-   - Find the version tagged "Version 0.1.0 - 2026-02-20"
+   - Find the version tagged "Version 0.11 - 2026-02-20"
    - Click "Revert" to restore this exact state
 
-2. **Via Git (if using manual Git):**
+2. **Via Git:**
    ```bash
-   git checkout v0.1.0
+   git checkout v0.11
    ```
 
-3. **Via Vercel Deployments:**
-   - Go to your Vercel dashboard
-   - Find the deployment from 2026-02-20
+3. **Via Vercel:**
+   - Go to Vercel dashboard
+   - Find deployment from 2026-02-20 (latest)
    - Click "Promote to Production"
 
-### 📝 Known Limitations
+### 📊 Database Schema
 
-- Metal prices require active internet connection
-- Image uploads limited to 5MB per file
-- API rate limits apply (check Metal Price API documentation)
+**Tables:**
+- `profiles` - User profiles and settings
+- `user_coins` - Coin collection data
+- `user_sales` - Sales transaction history
+- `listings` - Marketplace listings
+- `coins_reference` - Reference data for coins (SKU, name, year, country, etc.)
 
-### 🎨 Design System
-
-- Dark/Light theme support
-- Responsive design (mobile, tablet, desktop)
-- Consistent UI components via Shadcn/UI
-- Swiss design aesthetic with CHF currency formatting
-
-### 🚀 Deployment
-
-- Production-ready for Vercel deployment
-- One-click deployment via Softgen "Publish" button
-- Environment variables configured
-- Database migrations applied
+**Row Level Security:**
+- All tables protected with RLS policies
+- Users can only access their own data
+- Public read access for marketplace listings and reference coins
 
 ---
 
@@ -134,6 +140,12 @@ If you need to rollback to this version:
 
 ---
 
+## Version 0.1.0 - Initial Baseline (2026-02-20)
+
+First stable release with core features implemented. Superseded by version 0.11 with metal prices fix.
+
+---
+
 ## Future Versions
 
-All future versions will be documented here. If any major failure occurs, rollback to **Version 0.1.0** as the stable baseline.
+All future versions will be documented here. If any major failure occurs, rollback to **Version 0.11** as the stable baseline.
