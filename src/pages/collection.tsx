@@ -4,7 +4,6 @@ import Image from "next/image";
 import { SEO } from "@/components/SEO";
 import { Layout } from "@/components/Layout";
 import { userCoinService } from "@/services/userCoinService";
-import { userSalesService } from "@/services/userSalesService";
 import { coinReferenceService } from "@/services/coinReferenceService";
 import { spotPriceService } from "@/lib/spotPrices";
 import { imageService } from "@/services/imageService";
@@ -311,7 +310,6 @@ export default function Collection() {
       metal: "silver",
       purity: 90
     });
-    setEditingCoin(null);
     setObverseImageFile(null);
     setReverseImageFile(null);
     setObverseImagePreview("");
@@ -319,131 +317,6 @@ export default function Collection() {
     setReferenceSearchTerm("");
     setReferenceSearchResults([]);
   };
-
-  const calculateBullionValue = (coin: Coin): number => {
-    if (!spotPrices) return 0;
-    return spotPriceService.calculateBullionValue(
-      coin.weight,
-      coin.purity,
-      coin.metal,
-      spotPrices
-    );
-  };
-
-  // Handle Add Purchase
-  const handleOpenAddPurchase = (sku: string) => {
-    const skuCoins = coins.filter(c => c.sku === sku);
-    if (skuCoins.length === 0) return;
-
-    const referenceCoin = skuCoins[0];
-    setSelectedSKU(sku);
-    setPurchaseFormData({
-      sku: referenceCoin.sku,
-      coinName: referenceCoin.coinName,
-      countryCode: referenceCoin.countryCode,
-      kmNumber: referenceCoin.kmNumber,
-      metal: referenceCoin.metal,
-      purity: referenceCoin.purity,
-      weight: referenceCoin.weight,
-      obverseImageUrl: referenceCoin.obverseImageUrl || "",
-      reverseImageUrl: referenceCoin.reverseImageUrl || "",
-      year: referenceCoin.year,
-      mintmark: referenceCoin.mintmark || "",
-      sheldonGrade: referenceCoin.sheldonGrade,
-      purchaseDate: new Date().toISOString().split("T")[0],
-      purchasePrice: referenceCoin.purchasePrice,
-      notes: ""
-    });
-    setIsAddPurchaseOpen(true);
-  };
-
-  const handleAddPurchase = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!purchaseFormData.year || !purchaseFormData.purchasePrice || !purchaseFormData.purchaseDate) {
-      alert("Please fill in all required fields");
-      return;
-    }
-
-    const newCoinData = {
-      sku: purchaseFormData.sku,
-      coin_name: purchaseFormData.coinName,
-      country_code: purchaseFormData.countryCode,
-      km_number: purchaseFormData.kmNumber,
-      metal: purchaseFormData.metal,
-      purity: purchaseFormData.purity,
-      weight: purchaseFormData.weight,
-      year: purchaseFormData.year,
-      mintmark: purchaseFormData.mintmark,
-      grade: purchaseFormData.sheldonGrade,
-      purchase_date: purchaseFormData.purchaseDate,
-      purchase_price: purchaseFormData.purchasePrice,
-      notes: purchaseFormData.notes,
-      obverse_image_url: purchaseFormData.obverseImageUrl,
-      reverse_image_url: purchaseFormData.reverseImageUrl,
-      is_sold: false
-    };
-
-    const result = await userCoinService.addUserCoin(newCoinData);
-    
-    if (result.error) {
-      console.error("Error adding purchase:", result.error);
-      alert("Failed to add purchase. Please try again.");
-      return;
-    }
-
-    loadCoins();
-    setIsAddPurchaseOpen(false);
-    setPurchaseFormData({
-      sku: "",
-      coinName: "",
-      countryCode: "",
-      kmNumber: "",
-      metal: "",
-      purity: 0,
-      weight: 0,
-      obverseImageUrl: "",
-      reverseImageUrl: "",
-      year: new Date().getFullYear(),
-      mintmark: "",
-      sheldonGrade: "MS-63" as SheldonGrade,
-      purchaseDate: new Date().toISOString().split("T")[0],
-      purchasePrice: 0,
-      notes: ""
-    });
-  };
-
-  async function handleDeleteCoin(id: string) {
-    if (!confirm("Are you sure you want to delete this coin? This action cannot be undone.")) {
-      return;
-    }
-
-    const { error } = await userCoinService.deleteUserCoin(id);
-    if (error) {
-      console.error("Error deleting coin:", error);
-      alert("Failed to delete coin");
-      return;
-    }
-
-    loadCoins();
-  }
-
-  function openEditDialog(coin: Coin) {
-    setEditingCoin(coin);
-    setFormData({
-      countryCode: coin.countryCode,
-      kmNumber: coin.kmNumber,
-      coinName: coin.coinName,
-      metal: coin.metal,
-      purity: coin.purity,
-      weight: coin.weight,
-      obverseImageUrl: coin.obverseImageUrl,
-      reverseImageUrl: coin.reverseImageUrl
-    });
-    setObverseImagePreview(coin.obverseImageUrl || "");
-    setReverseImagePreview(coin.reverseImageUrl || "");
-    setIsAddDialogOpen(true);
-  }
 
   // Handle Register Purchase
   const handleRegisterPurchase = async (e: React.FormEvent) => {
@@ -559,41 +432,6 @@ export default function Collection() {
       ref.country_code.toLowerCase().includes(searchLower)
     );
   }, [availableReferences, referenceFilter]);
-
-  // Handle Record Sale
-  const handleOpenRecordSale = (sku: string) => {
-    const skuCoins = coins.filter(c => c.sku === sku && !c.isSold);
-    if (skuCoins.length === 0) {
-      alert("No available coins to sell for this SKU");
-      return;
-    }
-
-    setSelectedSKU(sku);
-    setAvailableCoinsForSale(skuCoins);
-    
-    if (skuCoins.length === 1) {
-      const coin = skuCoins[0];
-      setSaleFormData({
-        coinId: coin.id,
-        saleDate: new Date().toISOString().split("T")[0],
-        salePrice: calculateBullionValue(coin),
-        buyerInfo: "",
-        notes: ""
-      });
-      setSelectedCoinForSale(coin.id);
-    } else {
-      setSaleFormData({
-        coinId: "",
-        saleDate: new Date().toISOString().split("T")[0],
-        salePrice: 0,
-        buyerInfo: "",
-        notes: ""
-      });
-      setSelectedCoinForSale("");
-    }
-    
-    setIsSaleDialogOpen(true);
-  };
 
   const handleCoinSelection = (coinId: string) => {
     const coin = availableCoinsForSale.find(c => c.id === coinId);
@@ -760,9 +598,6 @@ export default function Collection() {
                         className="pl-10 bg-slate-800 border-slate-700 text-white"
                       />
                     </div>
-                    {isSearching && (
-                      <p className="text-slate-400 text-sm mt-2">Searching...</p>
-                    )}
                     {referenceSearchResults.length > 0 && (
                       <div className="mt-3 space-y-2 max-h-48 overflow-y-auto">
                         {referenceSearchResults.map((ref) => (
