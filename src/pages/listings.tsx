@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
+import Image from "next/image";
 import { Layout } from "@/components/Layout";
 import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
@@ -9,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { AlertCircle, Plus, Edit, Trash2, DollarSign, TrendingUp, Package, CheckCircle } from "lucide-react";
+import { AlertCircle, Edit, Trash2, DollarSign, TrendingUp, Package, CheckCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { getActiveListings, updateListing, deleteListing, markListingAsSold, type ListingWithCoin } from "@/services/listingService";
 import { ImageViewer } from "@/components/ImageViewer";
@@ -272,18 +273,22 @@ export default function ListingsPage() {
                     {(coin.obverseImageUrl || coin.reverseImageUrl) && (
                       <div className="flex gap-2">
                         {coin.obverseImageUrl && (
-                          <img
+                          <Image
                             src={coin.obverseImageUrl}
                             alt={`${coin.coinName} obverse`}
-                            className="w-20 h-20 rounded-md object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                            width={80}
+                            height={80}
+                            className="rounded-md object-cover cursor-pointer hover:opacity-80 transition-opacity"
                             onClick={() => setViewImage({ url: coin.obverseImageUrl!, alt: `${coin.coinName} obverse` })}
                           />
                         )}
                         {coin.reverseImageUrl && (
-                          <img
+                          <Image
                             src={coin.reverseImageUrl}
                             alt={`${coin.coinName} reverse`}
-                            className="w-20 h-20 rounded-md object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                            width={80}
+                            height={80}
+                            className="rounded-md object-cover cursor-pointer hover:opacity-80 transition-opacity"
                             onClick={() => setViewImage({ url: coin.reverseImageUrl!, alt: `${coin.coinName} reverse` })}
                           />
                         )}

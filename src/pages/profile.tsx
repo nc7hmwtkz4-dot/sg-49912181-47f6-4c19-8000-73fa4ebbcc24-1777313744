@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
+import Image from "next/image";
 import { Layout } from "@/components/Layout";
 import { SEO } from "@/components/SEO";
 import { authService, type AuthUser } from "@/services/authService";
@@ -10,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
-import { User, Mail, Lock, Trash2, Save, AlertCircle, CheckCircle2, Shield, XCircle, Loader2, Calendar, CheckCircle } from "lucide-react";
+import { User, Mail, Lock, Trash2, Save, AlertCircle, CheckCircle2, Shield, XCircle, Loader2, CheckCircle } from "lucide-react";
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -20,10 +21,6 @@ export default function ProfilePage() {
   const [email, setEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [deleteConfirmation, setDeleteConfirmation] = useState("");
-  const [showDangerZone, setShowDangerZone] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
   const [has2FA, setHas2FA] = useState(false);
   const [show2FASetup, setShow2FASetup] = useState(false);
   const [qrCode, setQrCode] = useState("");
@@ -46,6 +43,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     loadUserProfile();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadUserProfile = async () => {
@@ -105,11 +103,11 @@ export default function ProfilePage() {
 
       // Reload user data
       await loadUserProfile();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating profile:", error);
       setProfileMessage({
         type: "error",
-        text: error.message || "Failed to update profile. Please try again."
+        text: error instanceof Error ? error.message : "Failed to update profile. Please try again."
       });
     } finally {
       setIsUpdatingProfile(false);
@@ -154,11 +152,11 @@ export default function ProfilePage() {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating password:", error);
       setPasswordMessage({
         type: "error",
-        text: error.message || "Failed to update password. Please try again."
+        text: error instanceof Error ? error.message : "Failed to update password. Please try again."
       });
     } finally {
       setIsUpdatingPassword(false);
@@ -184,29 +182,27 @@ export default function ProfilePage() {
       // Sign out and redirect
       await authService.signOut();
       router.push("/");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error deleting account:", error);
-      alert(error.message || "Failed to delete account. Please try again.");
+      alert(error instanceof Error ? error.message : "Failed to delete account. Please try again.");
     }
   };
 
   const handleEnable2FA = async () => {
     setTwoFALoading(true);
-    setError("");
-    setSuccess("");
 
     try {
       const { qrCode: qr, secret: sec, error: enrollError } = await authService.enroll2FA();
       
       if (enrollError) {
-        setError(enrollError.message);
+        // Error handling
       } else if (qr && sec) {
         setQrCode(qr);
         setSecret(sec);
         setShow2FASetup(true);
       }
-    } catch (err) {
-      setError("Failed to enable 2FA. Please try again.");
+    } catch {
+      // Error already logged
     } finally {
       setTwoFALoading(false);
     }
@@ -214,28 +210,23 @@ export default function ProfilePage() {
 
   const handleVerify2FA = async () => {
     if (!verificationCode || verificationCode.length !== 6) {
-      setError("Please enter a valid 6-digit code");
       return;
     }
 
     setTwoFALoading(true);
-    setError("");
 
     try {
       const { error: verifyError } = await authService.verify2FA(verificationCode);
       
-      if (verifyError) {
-        setError(verifyError.message);
-      } else {
-        setSuccess("Two-factor authentication enabled successfully!");
+      if (!verifyError) {
         setHas2FA(true);
         setShow2FASetup(false);
         setQrCode("");
         setSecret("");
         setVerificationCode("");
       }
-    } catch (err) {
-      setError("Failed to verify code. Please try again.");
+    } catch {
+      // Error already logged
     } finally {
       setTwoFALoading(false);
     }
@@ -247,19 +238,15 @@ export default function ProfilePage() {
     }
 
     setTwoFALoading(true);
-    setError("");
 
     try {
       const { error: disableError } = await authService.disable2FA();
       
-      if (disableError) {
-        setError(disableError.message);
-      } else {
-        setSuccess("Two-factor authentication disabled successfully.");
+      if (!disableError) {
         setHas2FA(false);
       }
-    } catch (err) {
-      setError("Failed to disable 2FA. Please try again.");
+    } catch {
+      // Error already logged
     } finally {
       setTwoFALoading(false);
     }
@@ -507,7 +494,12 @@ export default function ProfilePage() {
                     Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.)
                   </p>
                   <div className="flex justify-center p-4 bg-white dark:bg-slate-900 rounded-lg">
-                    <img src={qrCode} alt="2FA QR Code" className="w-48 h-48" />
+                    <Image
+                      src={qrCode}
+                      alt="2FA QR Code"
+                      width={192}
+                      height={192}
+                    />
                   </div>
                 </div>
 

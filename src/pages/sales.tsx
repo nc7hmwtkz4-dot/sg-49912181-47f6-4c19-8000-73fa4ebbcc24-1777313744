@@ -4,7 +4,7 @@ import { Layout } from "@/components/Layout";
 import { spotPriceService } from "@/lib/spotPrices";
 import { userCoinService } from "@/services/userCoinService";
 import { userSalesService } from "@/services/userSalesService";
-import { Coin, COUNTRY_CODES, Sale, SheldonGrade } from "@/types/coin";
+import { Coin, Sale, SheldonGrade } from "@/types/coin";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -94,7 +94,7 @@ export default function Sales() {
     const { data: salesData } = await userSalesService.getUserSales();
     
     if (coinsData) {
-      const mappedCoins: Coin[] = coinsData.map((c: any) => ({
+      const mappedCoins: Coin[] = coinsData.map((c) => ({
         id: c.id,
         sku: c.sku,
         coinName: c.coin_name,
@@ -117,7 +117,7 @@ export default function Sales() {
     }
 
     if (salesData) {
-      const mappedSales: Sale[] = salesData.map((s: any) => ({
+      const mappedSales: Sale[] = salesData.map((s) => ({
         id: s.id,
         coinId: s.coin_id,
         saleDate: s.sale_date,

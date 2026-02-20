@@ -1,10 +1,10 @@
 import { supabase } from "@/integrations/supabase/client";
-import type { User, Session } from "@supabase/supabase-js";
+import type { Session } from "@supabase/supabase-js";
 
 export interface AuthUser {
   id: string;
   email: string;
-  user_metadata?: any;
+  user_metadata?: Record<string, unknown>;
   created_at?: string;
   last_sign_in_at?: string;
 }
@@ -78,7 +78,7 @@ export const authService = {
       } : null;
 
       return { user: authUser, error: null };
-    } catch (error) {
+    } catch (_error) {
       return { 
         user: null, 
         error: { message: "An unexpected error occurred during sign up" } 
@@ -111,7 +111,7 @@ export const authService = {
       } : null;
 
       return { user: authUser, error: null, requires2FA: hasMFA };
-    } catch (error) {
+    } catch (_error) {
       return { 
         user: null, 
         error: { message: "An unexpected error occurred during sign in" } 
@@ -129,7 +129,7 @@ export const authService = {
       }
 
       return { error: null };
-    } catch (error) {
+    } catch (_error) {
       return { 
         error: { message: "An unexpected error occurred during sign out" } 
       };
@@ -148,7 +148,7 @@ export const authService = {
       }
 
       return { error: null };
-    } catch (error) {
+    } catch (_error) {
       return { 
         error: { message: "An unexpected error occurred during password reset" } 
       };
@@ -176,7 +176,7 @@ export const authService = {
       } : null;
 
       return { user: authUser, error: null };
-    } catch (error) {
+    } catch (_error) {
       return { 
         user: null, 
         error: { message: "An unexpected error occurred during email confirmation" } 
@@ -196,7 +196,7 @@ export const authService = {
       }
 
       return { error: null };
-    } catch (error) {
+    } catch (_error) {
       return { 
         error: { message: "An unexpected error occurred while updating email" } 
       };
@@ -215,7 +215,7 @@ export const authService = {
       }
 
       return { error: null };
-    } catch (error) {
+    } catch (_error) {
       return { 
         error: { message: "An unexpected error occurred while updating password" } 
       };
@@ -240,7 +240,7 @@ export const authService = {
       }
 
       return { error: null };
-    } catch (error) {
+    } catch (_error) {
       return { 
         error: { message: "An unexpected error occurred while deleting account" } 
       };
@@ -266,7 +266,7 @@ export const authService = {
         secret: data.totp.secret,
         error: null
       };
-    } catch (error) {
+    } catch (_error) {
       return {
         qrCode: null,
         secret: null,
@@ -302,7 +302,7 @@ export const authService = {
       }
 
       return { error: null };
-    } catch (error) {
+    } catch (_error) {
       return {
         error: { message: "An unexpected error occurred while verifying 2FA code" }
       };
@@ -326,7 +326,7 @@ export const authService = {
       }
 
       return { error: null };
-    } catch (error) {
+    } catch (_error) {
       return {
         error: { message: "An unexpected error occurred while disabling 2FA" }
       };
@@ -344,7 +344,7 @@ export const authService = {
 
       const hasMFA = factors && factors.totp && factors.totp.length > 0;
       return { enabled: hasMFA || false, error: null };
-    } catch (error) {
+    } catch (_error) {
       return {
         enabled: false,
         error: { message: "An unexpected error occurred while checking 2FA status" }

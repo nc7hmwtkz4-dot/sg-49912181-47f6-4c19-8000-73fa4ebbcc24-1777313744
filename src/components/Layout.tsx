@@ -1,5 +1,6 @@
 import { ReactNode, useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/router";
 import { Coins, LayoutDashboard, Package, LogIn, LogOut, User } from "lucide-react";
 import { ThemeSwitch } from "./ThemeSwitch";
@@ -66,10 +67,13 @@ export function Layout({ children }: LayoutProps) {
           <div className="flex items-center justify-between h-16">
             <Link href="/" className="flex items-center gap-3 group">
               <div className="relative w-10 h-10 rounded-xl overflow-hidden ring-2 ring-amber-500/20 group-hover:ring-amber-500/40 transition-all duration-300 shadow-lg shadow-amber-500/10">
-                <img 
+                <Image 
                   src="/numivault-logo.png" 
                   alt="NumiVault Logo" 
+                  width={40}
+                  height={40}
                   className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                  priority
                 />
               </div>
               <span className="font-bold text-xl bg-gradient-to-r from-amber-600 via-yellow-500 to-amber-600 bg-clip-text text-transparent group-hover:from-amber-500 group-hover:via-yellow-400 group-hover:to-amber-500 transition-all duration-300">
@@ -203,8 +207,14 @@ export function Layout({ children }: LayoutProps) {
         <div className="container">
           <div className="flex items-center justify-between text-sm text-muted-foreground">
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-lg overflow-hidden ring-1 ring-amber-500/20">
-                <img src="/numivault-logo.png" alt="NumiVault" className="w-full h-full object-cover" />
+              <div className="w-6 h-6 rounded-lg overflow-hidden ring-1 ring-amber-500/20 relative">
+                <Image 
+                  src="/numivault-logo.png" 
+                  alt="NumiVault" 
+                  width={24}
+                  height={24}
+                  className="w-full h-full object-cover"
+                />
               </div>
               <p>© 2026 <span className="font-semibold text-foreground">NumiVault</span>. Professional coin collection management.</p>
             </div>

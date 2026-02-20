@@ -1,7 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
-type CoinReference = Database["public"]["Tables"]["coins_reference"]["Row"];
 type CoinReferenceInsert = Database["public"]["Tables"]["coins_reference"]["Insert"];
 
 export const coinReferenceService = {

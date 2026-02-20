@@ -129,7 +129,16 @@ export async function getActiveListings(): Promise<{ data: ListingWithCoin[]; er
     // Transform the data to match ListingWithCoin interface
     const listings: ListingWithCoin[] = (data || []).map(listing => {
       const coinData = Array.isArray(listing.coin) ? listing.coin[0] : listing.coin;
-      const rawCoin = coinData as any;
+      const rawCoin = coinData as {
+        sku: string;
+        coin_name: string;
+        year: number;
+        metal: string;
+        grade: string;
+        purchase_price: number;
+        obverse_image_url?: string;
+        reverse_image_url?: string;
+      } | undefined;
       
       return {
         ...listing,
@@ -248,7 +257,7 @@ export async function getListingStats(): Promise<{
     const totalListings = listings.length;
     const totalPurchaseValue = listings.reduce((sum, listing) => {
       const coinData = Array.isArray(listing.coin) ? listing.coin[0] : listing.coin;
-      const rawCoin = coinData as any;
+      const rawCoin = coinData as { purchase_price?: number } | undefined;
       return sum + (rawCoin?.purchase_price || 0);
     }, 0);
     const totalStartingPrice = listings.reduce((sum, listing) => sum + (listing.starting_price || 0), 0);
@@ -363,8 +372,8 @@ export async function markListingAsSold(
 
     console.log("Successfully marked listing as sold:", { coinId, salePrice, saleDate });
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Unexpected error marking listing as sold:", error);
-    return { success: false, error: error.message };
+    return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
   }
 }

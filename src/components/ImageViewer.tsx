@@ -1,4 +1,5 @@
 import { useState } from "react";
+import Image from "next/image";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { X, ZoomIn, ZoomOut } from "lucide-react";
@@ -72,13 +73,16 @@ export function ImageViewer({ isOpen, onClose, imageUrl, alt }: ImageViewerProps
 
           {/* Image */}
           <div className="w-full h-full flex items-center justify-center p-8">
-            <img
-              src={imageUrl}
-              alt={alt}
-              className="max-w-full max-h-full object-contain transition-transform duration-200"
-              style={{ transform: `scale(${zoom})` }}
-              loading="lazy"
-            />
+            <div className="relative w-full h-full">
+              <Image
+                src={imageUrl}
+                alt={alt}
+                fill
+                className="object-contain transition-transform duration-200"
+                style={{ transform: `scale(${zoom})` }}
+                priority
+              />
+            </div>
           </div>
 
           {/* Zoom indicator */}
