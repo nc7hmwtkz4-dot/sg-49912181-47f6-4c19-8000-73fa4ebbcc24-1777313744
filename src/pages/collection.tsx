@@ -454,16 +454,24 @@ export default function Collection() {
 
   // Filter reference coins based on search
   const filteredReferences = useMemo(() => {
+    if (!availableReferences || availableReferences.length === 0) return [];
     if (!referenceFilter) return availableReferences;
     
     const searchLower = referenceFilter.toLowerCase();
-    return availableReferences.filter((ref: any) =>
-      ref.sku.toLowerCase().includes(searchLower) ||
-      ref.coin_name.toLowerCase().includes(searchLower) ||
-      ref.km_number.toLowerCase().includes(searchLower) ||
-      ref.metal.toLowerCase().includes(searchLower) ||
-      ref.country_code.toLowerCase().includes(searchLower)
-    );
+    return availableReferences.filter((ref: any) => {
+      // Safely check each property with null checks
+      const sku = ref?.sku?.toLowerCase() || '';
+      const coinName = ref?.coin_name?.toLowerCase() || '';
+      const kmNumber = ref?.km_number?.toLowerCase() || '';
+      const metal = ref?.metal?.toLowerCase() || '';
+      const countryCode = ref?.country_code?.toLowerCase() || '';
+      
+      return sku.includes(searchLower) ||
+             coinName.includes(searchLower) ||
+             kmNumber.includes(searchLower) ||
+             metal.includes(searchLower) ||
+             countryCode.includes(searchLower);
+    });
   }, [availableReferences, referenceFilter]);
 
   const handleCoinSelection = (coinId: string) => {
@@ -858,7 +866,7 @@ export default function Collection() {
                             onClick={() => {
                               setRegisterFormData({
                                 ...registerFormData,
-                                sku: ref.sku,
+                                sku: ref.sku || "",
                                 coinName: ref.coin_name || "",
                                 countryCode: ref.country_code || "",
                                 kmNumber: ref.km_number || "",
@@ -874,15 +882,15 @@ export default function Collection() {
                           >
                             <div className="flex justify-between items-start">
                               <div>
-                                <p className="text-white font-medium">{ref.coin_name}</p>
-                                <p className="text-slate-400 text-sm">{ref.sku}</p>
+                                <p className="text-white font-medium">{ref.coin_name || 'Unknown Coin'}</p>
+                                <p className="text-slate-400 text-sm">{ref.sku || 'N/A'}</p>
                               </div>
                               <div className="flex gap-2">
                                 <Badge variant="secondary" className="bg-slate-600 text-slate-200 text-xs">
-                                  {ref.country_code}
+                                  {ref.country_code || 'N/A'}
                                 </Badge>
                                 <Badge variant="secondary" className="bg-slate-600 text-slate-200 text-xs capitalize">
-                                  {ref.metal}
+                                  {ref.metal || 'N/A'}
                                 </Badge>
                               </div>
                             </div>
@@ -902,7 +910,7 @@ export default function Collection() {
                         <p className="text-white font-semibold mb-2">Selected Coin:</p>
                         <p className="text-slate-400"><strong className="text-white">SKU:</strong> {registerFormData.sku}</p>
                         <p className="text-slate-400"><strong className="text-white">Name:</strong> {registerFormData.coinName}</p>
-                        <p className="text-slate-400"><strong className="text-white">Country:</strong> {COUNTRY_CODES[registerFormData.countryCode]}</p>
+                        <p className="text-slate-400"><strong className="text-white">Country:</strong> {COUNTRY_CODES[registerFormData.countryCode] || registerFormData.countryCode}</p>
                         <p className="text-slate-400"><strong className="text-white">KM#:</strong> {registerFormData.kmNumber}</p>
                         <p className="text-slate-400"><strong className="text-white">Metal:</strong> {registerFormData.metal} ({registerFormData.purity}%)</p>
                         <p className="text-slate-400"><strong className="text-white">Weight:</strong> {registerFormData.weight}g</p>
