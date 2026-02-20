@@ -8,6 +8,7 @@ import { userCoinService } from "@/services/userCoinService";
 import { userSalesService } from "@/services/userSalesService";
 import { coinReferenceService } from "@/services/coinReferenceService";
 import { spotPriceService } from "@/lib/spotPrices";
+import type { SpotPrices } from "@/lib/spotPrices";
 import { imageService } from "@/services/imageService";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -30,11 +31,7 @@ export default function Collection() {
   const [countryFilter, setCountryFilter] = useState("all");
   const [metalFilter, setMetalFilter] = useState("all");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [spotPrices, setSpotPrices] = useState<{
-    gold: number;
-    silver: number;
-    platinum: number;
-  } | null>(null);
+  const [spotPrices, setSpotPrices] = useState<SpotPrices | null>(null);
   const [obverseImageFile, setObverseImageFile] = useState<File | null>(null);
   const [reverseImageFile, setReverseImageFile] = useState<File | null>(null);
   const [obverseImagePreview, setObverseImagePreview] = useState<string>("");
