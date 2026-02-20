@@ -33,7 +33,6 @@ export default function ProfilePage() {
   const [profileMessage, setProfileMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   
   // Password form state
-  const [currentPassword, setCurrentPassword] = useState("");
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
   const [passwordMessage, setPasswordMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   
@@ -149,7 +148,6 @@ export default function ProfilePage() {
       });
 
       // Clear password fields
-      setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
     } catch (error: unknown) {

@@ -1,9 +1,9 @@
 import { SEO } from "@/components/SEO";
 import { Layout } from "@/components/Layout";
 import Link from "next/link";
-import { Coins, TrendingUp, Map, BarChart3, Sparkles, Package, LayoutDashboard, DollarSign } from "lucide-react";
+import { TrendingUp, Package, LayoutDashboard, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import Image from "next/image";
 import { motion } from "framer-motion";
 

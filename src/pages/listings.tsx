@@ -14,9 +14,6 @@ import { AlertCircle, Edit, Trash2, DollarSign, TrendingUp, Package, CheckCircle
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { getActiveListings, updateListing, deleteListing, markListingAsSold, type ListingWithCoin } from "@/services/listingService";
 import { ImageViewer } from "@/components/ImageViewer";
-import { userCoinService } from "@/services/userCoinService";
-import { userSalesService } from "@/services/userSalesService";
-import type { Coin } from "@/types/coin";
 
 export default function ListingsPage() {
   const router = useRouter();
@@ -279,7 +276,7 @@ export default function ListingsPage() {
                             width={80}
                             height={80}
                             className="rounded-md object-cover cursor-pointer hover:opacity-80 transition-opacity"
-                            onClick={() => setViewImage({ url: coin.obverseImageUrl!, alt: `${coin.coinName} obverse` })}
+                            onClick={() => setViewImage({ url: coin.obverseImageUrl || "", alt: `${coin.coinName} obverse` })}
                           />
                         )}
                         {coin.reverseImageUrl && (
@@ -289,7 +286,7 @@ export default function ListingsPage() {
                             width={80}
                             height={80}
                             className="rounded-md object-cover cursor-pointer hover:opacity-80 transition-opacity"
-                            onClick={() => setViewImage({ url: coin.reverseImageUrl!, alt: `${coin.coinName} reverse` })}
+                            onClick={() => setViewImage({ url: coin.reverseImageUrl || "", alt: `${coin.coinName} reverse` })}
                           />
                         )}
                       </div>

@@ -197,45 +197,6 @@ export default function Sales() {
     return ((sale.salePrice - coin.purchasePrice) / coin.purchasePrice) * 100;
   };
 
-  const handleDeleteSale = async (saleId: string) => {
-    if (!confirm("Are you sure you want to delete this sale record? This will also mark the coin as available again.")) {
-      return;
-    }
-
-    try {
-      const sale = sales.find(s => s.id === saleId);
-      if (!sale) return;
-
-      // 1. Delete the sale record
-      const { error: deleteError } = await userSalesService.deleteSale(saleId);
-      
-      if (deleteError) {
-        alert("Failed to delete sale. Please try again.");
-        console.error("Delete sale error:", deleteError);
-        return;
-      }
-
-      // 2. Mark coin as available again (not sold)
-      const { error: updateError } = await userCoinService.updateUserCoin(sale.coinId, {
-        is_sold: false
-      });
-
-      if (updateError) {
-        console.error("Failed to update coin status:", updateError);
-        // Continue anyway - sale is deleted, user can manually fix coin status if needed
-      }
-
-      // 3. Reload data
-      await loadSales();
-      await loadCoins();
-      
-      alert("Sale deleted successfully!");
-    } catch (err) {
-      console.error("Error deleting sale:", err);
-      alert("An unexpected error occurred. Please try again.");
-    }
-  };
-
   const totalRevenue = sales.reduce((sum, sale) => sum + sale.salePrice, 0);
   const totalProfit = sales.reduce((sum, sale) => sum + calculateProfit(sale), 0);
   const totalCost = sales.reduce((sum, sale) => {
