@@ -89,6 +89,7 @@ export default function Collection() {
   // Sale dialog state
   const [isSaleDialogOpen, setIsSaleDialogOpen] = useState(false);
   const [availableCoinsForSale, setAvailableCoinsForSale] = useState<Coin[]>([]);
+  const [selectedCoinForSale, setSelectedCoinForSale] = useState<string>("");
   const [saleFormData, setSaleFormData] = useState<{
     coinId: string;
     saleDate: string;
@@ -198,8 +199,8 @@ export default function Collection() {
     setFilteredCoins(filtered);
   }, [searchTerm, countryFilter, metalFilter, coins]);
 
-  const loadSpotPrices = async () => {
-    const prices = await spotPriceService.getSpotPrices();
+  const loadSpotPrices = async (force = false) => {
+    const prices = await spotPriceService.getSpotPrices(force);
     setSpotPrices(prices);
     console.log("Loaded spot prices:", prices);
   };
@@ -675,8 +676,7 @@ export default function Collection() {
   };
 
   const handleImageClick = (imageUrl: string, coinName: string) => {
-    setSelectedImage({ url: imageUrl, alt: coinName });
-    setImageViewerOpen(true);
+    setViewImage({ url: imageUrl, alt: coinName });
   };
 
   const handleViewDetails = (skuCoins: Coin[]) => {

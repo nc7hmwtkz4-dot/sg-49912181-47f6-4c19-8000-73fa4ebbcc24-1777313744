@@ -881,10 +881,10 @@ export default function CoinDetail() {
                     onChange={handleObverseImageChange}
                     className="bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
                   />
-                  {(obverseImagePreview || formData.obverseImageUrl) && (
+                  {(obverseImagePreview || editingCoin?.obverseImageUrl) && (
                     <div className="mt-2">
                       <Image 
-                        src={obverseImagePreview || formData.obverseImageUrl || ""} 
+                        src={obverseImagePreview || editingCoin?.obverseImageUrl || ""} 
                         alt="Obverse Preview" 
                         width={128}
                         height={128}
@@ -905,10 +905,10 @@ export default function CoinDetail() {
                     onChange={handleReverseImageChange}
                     className="bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
                   />
-                  {reverseImagePreview && (
+                  {(reverseImagePreview || editingCoin?.reverseImageUrl) && (
                     <div className="mt-2">
                       <Image 
-                        src={reverseImagePreview} 
+                        src={reverseImagePreview || editingCoin?.reverseImageUrl || ""} 
                         alt="Reverse Preview" 
                         width={128}
                         height={128}
