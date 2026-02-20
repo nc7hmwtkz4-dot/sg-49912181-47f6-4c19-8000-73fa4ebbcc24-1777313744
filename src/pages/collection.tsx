@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { useRouter } from "next/router";
 import Image from "next/image";
 import { SEO } from "@/components/SEO";
@@ -134,6 +135,17 @@ export default function Collection() {
 
   const loadCoins = async () => {
     setIsLoading(true);
+    
+    // Check if user is authenticated first
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session) {
+      setCoins([]);
+      setFilteredCoins([]);
+      setIsLoading(false);
+      return;
+    }
+
     const { data, error } = await userCoinService.getUserCoins();
     
     if (error) {
