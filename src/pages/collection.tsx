@@ -203,7 +203,7 @@ export default function Collection() {
   }, [searchTerm, countryFilter, metalFilter, coins]);
 
   const loadSpotPrices = async (forceRefresh = false) => {
-    const prices = await spotPriceService.getSpotPrices(forceRefresh);
+    const prices = await spotPriceService.getSpotPrices();
     setSpotPrices(prices);
     console.log("Loaded spot prices:", prices);
   };

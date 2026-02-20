@@ -4,7 +4,7 @@ import { SEO } from "@/components/SEO";
 import { Layout } from "@/components/Layout";
 import { userCoinService } from "@/services/userCoinService";
 import { userSalesService } from "@/services/userSalesService";
-import { spotPriceService } from "@/lib/spotPrices";
+import { spotPriceService, SpotPrices } from "@/lib/spotPrices";
 import { imageService } from "@/services/imageService";
 import { Coin, COUNTRY_CODES, SHELDON_GRADES, SheldonGrade } from "@/types/coin";
 import { ImageViewer } from "@/components/ImageViewer";
@@ -103,7 +103,7 @@ export default function CoinDetail() {
         kmNumber: c.km_number,
         year: c.year,
         mintmark: c.mintmark,
-        metal: c.metal,
+        metal: c.metal as "gold" | "silver" | "copper" | "platinum" | "palladium" | "other",
         purity: c.purity,
         weight: c.weight,
         sheldonGrade: c.grade,
