@@ -140,43 +140,44 @@ export default function Collection() {
 
     if (data) {
       // Map database coins to frontend Coin type
-      const mappedCoins: Coin[] = data.map((c: {
+      const mappedCoins: Coin[] = data.map((coin: {
         id: string;
         country_code: string;
-        km_number: string;
-        coin_name: string | null;
         year: number;
+        coin_name: string;
+        km_number: string;
         mintmark: string | null;
         metal: string;
         purity: number;
         weight: number;
-        grade: string;
         purchase_price: number;
         purchase_date: string;
+        grade: string;
         notes: string | null;
+        sku: string;
         obverse_image_url: string | null;
         reverse_image_url: string | null;
         is_sold: boolean;
         listing_id: string | null;
       }) => ({
-        id: c.id,
-        sku: `${c.country_code}-${c.km_number}`,
-        coinName: c.coin_name || "",
-        countryCode: c.country_code,
-        kmNumber: c.km_number,
-        year: c.year,
-        mintmark: c.mintmark || "",
-        metal: c.metal as "gold" | "silver" | "copper" | "platinum" | "palladium" | "other",
-        purity: c.purity,
-        weight: c.weight,
-        sheldonGrade: c.grade as SheldonGrade,
-        purchasePrice: c.purchase_price,
-        purchaseDate: c.purchase_date,
-        notes: c.notes || "",
-        obverseImageUrl: c.obverse_image_url || "",
-        reverseImageUrl: c.reverse_image_url || "",
-        isSold: c.is_sold,
-        listingId: c.listing_id || undefined
+        id: coin.id,
+        sku: coin.sku,
+        coinName: coin.coin_name || "",
+        countryCode: coin.country_code,
+        kmNumber: coin.km_number,
+        year: coin.year,
+        mintmark: coin.mintmark || "",
+        metal: coin.metal as "gold" | "silver" | "copper" | "platinum" | "palladium" | "other",
+        purity: coin.purity,
+        weight: coin.weight,
+        sheldonGrade: coin.grade as SheldonGrade,
+        purchasePrice: coin.purchase_price,
+        purchaseDate: coin.purchase_date,
+        notes: coin.notes || "",
+        obverseImageUrl: coin.obverse_image_url || "",
+        reverseImageUrl: coin.reverse_image_url || "",
+        isSold: coin.is_sold,
+        listingId: coin.listing_id || undefined
       }));
       
       setCoins(mappedCoins);
@@ -461,13 +462,15 @@ export default function Collection() {
     const searchLower = referenceFilter.toLowerCase();
     return availableReferences.filter((ref: {
       sku: string;
-      coin_name: string;
-      km_number: string;
       country_code: string;
-    }) => 
+      year: number;
+      denomination: string;
+      metal: string;
+    }) =>
       ref.sku.toLowerCase().includes(searchLower) ||
-      ref.coin_name.toLowerCase().includes(searchLower) ||
-      ref.km_number.toLowerCase().includes(searchLower) ||
+      ref.denomination.toLowerCase().includes(searchLower) ||
+      ref.year.toString().includes(searchLower) ||
+      ref.metal.toLowerCase().includes(searchLower) ||
       ref.country_code.toLowerCase().includes(searchLower)
     );
   }, [availableReferences, referenceFilter]);
