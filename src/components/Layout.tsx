@@ -2,7 +2,7 @@ import { ReactNode, useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/router";
-import { Coins, LayoutDashboard, Package, LogIn, LogOut, User } from "lucide-react";
+import { LogIn, LogOut, User } from "lucide-react";
 import { ThemeSwitch } from "./ThemeSwitch";
 import { Button } from "./ui/button";
 import { AuthModal } from "./AuthModal";

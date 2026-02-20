@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Package, TrendingUp, ShoppingCart, BarChart3, Tag, RefreshCw } from "lucide-react";
 import { userCoinService } from "@/services/userCoinService";
-import { userSalesService } from "@/services/userSalesService";
 import { getListingStats } from "@/services/listingService";
 import { spotPriceService } from "@/lib/spotPrices";
 

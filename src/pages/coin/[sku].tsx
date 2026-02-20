@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
+import Image from "next/image";
 import { SEO } from "@/components/SEO";
 import { Layout } from "@/components/Layout";
 import { userCoinService } from "@/services/userCoinService";
@@ -19,7 +20,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Edit, Plus, DollarSign, Trash2, ArrowLeft, Eye, EyeOff, ShoppingCart } from "lucide-react";
 import Link from "next/link";
 import { createListing } from "@/services/listingService";
-import { useToast } from "@/hooks/use-toast";
 import type { Coin, SheldonGrade } from "@/types/coin";
 import { COUNTRY_CODES, SHELDON_GRADES } from "@/types/coin";
 
@@ -474,12 +474,14 @@ export default function CoinDetail() {
                   {referenceCoin.obverseImageUrl && (
                     <div className="space-y-2">
                       <span className="text-sm text-slate-400">Obverse</span>
-                      <img
+                      <Image
                         src={referenceCoin.obverseImageUrl}
                         alt={`${referenceCoin.coinName} - Obverse`}
+                        width={192}
+                        height={192}
                         className="w-48 h-48 object-cover rounded-lg border-2 border-amber-500/20 cursor-pointer hover:opacity-80 transition-opacity"
                         onClick={() => {
-                          setSelectedImage({ url: referenceCoin.obverseImageUrl!, alt: `${referenceCoin.coinName} - Obverse` });
+                          setSelectedImage({ url: referenceCoin.obverseImageUrl ?? "", alt: `${referenceCoin.coinName} - Obverse` });
                           setImageViewerOpen(true);
                         }}
                         loading="lazy"
@@ -489,12 +491,14 @@ export default function CoinDetail() {
                   {referenceCoin.reverseImageUrl && (
                     <div className="space-y-2">
                       <span className="text-sm text-slate-400">Reverse</span>
-                      <img
+                      <Image
                         src={referenceCoin.reverseImageUrl}
                         alt={`${referenceCoin.coinName} - Reverse`}
+                        width={192}
+                        height={192}
                         className="w-48 h-48 object-cover rounded-lg border-2 border-amber-500/20 cursor-pointer hover:opacity-80 transition-opacity"
                         onClick={() => {
-                          setSelectedImage({ url: referenceCoin.reverseImageUrl!, alt: `${referenceCoin.coinName} - Reverse` });
+                          setSelectedImage({ url: referenceCoin.reverseImageUrl ?? "", alt: `${referenceCoin.coinName} - Reverse` });
                           setImageViewerOpen(true);
                         }}
                         loading="lazy"
@@ -821,7 +825,7 @@ export default function CoinDetail() {
                 <Label htmlFor="metal" className="text-slate-700 dark:text-slate-300">Metal *</Label>
                 <Select 
                   value={editingCoin?.metal} 
-                  onValueChange={(value) => setEditingCoin(editingCoin ? {...editingCoin, metal: value as any} : null)}
+                  onValueChange={(value) => setEditingCoin(editingCoin ? {...editingCoin, metal: value as "gold" | "silver" | "copper" | "platinum" | "palladium" | "other"} : null)}
                 >
                   <SelectTrigger className="bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white">
                     <SelectValue />
@@ -877,12 +881,14 @@ export default function CoinDetail() {
                     onChange={handleObverseImageChange}
                     className="bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
                   />
-                  {obverseImagePreview && (
+                  {(obverseImagePreview || formData.obverseImageUrl) && (
                     <div className="mt-2">
-                      <img 
-                        src={obverseImagePreview} 
+                      <Image 
+                        src={obverseImagePreview || formData.obverseImageUrl || ""} 
                         alt="Obverse Preview" 
-                        className="w-full h-32 object-cover rounded-lg border border-slate-300 dark:border-slate-700"
+                        width={128}
+                        height={128}
+                        className="w-32 h-32 object-cover rounded-lg border-2 border-slate-700"
                       />
                     </div>
                   )}
@@ -901,10 +907,12 @@ export default function CoinDetail() {
                   />
                   {reverseImagePreview && (
                     <div className="mt-2">
-                      <img 
+                      <Image 
                         src={reverseImagePreview} 
                         alt="Reverse Preview" 
-                        className="w-full h-32 object-cover rounded-lg border border-slate-300 dark:border-slate-700"
+                        width={128}
+                        height={128}
+                        className="w-32 h-32 object-cover rounded-lg border-2 border-slate-700"
                       />
                     </div>
                   )}

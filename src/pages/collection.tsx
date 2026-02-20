@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/router";
+import Image from "next/image";
 import { SEO } from "@/components/SEO";
 import { Layout } from "@/components/Layout";
 import { userCoinService } from "@/services/userCoinService";
@@ -7,24 +8,22 @@ import { userSalesService } from "@/services/userSalesService";
 import { coinReferenceService } from "@/services/coinReferenceService";
 import { spotPriceService } from "@/lib/spotPrices";
 import { imageService } from "@/services/imageService";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Search, Plus, Eye, Upload, Trash2, ShoppingCart, Package } from "lucide-react";
+import { Search, Plus, Eye, Package, ShoppingCart } from "lucide-react";
 import { ImageViewer } from "@/components/ImageViewer";
 import { SheldonGrade, SHELDON_GRADES, COUNTRY_CODES } from "@/types/coin";
 import type { Coin } from "@/types/coin";
 
 export default function Collection() {
   const router = useRouter();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [coins, setCoins] = useState<Coin[]>([]);
   const [filteredCoins, setFilteredCoins] = useState<Coin[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -32,7 +31,7 @@ export default function Collection() {
   const [metalFilter, setMetalFilter] = useState("all");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingCoin, setEditingCoin] = useState<Coin | null>(null);
-  const [spotPrices, setSpotPrices] = useState<any>(null);
+  const [spotPrices, setSpotPrices] = useState<{ gold: number; silver: number; copper: number; platinum: number } | null>(null);
   const [obverseImageFile, setObverseImageFile] = useState<File | null>(null);
   const [reverseImageFile, setReverseImageFile] = useState<File | null>(null);
   const [obverseImagePreview, setObverseImagePreview] = useState<string>("");
@@ -40,7 +39,7 @@ export default function Collection() {
   
   // Reference coin search state
   const [referenceSearchTerm, setReferenceSearchTerm] = useState("");
-  const [referenceSearchResults, setReferenceSearchResults] = useState<any[]>([]);
+  const [referenceSearchResults, setReferenceSearchResults] = useState<Array<{ sku: string; coin_name: string; country_code: string; km_number: string; metal: string; purity: number; weight: number; obverse_image_url?: string; reverse_image_url?: string }>>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
@@ -89,9 +88,6 @@ export default function Collection() {
 
   // Sale dialog state
   const [isSaleDialogOpen, setIsSaleDialogOpen] = useState(false);
-  const [selectedCoinForSale, setSelectedCoinForSale] = useState<string>("");
-  const [imageViewerOpen, setImageViewerOpen] = useState(false);
-  const [selectedImage, setSelectedImage] = useState<{ url: string; alt: string } | null>(null);
   const [availableCoinsForSale, setAvailableCoinsForSale] = useState<Coin[]>([]);
   const [saleFormData, setSaleFormData] = useState<{
     coinId: string;
@@ -202,7 +198,7 @@ export default function Collection() {
     setFilteredCoins(filtered);
   }, [searchTerm, countryFilter, metalFilter, coins]);
 
-  const loadSpotPrices = async (forceRefresh = false) => {
+  const loadSpotPrices = async () => {
     const prices = await spotPriceService.getSpotPrices();
     setSpotPrices(prices);
     console.log("Loaded spot prices:", prices);
@@ -237,16 +233,16 @@ export default function Collection() {
   };
 
   // Select reference coin from search results
-  const handleSelectReference = (reference: any) => {
+  const handleSelectReference = (reference: { sku: string; coin_name: string; country_code: string; km_number: string; metal: string; purity: number; weight: number; obverse_image_url?: string; reverse_image_url?: string }) => {
     setFormData({
       countryCode: reference.country_code,
       kmNumber: reference.km_number,
       coinName: reference.coin_name,
-      metal: reference.metal,
+      metal: reference.metal as "gold" | "silver" | "copper" | "platinum" | "palladium" | "other",
       purity: reference.purity,
       weight: reference.weight,
-      obverseImageUrl: reference.obverse_image_url || "",
-      reverseImageUrl: reference.reverse_image_url || ""
+      obverseImageUrl: reference.obverse_image_url ?? "",
+      reverseImageUrl: reference.reverse_image_url ?? ""
     });
     setReferenceSearchTerm("");
     setReferenceSearchResults([]);
@@ -287,12 +283,12 @@ export default function Collection() {
         // Create reference coin first
         const { error: refError } = await coinReferenceService.createReference({
           sku,
-          coin_name: formData.coinName!,
-          country_code: formData.countryCode,
-          km_number: formData.kmNumber!,
-          metal: formData.metal!,
-          purity: formData.purity!,
-          weight: formData.weight!,
+          coin_name: formData.coinName ?? "",
+          country_code: formData.countryCode ?? "",
+          km_number: formData.kmNumber ?? "",
+          metal: formData.metal as "gold" | "silver" | "copper" | "platinum" | "palladium" | "other" ?? "silver",
+          purity: formData.purity ?? 0,
+          weight: formData.weight ?? 0,
           obverse_image_url: obverseImageUrl || null,
           reverse_image_url: reverseImageUrl || null
         });
@@ -905,9 +901,11 @@ export default function Collection() {
                         />
                         {(obverseImagePreview || formData.obverseImageUrl) && (
                           <div className="mt-2">
-                            <img 
-                              src={obverseImagePreview || formData.obverseImageUrl} 
+                            <Image 
+                              src={obverseImagePreview || formData.obverseImageUrl || ""} 
                               alt="Obverse Preview" 
+                              width={128}
+                              height={128}
                               className="w-32 h-32 object-cover rounded-lg border-2 border-slate-700"
                             />
                           </div>
@@ -927,9 +925,11 @@ export default function Collection() {
                         />
                         {(reverseImagePreview || formData.reverseImageUrl) && (
                           <div className="mt-2">
-                            <img 
-                              src={reverseImagePreview || formData.reverseImageUrl} 
+                            <Image 
+                              src={reverseImagePreview || formData.reverseImageUrl || ""} 
                               alt="Reverse Preview" 
+                              width={128}
+                              height={128}
                               className="w-32 h-32 object-cover rounded-lg border-2 border-slate-700"
                             />
                           </div>
@@ -1571,8 +1571,8 @@ export default function Collection() {
                 </div>
                 <div className="flex justify-between text-sm pt-2 border-t border-slate-700">
                   <span className="text-slate-400">Profit:</span>
-                  <span className={`font-bold ${saleFormData.salePrice - availableCoinsForSale.find(c => c.id === selectedCoinForSale)!.purchasePrice >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                    {spotPriceService.formatCHF(saleFormData.salePrice - availableCoinsForSale.find(c => c.id === selectedCoinForSale)!.purchasePrice)}
+                  <span className={`font-bold ${saleFormData.salePrice - (availableCoinsForSale.find(c => c.id === selectedCoinForSale)?.purchasePrice ?? 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    {spotPriceService.formatCHF(saleFormData.salePrice - (availableCoinsForSale.find(c => c.id === selectedCoinForSale)?.purchasePrice ?? 0))}
                   </span>
                 </div>
               </div>
