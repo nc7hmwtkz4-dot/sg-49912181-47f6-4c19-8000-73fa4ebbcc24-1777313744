@@ -6,7 +6,6 @@ import { userCoinService } from "@/services/userCoinService";
 import { userSalesService } from "@/services/userSalesService";
 import { spotPriceService, SpotPrices } from "@/lib/spotPrices";
 import { imageService } from "@/services/imageService";
-import { Coin, COUNTRY_CODES, SHELDON_GRADES, SheldonGrade } from "@/types/coin";
 import { ImageViewer } from "@/components/ImageViewer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,6 +19,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Edit, Plus, DollarSign, Trash2, ArrowLeft, Eye, EyeOff, ShoppingCart } from "lucide-react";
 import Link from "next/link";
 import { createListing } from "@/services/listingService";
+import { useToast } from "@/hooks/use-toast";
+import type { Coin, SheldonGrade } from "@/types/coin";
+import { COUNTRY_CODES, SHELDON_GRADES } from "@/types/coin";
 
 export default function CoinDetail() {
   const router = useRouter();
@@ -106,7 +108,7 @@ export default function CoinDetail() {
         metal: c.metal as "gold" | "silver" | "copper" | "platinum" | "palladium" | "other",
         purity: c.purity,
         weight: c.weight,
-        sheldonGrade: c.grade,
+        sheldonGrade: c.grade as SheldonGrade,
         purchasePrice: c.purchase_price,
         purchaseDate: c.purchase_date,
         notes: c.notes,
