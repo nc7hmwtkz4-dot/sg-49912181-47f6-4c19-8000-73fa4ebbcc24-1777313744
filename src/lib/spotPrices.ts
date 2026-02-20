@@ -5,7 +5,6 @@ export interface SpotPrices {
   gold: number;
   silver: number;
   platinum: number;
-  copper: number;
   timestamp: string;
 }
 
@@ -14,7 +13,6 @@ const FALLBACK_PRICES: SpotPrices = {
   gold: 82.5,
   silver: 1.02,
   platinum: 32.8,
-  copper: 0.0095,
   timestamp: new Date().toISOString(),
 };
 
@@ -51,31 +49,29 @@ async function fetchSpotPrices(): Promise<SpotPrices> {
  * @param spotPrices - Current spot prices object
  * @returns Total bullion value in CHF
  */
-function calculateBullionValue(
+export function calculateBullionValue(
   weight: number,
   purity: number,
   metal: string,
-  spotPrices: SpotPrices
+  prices: SpotPrices
 ): number {
-  if (!weight || !metal || !spotPrices) return 0;
+  if (!weight || !purity || !metal || !prices) return 0;
   
-  // Normalize metal name to lowercase to match spotPrices keys
-  const metalKey = metal.toLowerCase();
+  const metalLower = metal.toLowerCase();
+  let pricePerGram = 0;
   
-  // Check if we have a price for this metal
-  // Use type assertion or check to access property safely
-  const pricePerGram = (spotPrices as any)[metalKey];
+  if (metalLower.includes('gold')) {
+    pricePerGram = prices.gold;
+  } else if (metalLower.includes('silver')) {
+    pricePerGram = prices.silver;
+  } else if (metalLower.includes('platinum')) {
+    pricePerGram = prices.platinum;
+  } else {
+    return 0;
+  }
   
-  if (!pricePerGram) return 0;
-  
-  // Handle purity: if > 1 assumes percentage (e.g. 90 or 99.9), if <= 1 assumes decimal (e.g. 0.9)
-  // But standard for this app seems to be percentage based on 900/1000 usually denoted as 90% or 0.900? 
-  // Looking at the code, it uses 90 for 90%.
-  // Let's assume input is percentage (0-100) if > 1.
-  
-  const purityDecimal = purity > 1 ? purity / 100 : purity;
-  
-  return weight * purityDecimal * pricePerGram;
+  const pureWeight = weight * (purity / 100);
+  return pureWeight * pricePerGram;
 }
 
 /**
