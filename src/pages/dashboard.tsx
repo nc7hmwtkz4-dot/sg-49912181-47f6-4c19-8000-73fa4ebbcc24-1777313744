@@ -161,13 +161,6 @@ export default function Dashboard() {
             <h1 className="text-4xl font-bold text-amber-500">Dashboard</h1>
             <p className="text-slate-400 mt-2">Overview of your numismatic collection</p>
           </div>
-          <button
-            onClick={fetchSpotPrices}
-            className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors"
-          >
-            <TrendingUp className="h-4 w-4" />
-            Refresh Prices
-          </button>
         </div>
 
         {/* Collection Overview Section */}
