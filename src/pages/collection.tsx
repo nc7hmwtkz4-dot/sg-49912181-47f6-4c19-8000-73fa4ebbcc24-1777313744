@@ -17,7 +17,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Search, Plus, Eye, Package, ShoppingCart } from "lucide-react";
-import { ImageViewer } from "@/components/ImageViewer";
 import { SheldonGrade, SHELDON_GRADES, COUNTRY_CODES } from "@/types/coin";
 import type { Coin } from "@/types/coin";
 
@@ -199,14 +198,10 @@ export default function Collection() {
     setFilteredCoins(filtered);
   }, [searchTerm, countryFilter, metalFilter, coins]);
 
-  const loadSpotPrices = async (force = false) => {
-    const prices = await spotPriceService.getSpotPrices(force);
+  const loadSpotPrices = async () => {
+    const prices = await spotPriceService.getSpotPrices();
     setSpotPrices(prices);
     console.log("Loaded spot prices:", prices);
-  };
-
-  const handleForceRefresh = async () => {
-    await loadSpotPrices(true);
   };
 
   const handleObverseImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1589,16 +1584,6 @@ export default function Collection() {
           </form>
         </DialogContent>
       </Dialog>
-
-      {/* Image Viewer */}
-      {viewImage && (
-        <ImageViewer
-          isOpen={!!viewImage}
-          onClose={() => setViewImage(null)}
-          imageUrl={viewImage.url}
-          alt={viewImage.alt}
-        />
-      )}
     </Layout>
   );
 }
