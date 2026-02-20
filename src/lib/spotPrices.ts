@@ -31,7 +31,7 @@ export async function fetchSpotPrices(): Promise<SpotPrices | null> {
 
     console.log('Metal Price API Response:', JSON.stringify(data, null, 2));
 
-    if (!data.success || !data.rates) {
+    if (!data.rates) {
       console.error('Invalid API response format');
       return FALLBACK_PRICES;
     }
