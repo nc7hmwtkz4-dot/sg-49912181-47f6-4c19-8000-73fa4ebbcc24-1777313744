@@ -36,12 +36,12 @@ export async function fetchSpotPrices(force?: boolean): Promise<SpotPrices | nul
 
     // Convert rates to CHF per gram
     // API returns: 1 CHF = X oz of metal (so 1 oz = 1/X CHF)
-    // Convert: CHF/oz -> CHF/g
+    // Then convert: CHF/oz -> CHF/g by dividing by troy oz to grams constant
     const prices: SpotPrices = {
-      gold: data.rates.CHFXAU ? (1 / data.rates.CHFXAU) / TROY_OZ_TO_GRAMS : FALLBACK_PRICES.gold,
-      silver: data.rates.CHFXAG ? (1 / data.rates.CHFXAG) / TROY_OZ_TO_GRAMS : FALLBACK_PRICES.silver,
-      copper: data.rates.CHFXCU ? (1 / data.rates.CHFXCU) / TROY_OZ_TO_GRAMS : FALLBACK_PRICES.copper,
-      platinum: data.rates.CHFXPT ? (1 / data.rates.CHFXPT) / TROY_OZ_TO_GRAMS : FALLBACK_PRICES.platinum,
+      gold: data.rates.XAU ? (1 / data.rates.XAU) / TROY_OZ_TO_GRAMS : FALLBACK_PRICES.gold,
+      silver: data.rates.XAG ? (1 / data.rates.XAG) / TROY_OZ_TO_GRAMS : FALLBACK_PRICES.silver,
+      copper: data.rates.XCU ? (1 / data.rates.XCU) / TROY_OZ_TO_GRAMS : FALLBACK_PRICES.copper,
+      platinum: data.rates.XPT ? (1 / data.rates.XPT) / TROY_OZ_TO_GRAMS : FALLBACK_PRICES.platinum,
     };
 
     return prices;
