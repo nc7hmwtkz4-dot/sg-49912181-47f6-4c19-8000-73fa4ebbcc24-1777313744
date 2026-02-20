@@ -14,7 +14,7 @@ export const userCoinService = {
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {
-        return { data: null, error: new Error("User not authenticated") };
+        return { data: [], error: null };
       }
 
       const { data, error } = await supabase
