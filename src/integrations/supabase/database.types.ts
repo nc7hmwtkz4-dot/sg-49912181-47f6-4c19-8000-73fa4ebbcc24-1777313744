@@ -99,6 +99,33 @@ export type Database = {
         }
         Relationships: []
       }
+      spot_prices_cache: {
+        Row: {
+          created_at: string | null
+          gold: number
+          id: string
+          platinum: number
+          silver: number
+          timestamp: string
+        }
+        Insert: {
+          created_at?: string | null
+          gold: number
+          id?: string
+          platinum: number
+          silver: number
+          timestamp?: string
+        }
+        Update: {
+          created_at?: string | null
+          gold?: number
+          id?: string
+          platinum?: number
+          silver?: number
+          timestamp?: string
+        }
+        Relationships: []
+      }
       user_coins: {
         Row: {
           coin_name: string | null

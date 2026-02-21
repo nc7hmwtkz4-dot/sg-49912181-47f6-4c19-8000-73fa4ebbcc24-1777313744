@@ -34,15 +34,26 @@ export interface Sale {
   notes: string;
 }
 
-export type SheldonGrade = 
-  | "PO-1" | "FR-2" | "AG-3" | "G-4" | "G-6" 
-  | "VG-8" | "VG-10" | "F-12" | "F-15" 
-  | "VF-20" | "VF-25" | "VF-30" | "VF-35"
-  | "XF-40" | "XF-45" | "AU-50" | "AU-53" | "AU-55" | "AU-58"
-  | "MS-60" | "MS-61" | "MS-62" | "MS-63" | "MS-64" | "MS-65" 
-  | "MS-66" | "MS-67" | "MS-68" | "MS-69" | "MS-70"
-  | "PF-60" | "PF-61" | "PF-62" | "PF-63" | "PF-64" | "PF-65"
-  | "PF-66" | "PF-67" | "PF-68" | "PF-69" | "PF-70";
+export const SHELDON_GRADES = [
+  // Poor/Good grades
+  "P-1", "FR-2", "AG-3", "G-4", "G-6", "VG-8", "VG-10",
+  // Fine grades
+  "F-12", "F-15",
+  // Very Fine grades
+  "VF-20", "VF-25", "VF-30", "VF-35",
+  // Extra Fine grades
+  "XF-40", "EF-40", "XF-45", "EF-45",
+  // About Uncirculated grades
+  "AU-50", "AU-53", "AU-55", "AU-58",
+  // Mint State grades
+  "MS-60", "MS-61", "MS-62", "MS-63", "MS-64", "MS-65", "MS-66", "MS-67", "MS-68", "MS-69", "MS-70",
+  // Proof grades
+  "PF-60", "PF-61", "PF-62", "PF-63", "PF-64", "PF-65", "PF-66", "PF-67", "PF-68", "PF-69", "PF-70",
+  // Legacy/Simple grades
+  "B", "G", "VG", "F", "VF", "XF", "EF", "AU", "MS", "PF"
+] as const;
+
+export type SheldonGrade = typeof SHELDON_GRADES[number];
 
 export interface CollectionStats {
   totalCoins: number;
@@ -55,17 +66,6 @@ export interface CollectionStats {
   coinsByCountry: Record<string, number>;
   coinsByMetal: Record<string, number>;
 }
-
-export const SHELDON_GRADES: SheldonGrade[] = [
-  "PO-1", "FR-2", "AG-3", "G-4", "G-6",
-  "VG-8", "VG-10", "F-12", "F-15",
-  "VF-20", "VF-25", "VF-30", "VF-35",
-  "XF-40", "XF-45", "AU-50", "AU-53", "AU-55", "AU-58",
-  "MS-60", "MS-61", "MS-62", "MS-63", "MS-64", "MS-65",
-  "MS-66", "MS-67", "MS-68", "MS-69", "MS-70",
-  "PF-60", "PF-61", "PF-62", "PF-63", "PF-64", "PF-65",
-  "PF-66", "PF-67", "PF-68", "PF-69", "PF-70"
-];
 
 export const COUNTRY_CODES: { [key: string]: string } = {
   "us": "United States",
