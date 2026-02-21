@@ -22,12 +22,24 @@ import Link from "next/link";
 import { createListing } from "@/services/listingService";
 import type { Coin, SheldonGrade } from "@/types/coin";
 import { COUNTRY_CODES, SHELDON_GRADES } from "@/types/coin";
+import { StatisticsPanel } from "@/components/coin/StatisticsPanel";
+import { FilterBar, type FilterState } from "@/components/coin/FilterBar";
+import { GroupedCoinTable } from "@/components/coin/GroupedCoinTable";
 
 export default function CoinDetail() {
   const router = useRouter();
   const { sku } = router.query;
   const [coins, setCoins] = useState<Coin[]>([]);
   const [spotPrices, setSpotPrices] = useState<SpotPrices | null>(null);
+  
+  // New state for filters and sorting
+  const [filters, setFilters] = useState<FilterState>({
+    grades: [],
+    status: "all",
+    dateRange: "all"
+  });
+  const [sortBy, setSortBy] = useState<"year-asc" | "year-desc" | "date-newest" | "date-oldest" | "price-low" | "price-high" | "grade" | "best-to-sell" | "profit">("year-desc");
+
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isAddPurchaseOpen, setIsAddPurchaseOpen] = useState(false);
   const [isSaleDialogOpen, setIsSaleDialogOpen] = useState(false);
@@ -313,6 +325,19 @@ export default function CoinDetail() {
     setIsSaleDialogOpen(true);
   };
 
+  // Helper for sorting options
+  const sortOptions = [
+    { value: "year-desc", label: "Year (Newest)" },
+    { value: "year-asc", label: "Year (Oldest)" },
+    { value: "date-newest", label: "Purchase Date (Newest)" },
+    { value: "date-oldest", label: "Purchase Date (Oldest)" },
+    { value: "price-high", label: "Price (Highest)" },
+    { value: "price-low", label: "Price (Lowest)" },
+    { value: "grade", label: "Grade (High to Low)" },
+    { value: "best-to-sell", label: "Best to Sell" },
+    { value: "profit", label: "Profit Potential" },
+  ];
+
   const handleSaleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -420,15 +445,13 @@ export default function CoinDetail() {
   const soldCoins = coins.filter(c => c.isSold);
   const soldCount = soldCoins.length;
   const totalSoldAmount = soldCoins.reduce((sum, c) => {
-    const sale = salesData.find(s => s.coin_id === c.id);
+    const sale = salesData?.find(s => s.coin_id === c.id);
     return sum + (sale?.sale_price || 0);
   }, 0);
   const soldCost = soldCoins.reduce((sum, c) => sum + c.purchasePrice, 0);
   const totalProfit = totalSoldAmount - soldCost;
 
   const metalContent = (referenceCoin.weight * referenceCoin.purity / 100).toFixed(3);
-
-  const filteredCoins = showSoldCoins ? coins : coins.filter(c => !c.isSold);
 
   return (
     <Layout>
@@ -602,169 +625,50 @@ export default function CoinDetail() {
             </div>
           </div>
         </div>
+        
+        {/* Statistics Panel */}
+        <StatisticsPanel coins={coins} />
 
         {/* Individual Coins Table */}
         <Card className="bg-slate-100 dark:bg-slate-900 border-slate-200 dark:border-slate-800">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-2xl text-slate-900 dark:text-white">Individual Coins</CardTitle>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowSoldCoins(!showSoldCoins)}
-              className="border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300"
-            >
-              {showSoldCoins ? (
-                <>
-                  <EyeOff className="w-4 h-4 mr-2" />
-                  Hide Sold
-                </>
-              ) : (
-                <>
-                  <Eye className="w-4 h-4 mr-2" />
-                  Show Sold
-                </>
-              )}
-            </Button>
+          <CardHeader className="space-y-4">
+            <div className="flex flex-row items-center justify-between">
+              <CardTitle className="text-2xl text-slate-900 dark:text-white">Individual Coins</CardTitle>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="sort-by" className="text-sm text-slate-600 dark:text-slate-400 whitespace-nowrap">Sort by:</Label>
+                <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
+                  <SelectTrigger id="sort-by" className="w-[180px] bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700">
+                    {sortOptions.map(option => (
+                      <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            {/* Filter Bar */}
+            <FilterBar 
+              filters={filters} 
+              onFiltersChange={setFilters} 
+              onReset={() => setFilters({ grades: [], status: "all", dateRange: "all" })} 
+            />
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-slate-200 dark:border-slate-800 hover:bg-transparent">
-                    <TableHead className="text-slate-600 dark:text-slate-400">Year</TableHead>
-                    <TableHead className="text-slate-600 dark:text-slate-400">Mint</TableHead>
-                    <TableHead className="text-slate-600 dark:text-slate-400">Grade</TableHead>
-                    <TableHead className="text-slate-600 dark:text-slate-400">Purchase Date</TableHead>
-                    <TableHead className="text-slate-600 dark:text-slate-400">Purchase Price</TableHead>
-                    <TableHead className="text-slate-600 dark:text-slate-400">Status</TableHead>
-                    <TableHead className="text-slate-600 dark:text-slate-400">Sale Info</TableHead>
-                    <TableHead className="text-slate-600 dark:text-slate-400">Notes</TableHead>
-                    <TableHead className="text-slate-600 dark:text-slate-400"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredCoins.map(coin => {
-                    const sale = salesData.find(s => s.coin_id === coin.id);
-                    return (
-                      <TableRow key={coin.id} className="border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                        <TableCell className="text-slate-900 dark:text-white font-medium">{coin.year}</TableCell>
-                        <TableCell className="text-slate-600 dark:text-slate-400">{coin.mintmark || "-"}</TableCell>
-                        <TableCell className="text-slate-600 dark:text-slate-400">{coin.sheldonGrade || "-"}</TableCell>
-                        <TableCell className="text-slate-600 dark:text-slate-400">
-                          {new Date(coin.purchaseDate).toLocaleDateString('en-US', { 
-                            year: 'numeric', 
-                            month: 'short', 
-                            day: 'numeric' 
-                          })}
-                        </TableCell>
-                        <TableCell className="text-slate-600 dark:text-slate-400">{spotPriceService.formatCHF(coin.purchasePrice)}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <span className="text-slate-400 text-sm">Status:</span>
-                            <Badge 
-                              variant={coin.isSold ? "secondary" : coin.listingId ? "outline" : "default"}
-                              className={
-                                coin.isSold 
-                                  ? "bg-red-900/50 text-red-200 border-red-800"
-                                  : coin.listingId
-                                  ? "bg-blue-900/50 text-blue-200 border-blue-800"
-                                  : "bg-green-900/50 text-green-200 border-green-800"
-                              }
-                            >
-                              {coin.isSold ? "Sold" : coin.listingId ? "Listed" : "In Collection"}
-                            </Badge>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-slate-600 dark:text-slate-400">
-                          {sale ? (
-                            <div className="text-sm">
-                              <div>{spotPriceService.formatCHF(sale.sale_price)}</div>
-                              <div className="text-xs text-slate-500">
-                                {new Date(sale.sale_date).toLocaleDateString('en-US', { 
-                                  year: 'numeric', 
-                                  month: 'short', 
-                                  day: 'numeric' 
-                                })}
-                              </div>
-                            </div>
-                          ) : coin.isSold ? (
-                            <div className="text-sm text-slate-500">Sale info unavailable</div>
-                          ) : (
-                            "-"
-                          )}
-                        </TableCell>
-                        <TableCell className="text-slate-600 dark:text-slate-400 max-w-xs truncate">
-                          {coin.notes || "-"}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            {/* Actions */}
-                            <div className="flex gap-2 pt-2">
-                              {!coin.isSold ? (
-                                <>
-                                  {!coin.listingId ? (
-                                    <>
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        className="flex-1 border-slate-600 text-slate-300"
-                                        onClick={() => openCreateListingDialog(coin)}
-                                      >
-                                        <ShoppingCart className="w-4 h-4 mr-2" />
-                                        List for Sale
-                                      </Button>
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        className="flex-1 border-slate-600 text-slate-300"
-                                        onClick={() => handleRecordSale(coin.id)}
-                                      >
-                                        <DollarSign className="w-4 h-4 mr-2" />
-                                        Sell
-                                      </Button>
-                                    </>
-                                  ) : (
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      className="flex-1 border-blue-600 text-blue-300"
-                                      onClick={() => router.push('/listings')}
-                                    >
-                                      <Eye className="w-4 h-4 mr-2" />
-                                      View Listing
-                                    </Button>
-                                  )}
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="border-slate-600 text-slate-300"
-                                    onClick={() => handleEditIndividualCoin(coin)}
-                                  >
-                                    <Edit className="w-4 h-4" />
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="border-red-600 text-red-300"
-                                    onClick={() => handleDeleteCoin(coin.id)}
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </Button>
-                                </>
-                              ) : (
-                                <div className="flex-1 text-center text-sm text-muted-foreground py-2">
-                                  This coin has been sold
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
+            <GroupedCoinTable 
+              coins={coins}
+              filters={filters}
+              salesData={salesData || []}
+              sortBy={sortBy}
+              onEditCoin={handleEditIndividualCoin}
+              onDeleteCoin={handleDeleteCoin}
+              onRecordSale={handleRecordSale}
+              onCreateListing={openCreateListingDialog}
+              onViewListing={() => router.push('/listings')}
+              calculateBullionValue={calculateBullionValue}
+            />
           </CardContent>
         </Card>
       </div>
