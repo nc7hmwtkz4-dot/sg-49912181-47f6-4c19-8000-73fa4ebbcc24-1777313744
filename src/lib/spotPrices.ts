@@ -1,5 +1,7 @@
-const METAL_PRICE_API_KEY = 'a4c341c9c8b69969cba65382941825cf';
-const TROY_OZ_TO_GRAMS = 31.1034768;
+import { supabase } from "@/integrations/supabase/client";
+
+// Conversion constants
+export const TROY_OZ_TO_GRAMS = 31.1034768;
 
 export interface SpotPrices {
   gold: number;
@@ -21,25 +23,22 @@ const FALLBACK_PRICES: SpotPrices = {
  * Tries to fetch from internal API route first to protect keys, falls back to direct API if needed
  * @returns Spot prices in CHF per gram
  */
-async function fetchSpotPrices(): Promise<SpotPrices> {
+export const fetchSpotPrices = async (): Promise<SpotPrices> => {
   try {
-    // Try fetching from our internal API route first
     const response = await fetch('/api/spot-prices');
-
-    if (!response.ok) {
-      console.warn('Internal API error, falling back to direct fetch');
-      throw new Error('Internal API failed');
-    }
-
     const data = await response.json();
+    console.log("Client-side Spot Prices Data:", data);
     return data;
   } catch (error) {
     console.error('Error fetching spot prices:', error);
-    // Fallback to direct fetch if internal API fails (though typically we should avoid exposing keys client-side)
-    // For now returning fallback prices to ensure app stability
-    return FALLBACK_PRICES;
+    return {
+      gold: 0,
+      silver: 0,
+      platinum: 0,
+      timestamp: new Date().toISOString()
+    };
   }
-}
+};
 
 /**
  * Calculates the total bullion value of a coin based on its metal content and current spot prices

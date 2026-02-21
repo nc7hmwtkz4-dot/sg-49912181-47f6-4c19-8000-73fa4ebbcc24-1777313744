@@ -45,11 +45,12 @@ export default async function handler(
       XPT: data.rates.XPT
     });
 
-    const spotPrices: SpotPrices = {
+    const spotPrices: SpotPrices & { raw_rates?: Record<string, number> } = {
       gold: data.rates.XAU / TROY_OZ_TO_GRAMS,
       silver: data.rates.XAG / TROY_OZ_TO_GRAMS,
       platinum: data.rates.XPT / TROY_OZ_TO_GRAMS,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      raw_rates: data.rates // sending raw rates for debugging
     };
 
     console.log("Calculated prices (CHF/gram):", spotPrices);
