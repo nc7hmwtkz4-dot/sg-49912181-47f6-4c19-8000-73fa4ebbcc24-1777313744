@@ -1,57 +1,81 @@
 # NumiVault Version History
 
-## Version 0.11 - Metal Prices & Stability Fix (2026-02-20)
+## Version 0.2 - Advanced Filtering & Analytics (2026-02-21)
 
-### 🎯 Milestone: Metal Prices Integration & Crash Prevention
+### 🎯 Milestone: SKU Page Enhancement with Statistics & Smart Filtering
 
-This version fixes critical issues with metal prices calculation and Register Purchase dialog crashes.
+This version adds comprehensive filtering, analytics, and intelligent grouping to the SKU detail page, making large collections easy to navigate and analyze.
 
-### ✅ What's Fixed
+### ✨ New Features
 
-**Metal Prices API Integration:**
-- ✅ Correct API endpoint: `https://api.metalpriceapi.com/v1/latest`
-- ✅ Proper currency codes: `XAU`, `XAG`, `XPT`, `XCU` (not `CHFXAU` format)
-- ✅ Accurate conversion: CHF per Troy Ounce → CHF per Gramme
-- ✅ Formula: `Price per gram = (1 / API_Rate) / 31.1034768`
-- ✅ Real-time spot prices for Gold, Silver, Platinum, Copper
+**Statistics Panel (Collapsible):**
+- ✅ Bar Chart: Coin distribution by year with interactive tooltips
+- ✅ Pie Chart: Status breakdown (In Collection / Sold / Listed)
+- ✅ Line Chart: Purchase price trends over time
+- ✅ Grade Distribution: Visual hierarchy of coin conditions
+- ✅ Responsive design with proper data visualization
+- ✅ Collapsible to save screen space
 
-**Register Purchase Dialog Fixes:**
-- ✅ Fixed crashes when searching for reference coins
-- ✅ Added proper null/undefined checks for coin properties
-- ✅ Safe property access with defensive programming
-- ✅ Improved authentication checks before loading reference coins
-- ✅ Better error handling for empty or missing data
+**Advanced Filter Bar:**
+- ✅ Grade Multi-Select: Filter by Sheldon Scale grades (G, VG, F, VF, XF, AU, MS, PF)
+- ✅ Status Filter: "All" / "In Collection" / "Sold" / "Listed"
+- ✅ Date Range Presets: [Last Week] [Last Month] [Last 3 Months] [Custom Range]
+- ✅ Active filter badges with one-click removal
+- ✅ "Reset All Filters" button for quick clearing
+- ✅ Clean Shadcn/UI design matching existing interface
 
-**Code Quality:**
-- ✅ Enhanced null safety throughout collection page
-- ✅ Type-safe property access for reference coins
-- ✅ Improved error boundaries and fallback handling
+**Nested Grouping System:**
+- ✅ Primary grouping by Year (e.g., "1963 (28 coins) - Avg: CHF 4.78")
+- ✅ Secondary grouping by Grade within each year
+- ✅ Expandable/collapsible groups (expanded by default)
+- ✅ Group state persists during session (localStorage)
+- ✅ Shows coin count and average price per group
 
-### 🔧 Metal Prices Calculation
+**Enhanced Sorting Options:**
+- ✅ "Best to Sell": Intelligent sort by profit potential (spot value - purchase price)
+- ✅ Grade Hierarchy: Proper Sheldon Scale ordering
+- ✅ Year: Ascending/Descending
+- ✅ Purchase Date: Oldest/Newest first
+- ✅ Price: Lowest/Highest
+- ✅ Profit Potential: Based on current metal spot prices
 
-**API Configuration:**
+**Complete Sheldon Scale Support:**
+- ✅ Full grade hierarchy: P-1 through PF-70
+- ✅ 100+ grade variations supported
+- ✅ Categories: G, VG, F, VF (20/30/35), XF (40/45), AU (50/53/55/58), MS (60-70), PF (60-70)
+- ✅ Proper sorting based on numismatic standards
+
+**Technical Improvements:**
+- ✅ Recharts integration for all visualizations
+- ✅ @tanstack/react-virtual for smooth scrolling performance
+- ✅ Type-safe grade hierarchy with TypeScript
+- ✅ Profit calculations: `metal content (grams) × spot price (CHF/g)`
+- ✅ No breaking changes to existing functionality
+
+### 🎨 UI/UX Enhancements
+
+**Layout Structure:**
 ```
-Endpoint: https://api.metalpriceapi.com/v1/latest
-Parameters: 
-  - api_key: a4c341c9c8b69969cba65382941825cf
-  - base: CHF
-  - currencies: XAU,XAG,XPT,XCU
+[Coin Images + Metal Content + Summary Cards]
+↓
+[Statistics Panel - Collapsible]
+↓
+[Filter Bar - Always Visible]
+↓
+[Grouped Table with Virtual Scrolling]
+  ├─ Year Group 1 (expanded)
+  │   ├─ Grade Subgroup 1
+  │   ├─ Grade Subgroup 2
+  │   └─ Grade Subgroup 3
+  ├─ Year Group 2 (expanded)
+  └─ Year Group 3 (expanded)
 ```
 
-**Conversion Formula:**
-```
-API Response: { "rates": { "XAU": 0.00000123 } } // 1 CHF = X troy oz
-Step 1: Troy Ounce Price = 1 / API_Rate
-Step 2: Gramme Price = Troy Ounce Price / 31.1034768
-Result: CHF per gramme
-```
-
-**Example Calculation:**
-```
-XAU API Rate: 0.000012345
-Troy Ounce Price: 1 / 0.000012345 = 81,037 CHF/oz
-Gramme Price: 81,037 / 31.1034768 = 2,605 CHF/g
-```
+**Performance Optimizations:**
+- Virtual scrolling handles hundreds of coins smoothly
+- Charts render efficiently with memoization
+- Filter operations are client-side for instant response
+- Group collapse/expand animations are smooth
 
 ### 📋 Core Features (Still Working)
 
@@ -87,6 +111,12 @@ Gramme Price: 81,037 / 31.1034768 = 2,605 CHF/g
 - Password reset functionality
 - Email confirmation system
 
+**Metal Prices (Fixed in v0.1.1):**
+- ✅ Correct API endpoint: `https://api.metalpriceapi.com/v1/latest`
+- ✅ Proper currency codes: `XAU`, `XAG`, `XPT`, `XCU`
+- ✅ Accurate conversion: CHF per Troy Ounce → CHF per Gramme
+- ✅ Formula: `Price per gram = (1 / API_Rate) / 31.1034768`
+
 ### 🛡️ Technical Stack
 
 - Next.js 15.5 (Page Router)
@@ -95,25 +125,27 @@ Gramme Price: 81,037 / 31.1034768 = 2,605 CHF/g
 - Tailwind CSS v3.4
 - Supabase (Database, Auth, Storage)
 - Shadcn/UI components
+- Recharts (data visualization)
+- @tanstack/react-virtual (performance)
 - Metal Price API integration
 
 ### 🔄 Rollback Instructions
 
 If you need to rollback to this version:
 
-1. **Via Version History:**
+1. **Via Version History (Recommended):**
    - Click "Version History" in the Softgen interface
-   - Find the version tagged "Version 0.11 - 2026-02-20"
+   - Find the version tagged "Version 0.2 - 2026-02-21"
    - Click "Revert" to restore this exact state
 
 2. **Via Git:**
    ```bash
-   git checkout v0.11
+   git checkout v0.2
    ```
 
 3. **Via Vercel:**
    - Go to Vercel dashboard
-   - Find deployment from 2026-02-20 (latest)
+   - Find deployment from 2026-02-21 (latest)
    - Click "Promote to Production"
 
 ### 📊 Database Schema
@@ -130,22 +162,62 @@ If you need to rollback to this version:
 - Users can only access their own data
 - Public read access for marketplace listings and reference coins
 
+### 📈 What's Next?
+
+Future enhancements could include:
+- Extend filtering to main Collection page
+- Add export functionality (CSV, PDF reports)
+- Implement bulk actions (multi-select operations)
+- Add price history tracking
+- Create custom views/dashboards
+
 ---
 
 **Status:** ✅ Stable - Production Ready
 
-**Last Updated:** 2026-02-20
+**Last Updated:** 2026-02-21
 
-**Next Planned Version:** 0.2.0
+**Recommended Recovery Point:** ✅ Version 0.2
+
+**Next Planned Version:** 0.3.0
+
+---
+
+## Version 0.1.1 - Metal Prices & Stability Fix (2026-02-20)
+
+### 🎯 Milestone: Metal Prices Integration & Crash Prevention
+
+This version fixes critical issues with metal prices calculation and Register Purchase dialog crashes.
+
+### ✅ What's Fixed
+
+**Metal Prices API Integration:**
+- ✅ Correct API endpoint: `https://api.metalpriceapi.com/v1/latest`
+- ✅ Proper currency codes: `XAU`, `XAG`, `XPT`, `XCU` (not `CHFXAU` format)
+- ✅ Accurate conversion: CHF per Troy Ounce → CHF per Gramme
+- ✅ Formula: `Price per gram = (1 / API_Rate) / 31.1034768`
+- ✅ Real-time spot prices for Gold, Silver, Platinum, Copper
+
+**Register Purchase Dialog Fixes:**
+- ✅ Fixed crashes when searching for reference coins
+- ✅ Added proper null/undefined checks for coin properties
+- ✅ Safe property access with defensive programming
+- ✅ Improved authentication checks before loading reference coins
+- ✅ Better error handling for empty or missing data
+
+**Code Quality:**
+- ✅ Enhanced null safety throughout collection page
+- ✅ Type-safe property access for reference coins
+- ✅ Improved error boundaries and fallback handling
 
 ---
 
 ## Version 0.1.0 - Initial Baseline (2026-02-20)
 
-First stable release with core features implemented. Superseded by version 0.11 with metal prices fix.
+First stable release with core features implemented. Superseded by version 0.1.1 with metal prices fix, and version 0.2 with advanced filtering.
 
 ---
 
 ## Future Versions
 
-All future versions will be documented here. If any major failure occurs, rollback to **Version 0.11** as the stable baseline.
+All future versions will be documented here. If any major failure occurs, rollback to **Version 0.2** as the stable baseline.
