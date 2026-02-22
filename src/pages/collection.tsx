@@ -1110,40 +1110,40 @@ export default function Collection() {
                             onClick={() => router.push(`/coin/${encodeURIComponent(sku)}`)}
                           >
                             {coin.obverseImageUrl || coin.reverseImageUrl ? (
-                              <div className="grid grid-cols-2 gap-0.5 p-0.5">
+                              <div className="grid grid-cols-2 gap-0.5 h-48">
                                 {coin.obverseImageUrl ? (
-                                  <div className="relative aspect-square bg-slate-900/50 overflow-hidden">
+                                  <div className="relative bg-slate-900/50 overflow-hidden">
                                     <Image 
                                       src={coin.obverseImageUrl} 
                                       alt={`${coin.coinName || sku} - Obverse`}
                                       fill
-                                      className="object-contain p-1"
+                                      className="object-contain"
                                       loading="lazy"
                                     />
                                   </div>
                                 ) : (
-                                  <div className="aspect-square flex items-center justify-center bg-slate-800/50">
+                                  <div className="flex items-center justify-center bg-slate-800/50">
                                     <Package className="w-8 h-8 text-slate-700" />
                                   </div>
                                 )}
                                 {coin.reverseImageUrl ? (
-                                  <div className="relative aspect-square bg-slate-900/50 overflow-hidden">
+                                  <div className="relative bg-slate-900/50 overflow-hidden">
                                     <Image 
                                       src={coin.reverseImageUrl} 
                                       alt={`${coin.coinName || sku} - Reverse`}
                                       fill
-                                      className="object-contain p-1"
+                                      className="object-contain"
                                       loading="lazy"
                                     />
                                   </div>
                                 ) : (
-                                  <div className="aspect-square flex items-center justify-center bg-slate-800/50">
+                                  <div className="flex items-center justify-center bg-slate-800/50">
                                     <Package className="w-8 h-8 text-slate-700" />
                                   </div>
                                 )}
                               </div>
                             ) : (
-                              <div className="aspect-square w-full flex items-center justify-center">
+                              <div className="h-48 w-full flex items-center justify-center">
                                 <Package className="w-16 h-16 text-slate-700" />
                               </div>
                             )}
@@ -1157,7 +1157,7 @@ export default function Collection() {
                             </div>
                           </div>
                           
-                          <CardContent className="p-4 space-y-2">
+                          <CardContent className="p-3 space-y-2">
                             <div 
                               className="cursor-pointer"
                               onClick={() => router.push(`/coin/${encodeURIComponent(sku)}`)}
@@ -1190,7 +1190,7 @@ export default function Collection() {
                               </div>
                             </div>
 
-                            <div className="flex gap-2 pt-2">
+                            <div className="flex gap-2">
                               <Button
                                 variant="outline"
                                 className="flex-1 border-slate-700 text-slate-300 hover:bg-slate-800"
