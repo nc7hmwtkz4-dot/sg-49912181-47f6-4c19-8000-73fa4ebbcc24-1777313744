@@ -1106,44 +1106,44 @@ export default function Collection() {
                           className="bg-slate-800/50 border-slate-700 hover:bg-slate-800 transition-colors overflow-hidden group"
                         >
                           <div 
-                            className="aspect-square relative bg-slate-900/50 overflow-hidden cursor-pointer grid grid-cols-2 gap-1 p-1"
+                            className="relative bg-slate-900/50 overflow-hidden cursor-pointer"
                             onClick={() => router.push(`/coin/${encodeURIComponent(sku)}`)}
                           >
                             {coin.obverseImageUrl || coin.reverseImageUrl ? (
-                              <>
+                              <div className="grid grid-cols-2 gap-0.5 p-0.5">
                                 {coin.obverseImageUrl ? (
-                                  <div className="relative w-full h-48 bg-slate-900/50 rounded-lg overflow-hidden">
+                                  <div className="relative aspect-square bg-slate-900/50 overflow-hidden">
                                     <Image 
                                       src={coin.obverseImageUrl} 
                                       alt={`${coin.coinName || sku} - Obverse`}
                                       fill
-                                      className="object-contain"
+                                      className="object-contain p-1"
                                       loading="lazy"
                                     />
                                   </div>
                                 ) : (
-                                  <div className="w-full h-full flex items-center justify-center bg-slate-800/50 rounded">
+                                  <div className="aspect-square flex items-center justify-center bg-slate-800/50">
                                     <Package className="w-8 h-8 text-slate-700" />
                                   </div>
                                 )}
                                 {coin.reverseImageUrl ? (
-                                  <div className="relative w-full h-48 bg-slate-900/50 rounded-lg overflow-hidden mt-2">
+                                  <div className="relative aspect-square bg-slate-900/50 overflow-hidden">
                                     <Image 
                                       src={coin.reverseImageUrl} 
                                       alt={`${coin.coinName || sku} - Reverse`}
                                       fill
-                                      className="object-contain"
+                                      className="object-contain p-1"
                                       loading="lazy"
                                     />
                                   </div>
                                 ) : (
-                                  <div className="w-full h-full flex items-center justify-center bg-slate-800/50 rounded">
+                                  <div className="aspect-square flex items-center justify-center bg-slate-800/50">
                                     <Package className="w-8 h-8 text-slate-700" />
                                   </div>
                                 )}
-                              </>
+                              </div>
                             ) : (
-                              <div className="col-span-2 w-full h-full flex items-center justify-center">
+                              <div className="aspect-square w-full flex items-center justify-center">
                                 <Package className="w-16 h-16 text-slate-700" />
                               </div>
                             )}
