@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { ChevronDown, ChevronRight, Edit, Trash2, DollarSign, ShoppingCart, Eye } from "lucide-react";
 import { spotPriceService } from "@/lib/spotPrices";
 import { compareGrades } from "@/lib/gradeHierarchy";
-import type { Coin } from "@/types/coin";
+import type { Coin, SheldonGrade } from "@/types/coin";
 import type { FilterState } from "./FilterBar";
 
 interface GroupedCoinTableProps {
