@@ -153,7 +153,7 @@ export default function Collection() {
 
     if (data) {
       // Map database coins to frontend Coin type
-      const mappedCoins: Coin[] = data.map((coin: any) => ({
+      const mappedCoins: Coin[] = data.map((coin) => ({
         id: coin.id,
         sku: coin.sku,
         coinName: coin.coin_name || "",
@@ -455,7 +455,7 @@ export default function Collection() {
     if (!referenceFilter) return availableReferences;
     
     const searchLower = referenceFilter.toLowerCase();
-    return availableReferences.filter((ref: any) => {
+    return availableReferences.filter((ref) => {
       // Safely check each property with null checks
       const sku = ref?.sku?.toLowerCase() || '';
       const coinName = ref?.coin_name?.toLowerCase() || '';
@@ -1076,7 +1076,7 @@ export default function Collection() {
             .filter(code => countryFilter === "all" || code === countryFilter)
             .map(countryCode => {
               const countryCoins = Object.entries(groupedCoins)
-                .filter(([_, coins]) => coins[0].countryCode === countryCode)
+                .filter(([, coins]) => coins[0].countryCode === countryCode)
                 .map(([sku, coins]) => ({ sku, coins }));
               
               if (countryCoins.length === 0) return null;
@@ -1110,14 +1110,14 @@ export default function Collection() {
                             onClick={() => router.push(`/coin/${encodeURIComponent(sku)}`)}
                           >
                             {coin.obverseImageUrl || coin.reverseImageUrl ? (
-                              <div className="grid grid-cols-2 gap-0.5 h-48">
+                              <div className="grid grid-cols-2 gap-0.5 h-40">
                                 {coin.obverseImageUrl ? (
-                                  <div className="relative bg-slate-900/50 overflow-hidden">
+                                  <div className="relative bg-slate-900/50 overflow-hidden flex items-center justify-center">
                                     <Image 
                                       src={coin.obverseImageUrl} 
                                       alt={`${coin.coinName || sku} - Obverse`}
                                       fill
-                                      className="object-contain"
+                                      className="object-contain p-2"
                                       loading="lazy"
                                     />
                                   </div>
@@ -1127,12 +1127,12 @@ export default function Collection() {
                                   </div>
                                 )}
                                 {coin.reverseImageUrl ? (
-                                  <div className="relative bg-slate-900/50 overflow-hidden">
+                                  <div className="relative bg-slate-900/50 overflow-hidden flex items-center justify-center">
                                     <Image 
                                       src={coin.reverseImageUrl} 
                                       alt={`${coin.coinName || sku} - Reverse`}
                                       fill
-                                      className="object-contain"
+                                      className="object-contain p-2"
                                       loading="lazy"
                                     />
                                   </div>
@@ -1143,7 +1143,7 @@ export default function Collection() {
                                 )}
                               </div>
                             ) : (
-                              <div className="h-48 w-full flex items-center justify-center">
+                              <div className="h-40 w-full flex items-center justify-center">
                                 <Package className="w-16 h-16 text-slate-700" />
                               </div>
                             )}
@@ -1157,7 +1157,7 @@ export default function Collection() {
                             </div>
                           </div>
                           
-                          <CardContent className="p-3 space-y-2">
+                          <CardContent className="p-2.5 space-y-2">
                             <div 
                               className="cursor-pointer"
                               onClick={() => router.push(`/coin/${encodeURIComponent(sku)}`)}
@@ -1335,7 +1335,7 @@ export default function Collection() {
               >
                 Cancel
               </Button>
-              <Button type="submit" className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100">
+              <Button type="submit" className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-100">
                 Add to Collection
               </Button>
             </div>

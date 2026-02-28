@@ -1,5 +1,4 @@
 import React, { useState, useMemo } from "react";
-import { useVirtualizer } from "@tanstack/react-virtual";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -198,7 +197,7 @@ export function GroupedCoinTable({
           ...gradeGroup,
           avgPrice: gradeGroup.coins.reduce((sum, c) => sum + c.purchasePrice, 0) / gradeGroup.coins.length
         }))
-        .sort((a, b) => compareGrades(a.grade as any, b.grade as any));
+        .sort((a, b) => compareGrades(a.grade as SheldonGrade, b.grade as SheldonGrade));
     });
 
     return Object.values(groups).sort((a, b) => 

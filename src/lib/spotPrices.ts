@@ -1,5 +1,3 @@
-import { supabase } from "@/integrations/supabase/client";
-
 // Conversion constants
 export const TROY_OZ_TO_GRAMS = 31.1034768;
 
@@ -9,14 +7,6 @@ export interface SpotPrices {
   platinum: number;
   timestamp: string;
 }
-
-// Fallback prices in CHF per gram (as of Feb 2026)
-const FALLBACK_PRICES: SpotPrices = {
-  gold: 82.5,
-  silver: 1.02,
-  platinum: 32.8,
-  timestamp: new Date().toISOString(),
-};
 
 /**
  * Fetches current spot prices for precious metals

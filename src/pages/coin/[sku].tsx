@@ -11,13 +11,12 @@ import { ImageViewer } from "@/components/ImageViewer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Edit, Plus, DollarSign, Trash2, ArrowLeft, Eye, EyeOff, ShoppingCart } from "lucide-react";
+import { Edit, Plus, DollarSign, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { createListing } from "@/services/listingService";
 import type { Coin, SheldonGrade } from "@/types/coin";
@@ -46,7 +45,6 @@ export default function CoinDetail() {
   const [isEditCoinDialogOpen, setIsEditCoinDialogOpen] = useState(false);
   const [editingCoin, setEditingCoin] = useState<Coin | null>(null);
   const [editingIndividualCoin, setEditingIndividualCoin] = useState<Coin | null>(null);
-  const [showSoldCoins, setShowSoldCoins] = useState(true);
   const [purchaseFormData, setPurchaseFormData] = useState<{
     year: number;
     mintmark: string;
@@ -336,7 +334,7 @@ export default function CoinDetail() {
     { value: "grade", label: "Grade (High to Low)" },
     { value: "best-to-sell", label: "Best to Sell" },
     { value: "profit", label: "Profit Potential" },
-  ];
+  ] as const;
 
   const handleSaleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
