@@ -126,6 +126,7 @@ export default function Collection() {
   const [availableReferences, setAvailableReferences] = useState<any[]>([]);
   const [referenceFilter, setReferenceFilter] = useState("");
   const [isLoadingReferences, setIsLoadingReferences] = useState(false);
+  const [selectedReference, setSelectedReference] = useState<any>(null);
 
   // Image viewer state
   const [viewImage, setViewImage] = useState<{ url: string; alt: string } | null>(null);
@@ -423,15 +424,13 @@ export default function Collection() {
       return;
     }
 
+    if (!selectedReference) {
+      alert("Please select a reference coin from the search results.");
+      return;
+    }
+
     try {
       setIsRegisteringPurchase(true);
-
-      // Fetch the reference coin to get images
-      const { data: refCoin, error: refError } = await coinReferenceService.getReferenceBySKU(registerFormData.sku);
-      
-      if (refError || !refCoin) {
-        throw new Error("Failed to fetch reference coin details");
-      }
 
       const baseCoinData = {
         sku: registerFormData.sku,
@@ -447,8 +446,8 @@ export default function Collection() {
         purchase_date: registerFormData.purchaseDate,
         purchase_price: registerFormData.purchasePrice,
         notes: registerFormData.notes || "",
-        obverse_image_url: refCoin.obverse_image_url || "",
-        reverse_image_url: refCoin.reverse_image_url || "",
+        obverse_image_url: selectedReference.obverse_image_url || "",
+        reverse_image_url: selectedReference.reverse_image_url || "",
         is_sold: false
       };
 
@@ -487,6 +486,7 @@ export default function Collection() {
         notes: ""
       });
       setReferenceFilter("");
+      setSelectedReference(null);
       
       // Refresh the collection
       await loadCoins();
@@ -697,8 +697,23 @@ export default function Collection() {
                           <button
                             key={ref.sku}
                             type="button"
-                            onClick={() => handleSelectReference(ref)}
-                            className="w-full text-left p-3 bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-600 transition-colors"
+                            onClick={() => {
+                              setRegisterFormData({
+                                ...registerFormData,
+                                sku: ref.sku || "",
+                                coinName: ref.coin_name || "",
+                                countryCode: ref.country_code || "",
+                                kmNumber: ref.km_number || "",
+                                metal: ref.metal || "",
+                                purity: ref.purity || 0,
+                                weight: ref.weight || 0
+                              });
+                              setSelectedReference(ref);
+                              setReferenceFilter("");
+                            }}
+                            className={`w-full text-left p-3 hover:bg-slate-700 transition-colors border-b border-slate-700 last:border-b-0 ${
+                              registerFormData.sku === ref.sku ? 'bg-slate-700' : ''
+                            }`}
                           >
                             <div className="flex justify-between items-start">
                               <div>
@@ -930,6 +945,7 @@ export default function Collection() {
                                 purity: ref.purity || 0,
                                 weight: ref.weight || 0
                               });
+                              setSelectedReference(ref);
                               setReferenceFilter("");
                             }}
                             className={`w-full text-left p-3 hover:bg-slate-700 transition-colors border-b border-slate-700 last:border-b-0 ${
@@ -1107,7 +1123,7 @@ export default function Collection() {
               <SelectItem value="all" className="text-white">All Countries</SelectItem>
               {uniqueCountries.map(code => (
                 <SelectItem key={code} value={code} className="text-white">
-                  {COUNTRY_CODES[code]}
+                  {COUNTRY_CODES[countryCode]}
                 </SelectItem>
               ))}
             </SelectContent>
