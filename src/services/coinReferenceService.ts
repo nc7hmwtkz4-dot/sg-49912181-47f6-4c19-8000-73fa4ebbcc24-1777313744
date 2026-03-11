@@ -72,7 +72,7 @@ export const coinReferenceService = {
               metal_purity: null,
               weight: null,
               created_at: new Date().toISOString()
-            } as CoinReferenceRow);
+            } as unknown as CoinReferenceRow);
             seenSKUs.add(coin.sku);
           }
         });
@@ -93,7 +93,7 @@ export const coinReferenceService = {
               metal_purity: null,
               weight: null,
               created_at: new Date().toISOString()
-            } as CoinReferenceRow);
+            } as unknown as CoinReferenceRow);
             seenSKUs.add(sale.sku);
           }
         });
