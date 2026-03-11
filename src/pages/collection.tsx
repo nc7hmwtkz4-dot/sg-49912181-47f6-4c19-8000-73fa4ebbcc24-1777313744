@@ -232,13 +232,37 @@ export default function Collection() {
   };
 
   const calculateBullionValue = (coin: Coin): number => {
-    if (!spotPrices) return 0;
-    return spotPriceService.calculateBullionValue(
+    if (!spotPrices) {
+      console.warn("⚠️ No spot prices available for bullion calculation");
+      return 0;
+    }
+    
+    if (!coin.weight || !coin.purity || !coin.metal) {
+      console.warn("⚠️ Missing coin data for bullion calculation:", { 
+        sku: coin.sku, 
+        weight: coin.weight, 
+        purity: coin.purity, 
+        metal: coin.metal 
+      });
+      return 0;
+    }
+    
+    const value = spotPriceService.calculateBullionValue(
       coin.weight,
       coin.purity,
       coin.metal,
       spotPrices
     );
+    
+    console.log(`💰 Bullion value for ${coin.sku}:`, {
+      weight: coin.weight,
+      purity: coin.purity,
+      metal: coin.metal,
+      spotPrice: spotPrices[coin.metal.toLowerCase() as keyof typeof spotPrices],
+      calculatedValue: value
+    });
+    
+    return value;
   };
 
   const handleObverseImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {

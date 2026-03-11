@@ -89,11 +89,14 @@ export default function Dashboard() {
           unsoldCoins.forEach(coin => {
             totalInvestment += coin.purchase_price;
 
-            if (coin.metal) {
-              const metalPrice = spotPrices[coin.metal.toLowerCase()];
-              if (metalPrice && coin.weight) {
-                bullionValue += coin.weight * metalPrice;
-              }
+            if (coin.metal && coin.weight && coin.purity) {
+              const coinBullionValue = spotPriceService.calculateBullionValue(
+                coin.weight,
+                coin.purity,
+                coin.metal,
+                spotPrices
+              );
+              bullionValue += coinBullionValue;
             }
           });
         }

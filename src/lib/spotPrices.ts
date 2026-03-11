@@ -62,7 +62,7 @@ export const fetchSpotPrices = async (): Promise<SpotPrices> => {
  * Calculates the total bullion value of a coin based on its metal content and current spot prices
  * @param weight - Weight of the coin in grams
  * @param purity - Purity percentage (0-100) or decimal (0-1)
- * @param metal - Metal type (gold, silver, platinum, copper)
+ * @param metal - Metal type (gold, silver, platinum, palladium, copper, other)
  * @param spotPrices - Current spot prices object
  * @returns Total bullion value in CHF
  */
@@ -72,25 +72,45 @@ export function calculateBullionValue(
   metal: string,
   prices: SpotPrices
 ): number {
-  if (!weight || !purity || !metal || !prices) return 0;
+  console.log("🔢 Calculating bullion value:", { weight, purity, metal, prices });
   
-  const metalLower = metal.toLowerCase();
+  if (!weight || !purity || !metal || !prices) {
+    console.warn("⚠️ Missing required parameters for bullion calculation");
+    return 0;
+  }
+  
+  const metalLower = metal.toLowerCase().trim();
   let pricePerGram = 0;
   
-  if (metalLower.includes('gold')) {
+  // Match metal type to price
+  if (metalLower === 'gold') {
     pricePerGram = prices.gold;
-  } else if (metalLower.includes('silver')) {
+  } else if (metalLower === 'silver') {
     pricePerGram = prices.silver;
-  } else if (metalLower.includes('platinum')) {
+  } else if (metalLower === 'platinum') {
     pricePerGram = prices.platinum;
+  } else if (metalLower === 'palladium' || metalLower === 'copper' || metalLower === 'other') {
+    console.log(`ℹ️ Metal type "${metal}" has no spot price reference, returning 0`);
+    return 0;
   } else {
+    console.warn(`⚠️ Unknown metal type: "${metal}"`);
     return 0;
   }
   
   // Handle both percentage (0-100) and decimal (0-1) purity values
   const normalizedPurity = purity > 1 ? purity / 100 : purity;
   const pureWeight = weight * normalizedPurity;
-  return pureWeight * pricePerGram;
+  const totalValue = pureWeight * pricePerGram;
+  
+  console.log("💎 Bullion calculation:", {
+    metalType: metal,
+    pricePerGram,
+    normalizedPurity,
+    pureWeight,
+    totalValue
+  });
+  
+  return totalValue;
 }
 
 /**
