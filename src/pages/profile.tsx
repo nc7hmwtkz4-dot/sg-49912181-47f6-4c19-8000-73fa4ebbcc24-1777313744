@@ -210,26 +210,73 @@ export default function SettingsPage() {
         throw new Error("User not found");
       }
 
-      // Update prices in database
-      const { error: updateError } = await supabase
+      // First, check if profile exists
+      const { data: existingProfile } = await supabase
         .from("profiles")
-        .update({
-          gold_price_chf_per_gram: gold,
-          silver_price_chf_per_gram: silver,
-          platinum_price_chf_per_gram: platinum,
-          prices_last_updated: new Date().toISOString()
-        })
-        .eq("id", user.id);
+        .select("id")
+        .eq("id", user.id)
+        .single();
 
-      if (updateError) throw updateError;
+      const updateData = {
+        gold_price_chf_per_gram: gold,
+        silver_price_chf_per_gram: silver,
+        platinum_price_chf_per_gram: platinum,
+        prices_last_updated: new Date().toISOString()
+      };
+
+      if (!existingProfile) {
+        // Profile doesn't exist, create it
+        const { error: insertError } = await supabase
+          .from("profiles")
+          .insert({
+            id: user.id,
+            email: user.email,
+            full_name: fullName,
+            ...updateData
+          });
+
+        if (insertError) {
+          console.error("Insert error:", insertError);
+          throw insertError;
+        }
+      } else {
+        // Profile exists, update it
+        const { error: updateError } = await supabase
+          .from("profiles")
+          .update(updateData)
+          .eq("id", user.id);
+
+        if (updateError) {
+          console.error("Update error:", updateError);
+          throw updateError;
+        }
+      }
+
+      // Verify the update worked by fetching the data
+      const { data: verifyData, error: verifyError } = await supabase
+        .from("profiles")
+        .select("gold_price_chf_per_gram, silver_price_chf_per_gram, platinum_price_chf_per_gram")
+        .eq("id", user.id)
+        .single();
+
+      if (verifyError) {
+        console.error("Verification error:", verifyError);
+        throw new Error("Failed to verify update");
+      }
+
+      console.log("Verification - saved values:", verifyData);
 
       setPricesMessage({
         type: "success",
         text: "Metal prices updated successfully!"
       });
 
-      // Reload user data to get updated timestamp
-      await loadUserProfile();
+      // Update local state with verified values
+      setGoldPrice(verifyData.gold_price_chf_per_gram?.toString() || goldPrice);
+      setSilverPrice(verifyData.silver_price_chf_per_gram?.toString() || silverPrice);
+      setPlatinumPrice(verifyData.platinum_price_chf_per_gram?.toString() || platinumPrice);
+      setPricesLastUpdated(new Date().toISOString());
+
     } catch (error: unknown) {
       console.error("Error updating metal prices:", error);
       setPricesMessage({
