@@ -130,6 +130,32 @@ export default function Collection() {
   // Image viewer state
   const [viewImage, setViewImage] = useState<{ url: string; alt: string } | null>(null);
 
+  // Search for references when filter changes (debounced)
+  useEffect(() => {
+    if (!isRegisterPurchaseOpen) return;
+    
+    const searchReferences = async () => {
+      if (!referenceFilter || referenceFilter.length < 2) {
+        // Load all if search is empty or too short
+        loadAvailableReferences();
+        return;
+      }
+
+      setIsLoadingReferences(true);
+      const { data, error } = await coinReferenceService.searchReferences(referenceFilter);
+      
+      if (error) {
+        console.error("Error searching references:", error);
+      } else if (data) {
+        setAvailableReferences(data);
+      }
+      setIsLoadingReferences(false);
+    };
+
+    const timeoutId = setTimeout(searchReferences, 300);
+    return () => clearTimeout(timeoutId);
+  }, [referenceFilter, isRegisterPurchaseOpen]);
+
   // Format timestamp for display
   const formatTimestamp = (timestamp: string) => {
     const date = new Date(timestamp);
@@ -494,24 +520,8 @@ export default function Collection() {
   // Filter reference coins based on search
   const filteredReferences = useMemo(() => {
     if (!availableReferences || availableReferences.length === 0) return [];
-    if (!referenceFilter) return availableReferences;
-    
-    const searchLower = referenceFilter.toLowerCase();
-    return availableReferences.filter((ref) => {
-      // Safely check each property with null checks
-      const sku = ref?.sku?.toLowerCase() || '';
-      const coinName = ref?.coin_name?.toLowerCase() || '';
-      const kmNumber = ref?.km_number?.toLowerCase() || '';
-      const metal = ref?.metal?.toLowerCase() || '';
-      const countryCode = ref?.country_code?.toLowerCase() || '';
-      
-      return sku.includes(searchLower) ||
-             coinName.includes(searchLower) ||
-             kmNumber.includes(searchLower) ||
-             metal.includes(searchLower) ||
-             countryCode.includes(searchLower);
-    });
-  }, [availableReferences, referenceFilter]);
+    return availableReferences;
+  }, [availableReferences]);
 
   const handleCoinSelection = (coinId: string) => {
     const coin = availableCoinsForSale.find(c => c.id === coinId);
