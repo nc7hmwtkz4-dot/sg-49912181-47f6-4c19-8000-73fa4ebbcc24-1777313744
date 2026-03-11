@@ -16,12 +16,14 @@ export interface SpotPrices {
  */
 export const fetchSpotPrices = async (): Promise<SpotPrices> => {
   try {
+    console.log("🔍 Fetching spot prices from API...");
     const response = await fetch('/api/spot-prices');
+    console.log("📡 API Response status:", response.status);
     const data = await response.json();
-    console.log("Spot Prices (CHF per gram):", data);
+    console.log("💰 Spot Prices received (CHF per gram):", data);
     return data;
   } catch (error) {
-    console.error('Error fetching spot prices:', error);
+    console.error('❌ Error fetching spot prices:', error);
     return {
       gold: 0,
       silver: 0,
