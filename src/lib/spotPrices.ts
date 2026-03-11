@@ -1,3 +1,5 @@
+import { supabase } from "@/integrations/supabase/client";
+
 export interface SpotPrices {
   gold: number;
   silver: number;
@@ -6,28 +8,51 @@ export interface SpotPrices {
 }
 
 /**
- * Fetches current spot prices for precious metals in CHF per gram
- * Uses hybrid approach:
- * 1. Fetches USD prices per troy ounce from free metals APIs
- * 2. Fetches USD/CHF exchange rate
- * 3. Converts to CHF per gram
- * Prices are cached for 24 hours
- * @returns Spot prices in CHF per gram
+ * Fetches user's manually configured spot prices from their profile
+ * @returns Spot prices in CHF per gram from user settings
  */
 export const fetchSpotPrices = async (): Promise<SpotPrices> => {
   try {
-    console.log("🔍 Fetching spot prices from API...");
-    const response = await fetch('/api/spot-prices');
-    console.log("📡 API Response status:", response.status);
-    const data = await response.json();
-    console.log("💰 Spot Prices received (CHF per gram):", data);
-    return data;
-  } catch (error) {
-    console.error('❌ Error fetching spot prices:', error);
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      console.warn("No authenticated user found, using default prices");
+      return {
+        gold: 85.00,
+        silver: 0.95,
+        platinum: 28.00,
+        timestamp: new Date().toISOString()
+      };
+    }
+
+    const { data: profile, error } = await supabase
+      .from("profiles")
+      .select("gold_price_chf_per_gram, silver_price_chf_per_gram, platinum_price_chf_per_gram, prices_last_updated")
+      .eq("id", user.id)
+      .single();
+
+    if (error || !profile) {
+      console.error("Error fetching user prices:", error);
+      return {
+        gold: 85.00,
+        silver: 0.95,
+        platinum: 28.00,
+        timestamp: new Date().toISOString()
+      };
+    }
+
     return {
-      gold: 0,
-      silver: 0,
-      platinum: 0,
+      gold: profile.gold_price_chf_per_gram || 85.00,
+      silver: profile.silver_price_chf_per_gram || 0.95,
+      platinum: profile.platinum_price_chf_per_gram || 28.00,
+      timestamp: profile.prices_last_updated || new Date().toISOString()
+    };
+  } catch (error) {
+    console.error("Error fetching spot prices:", error);
+    return {
+      gold: 85.00,
+      silver: 0.95,
+      platinum: 28.00,
       timestamp: new Date().toISOString()
     };
   }

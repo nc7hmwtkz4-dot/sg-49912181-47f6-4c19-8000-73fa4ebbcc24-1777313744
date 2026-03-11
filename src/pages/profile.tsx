@@ -11,9 +11,9 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
-import { User, Mail, Lock, Trash2, Save, AlertCircle, CheckCircle2, Shield, XCircle, Loader2, CheckCircle } from "lucide-react";
+import { User, Mail, Lock, Trash2, Save, AlertCircle, CheckCircle2, Shield, XCircle, Loader2, CheckCircle, DollarSign } from "lucide-react";
 
-export default function ProfilePage() {
+export default function SettingsPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -28,6 +28,12 @@ export default function ProfilePage() {
   const [verificationCode, setVerificationCode] = useState("");
   const [twoFALoading, setTwoFALoading] = useState(false);
   
+  // Metal prices state
+  const [goldPrice, setGoldPrice] = useState("85.00");
+  const [silverPrice, setSilverPrice] = useState("0.95");
+  const [platinumPrice, setPlatinumPrice] = useState("28.00");
+  const [pricesLastUpdated, setPricesLastUpdated] = useState<string | null>(null);
+  
   // Profile form state
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
   const [profileMessage, setProfileMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -35,6 +41,10 @@ export default function ProfilePage() {
   // Password form state
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
   const [passwordMessage, setPasswordMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  
+  // Metal prices form state
+  const [isUpdatingPrices, setIsUpdatingPrices] = useState(false);
+  const [pricesMessage, setPricesMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   
   // Delete account state
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -57,6 +67,20 @@ export default function ProfilePage() {
       setUser(authUser);
       setFullName((authUser.user_metadata?.full_name as string) || "");
       setEmail(authUser.email || "");
+
+      // Load user's metal prices
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("gold_price_chf_per_gram, silver_price_chf_per_gram, platinum_price_chf_per_gram, prices_last_updated")
+        .eq("id", authUser.id)
+        .single();
+
+      if (!profileError && profile) {
+        setGoldPrice(profile.gold_price_chf_per_gram?.toString() || "85.00");
+        setSilverPrice(profile.silver_price_chf_per_gram?.toString() || "0.95");
+        setPlatinumPrice(profile.platinum_price_chf_per_gram?.toString() || "28.00");
+        setPricesLastUpdated(profile.prices_last_updated || null);
+      }
 
       // Check if user has 2FA enabled
       const { enabled, error: mfaError } = await authService.has2FA();
@@ -161,6 +185,58 @@ export default function ProfilePage() {
     }
   };
 
+  const handleUpdateMetalPrices = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsUpdatingPrices(true);
+    setPricesMessage(null);
+
+    try {
+      const gold = parseFloat(goldPrice);
+      const silver = parseFloat(silverPrice);
+      const platinum = parseFloat(platinumPrice);
+
+      // Validate prices
+      if (isNaN(gold) || gold <= 0) {
+        throw new Error("Gold price must be a positive number");
+      }
+      if (isNaN(silver) || silver <= 0) {
+        throw new Error("Silver price must be a positive number");
+      }
+      if (isNaN(platinum) || platinum <= 0) {
+        throw new Error("Platinum price must be a positive number");
+      }
+
+      // Update prices in database
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({
+          gold_price_chf_per_gram: gold,
+          silver_price_chf_per_gram: silver,
+          platinum_price_chf_per_gram: platinum,
+          prices_last_updated: new Date().toISOString()
+        })
+        .eq("id", user.id);
+
+      if (updateError) throw updateError;
+
+      setPricesMessage({
+        type: "success",
+        text: "Metal prices updated successfully!"
+      });
+
+      // Reload user data to get updated timestamp
+      await loadUserProfile();
+    } catch (error: unknown) {
+      console.error("Error updating metal prices:", error);
+      setPricesMessage({
+        type: "error",
+        text: error instanceof Error ? error.message : "Failed to update metal prices. Please try again."
+      });
+    } finally {
+      setIsUpdatingPrices(false);
+    }
+  };
+
   const handleDeleteAccount = async () => {
     if (deleteConfirmText !== "DELETE") {
       alert("Please type DELETE to confirm account deletion.");
@@ -253,9 +329,9 @@ export default function ProfilePage() {
   if (loading) {
     return (
       <Layout>
-        <SEO title="Profile - NumiVault" />
+        <SEO title="Settings - NumiVault" />
         <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-slate-400">Loading profile...</div>
+          <div className="text-slate-400">Loading settings...</div>
         </div>
       </Layout>
     );
@@ -263,18 +339,123 @@ export default function ProfilePage() {
 
   return (
     <Layout>
-      <SEO title="Profile Settings - NumiVault" />
+      <SEO title="Settings - NumiVault" />
       
       <div className="max-w-4xl mx-auto space-y-8">
         {/* Page Header */}
         <div>
           <h1 className="text-4xl font-bold text-slate-900 dark:text-white mb-2">
-            Profile Settings
+            Settings
           </h1>
           <p className="text-slate-600 dark:text-slate-400">
             Manage your account settings and preferences
           </p>
         </div>
+
+        {/* Metal Prices Management */}
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-white">
+              <DollarSign className="w-5 h-5" />
+              Metal Spot Prices
+            </CardTitle>
+            <CardDescription className="text-slate-600 dark:text-slate-400">
+              Set current metal prices in CHF per gram for bullion value calculations
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleUpdateMetalPrices} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <Label htmlFor="goldPrice" className="text-slate-700 dark:text-slate-300">
+                    Gold (CHF/g)
+                  </Label>
+                  <Input
+                    id="goldPrice"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={goldPrice}
+                    onChange={(e) => setGoldPrice(e.target.value)}
+                    placeholder="85.00"
+                    className="bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="silverPrice" className="text-slate-700 dark:text-slate-300">
+                    Silver (CHF/g)
+                  </Label>
+                  <Input
+                    id="silverPrice"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={silverPrice}
+                    onChange={(e) => setSilverPrice(e.target.value)}
+                    placeholder="0.95"
+                    className="bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="platinumPrice" className="text-slate-700 dark:text-slate-300">
+                    Platinum (CHF/g)
+                  </Label>
+                  <Input
+                    id="platinumPrice"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={platinumPrice}
+                    onChange={(e) => setPlatinumPrice(e.target.value)}
+                    placeholder="28.00"
+                    className="bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
+                    required
+                  />
+                </div>
+              </div>
+
+              {pricesLastUpdated && (
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Last updated: {new Date(pricesLastUpdated).toLocaleString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </p>
+              )}
+
+              {pricesMessage && (
+                <Alert className={pricesMessage.type === "success" ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20" : "border-red-500 bg-red-50 dark:bg-red-900/20"}>
+                  <div className="flex items-center gap-2">
+                    {pricesMessage.type === "success" ? (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                    ) : (
+                      <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400" />
+                    )}
+                    <AlertDescription className={pricesMessage.type === "success" ? "text-emerald-700 dark:text-emerald-300" : "text-red-700 dark:text-red-300"}>
+                      {pricesMessage.text}
+                    </AlertDescription>
+                  </div>
+                </Alert>
+              )}
+
+              <Button
+                type="submit"
+                disabled={isUpdatingPrices}
+                className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100"
+              >
+                <Save className="w-4 h-4 mr-2" />
+                {isUpdatingPrices ? "Saving..." : "Update Prices"}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
 
         {/* Profile Information */}
         <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">

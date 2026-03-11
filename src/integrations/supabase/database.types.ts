@@ -78,7 +78,11 @@ export type Database = {
           created_at: string | null
           email: string | null
           full_name: string | null
+          gold_price_chf_per_gram: number | null
           id: string
+          platinum_price_chf_per_gram: number | null
+          prices_last_updated: string | null
+          silver_price_chf_per_gram: number | null
           updated_at: string | null
         }
         Insert: {
@@ -86,7 +90,11 @@ export type Database = {
           created_at?: string | null
           email?: string | null
           full_name?: string | null
+          gold_price_chf_per_gram?: number | null
           id: string
+          platinum_price_chf_per_gram?: number | null
+          prices_last_updated?: string | null
+          silver_price_chf_per_gram?: number | null
           updated_at?: string | null
         }
         Update: {
@@ -94,7 +102,11 @@ export type Database = {
           created_at?: string | null
           email?: string | null
           full_name?: string | null
+          gold_price_chf_per_gram?: number | null
           id?: string
+          platinum_price_chf_per_gram?: number | null
+          prices_last_updated?: string | null
+          silver_price_chf_per_gram?: number | null
           updated_at?: string | null
         }
         Relationships: []
