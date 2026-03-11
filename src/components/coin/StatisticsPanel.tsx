@@ -1,168 +1,169 @@
-import { useState } from "react";
+import { Coin } from "@/types/coin";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronUp } from "lucide-react";
-import { BarChart, Bar, PieChart, Pie, LineChart, Line, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import type { Coin } from "@/types/coin";
+import { spotPriceService } from "@/lib/spotPrices";
+import { useEffect, useState } from "react";
 
 interface StatisticsPanelProps {
   coins: Coin[];
 }
 
-const COLORS = {
-  inCollection: "#10b981", // emerald-500
-  sold: "#ef4444", // red-500
-  listed: "#3b82f6", // blue-500
-};
-
 export function StatisticsPanel({ coins }: StatisticsPanelProps) {
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [spotPrices, setSpotPrices] = useState<any>(null);
+
+  useEffect(() => {
+    const loadSpotPrices = async () => {
+      const prices = await spotPriceService.getSpotPrices();
+      setSpotPrices(prices);
+    };
+    loadSpotPrices();
+  }, []);
+
+  if (!spotPrices) {
+    return null;
+  }
 
   // Calculate statistics
-  const yearDistribution = coins.reduce((acc, coin) => {
+  const unsoldCoins = coins.filter(c => !c.isSold);
+  const soldCoins = coins.filter(c => c.isSold);
+
+  // Group by year
+  const yearGroups = unsoldCoins.reduce((acc, coin) => {
     const year = coin.year.toString();
     if (!acc[year]) {
-      acc[year] = { year, count: 0 };
+      acc[year] = { count: 0, totalCost: 0, totalValue: 0 };
     }
     acc[year].count++;
+    acc[year].totalCost += coin.purchasePrice;
+    
+    if (coin.metal && coin.weight && coin.purity) {
+      const value = spotPriceService.calculateBullionValue(
+        coin.weight,
+        coin.purity,
+        coin.metal,
+        spotPrices
+      );
+      acc[year].totalValue += value;
+    }
     return acc;
-  }, {} as Record<string, { year: string; count: number }>);
+  }, {} as Record<string, { count: number; totalCost: number; totalValue: number }>);
 
-  const yearData = Object.values(yearDistribution).sort((a, b) => 
-    parseInt(a.year) - parseInt(b.year)
-  );
-
-  // Status breakdown
-  const statusData = [
-    { 
-      name: "In Collection", 
-      value: coins.filter(c => !c.isSold && !c.listingId).length,
-      color: COLORS.inCollection
-    },
-    { 
-      name: "Sold", 
-      value: coins.filter(c => c.isSold).length,
-      color: COLORS.sold
-    },
-    { 
-      name: "Listed", 
-      value: coins.filter(c => c.listingId && !c.isSold).length,
-      color: COLORS.listed
-    },
-  ].filter(item => item.value > 0);
-
-  // Purchase price trends over time
-  const priceData = coins
-    .filter(c => c.purchaseDate && c.purchasePrice)
-    .sort((a, b) => new Date(a.purchaseDate).getTime() - new Date(b.purchaseDate).getTime())
-    .map(coin => ({
-      date: new Date(coin.purchaseDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
-      price: coin.purchasePrice,
-    }));
-
-  // Grade distribution
-  const gradeDistribution = coins.reduce((acc, coin) => {
-    const grade = coin.sheldonGrade || "Unknown";
+  // Group by grade
+  const gradeGroups = unsoldCoins.reduce((acc, coin) => {
+    const grade = coin.sheldonGrade;
     if (!acc[grade]) {
-      acc[grade] = { grade, count: 0 };
+      acc[grade] = { count: 0, totalCost: 0, totalValue: 0 };
     }
     acc[grade].count++;
+    acc[grade].totalCost += coin.purchasePrice;
+    
+    if (coin.metal && coin.weight && coin.purity) {
+      const value = spotPriceService.calculateBullionValue(
+        coin.weight,
+        coin.purity,
+        coin.metal,
+        spotPrices
+      );
+      acc[grade].totalValue += value;
+    }
     return acc;
-  }, {} as Record<string, { grade: string; count: number }>);
+  }, {} as Record<string, { count: number; totalCost: number; totalValue: number }>);
 
-  const gradeData = Object.values(gradeDistribution).sort((a, b) => b.count - a.count);
+  const totalCost = unsoldCoins.reduce((sum, c) => sum + c.purchasePrice, 0);
+  const totalValue = unsoldCoins.reduce((sum, c) => {
+    if (c.metal && c.weight && c.purity) {
+      return sum + spotPriceService.calculateBullionValue(
+        c.weight,
+        c.purity,
+        c.metal,
+        spotPrices
+      );
+    }
+    return sum;
+  }, 0);
+
+  const avgCost = unsoldCoins.length > 0 ? totalCost / unsoldCoins.length : 0;
+  const avgValue = unsoldCoins.length > 0 ? totalValue / unsoldCoins.length : 0;
 
   return (
-    <Card className="bg-slate-100 dark:bg-slate-900 border-slate-200 dark:border-slate-800">
-      <CardHeader className="flex flex-row items-center justify-between cursor-pointer" onClick={() => setIsExpanded(!isExpanded)}>
-        <CardTitle className="text-2xl text-slate-900 dark:text-white">Collection Analytics</CardTitle>
-        <Button variant="ghost" size="sm" className="text-slate-600 dark:text-slate-400">
-          {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-        </Button>
-      </CardHeader>
-      
-      {isExpanded && (
-        <CardContent className="space-y-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Year Distribution */}
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Overview Statistics */}
+      <Card className="bg-slate-100 dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+        <CardHeader>
+          <CardTitle className="text-slate-900 dark:text-white">Collection Statistics</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
             <div>
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Distribution by Year</h3>
-              <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={yearData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                  <XAxis dataKey="year" stroke="#94a3b8" />
-                  <YAxis stroke="#94a3b8" />
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px' }}
-                    labelStyle={{ color: '#f8fafc' }}
-                  />
-                  <Bar dataKey="count" fill="#f59e0b" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+              <p className="text-sm text-slate-600 dark:text-slate-400">Unsold Coins</p>
+              <p className="text-2xl font-bold text-slate-900 dark:text-white">{unsoldCoins.length}</p>
             </div>
-
-            {/* Status Breakdown */}
             <div>
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Status Breakdown</h3>
-              <ResponsiveContainer width="100%" height={250}>
-                <PieChart>
-                  <Pie
-                    data={statusData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, value }) => `${name}: ${value}`}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {statusData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px' }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
+              <p className="text-sm text-slate-600 dark:text-slate-400">Sold Coins</p>
+              <p className="text-2xl font-bold text-slate-900 dark:text-white">{soldCoins.length}</p>
             </div>
-
-            {/* Purchase Price Trends */}
             <div>
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Purchase Price Trends</h3>
-              <ResponsiveContainer width="100%" height={250}>
-                <LineChart data={priceData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                  <XAxis dataKey="date" stroke="#94a3b8" />
-                  <YAxis stroke="#94a3b8" />
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px' }}
-                    labelStyle={{ color: '#f8fafc' }}
-                  />
-                  <Line type="monotone" dataKey="price" stroke="#8b5cf6" strokeWidth={2} dot={{ r: 4 }} />
-                </LineChart>
-              </ResponsiveContainer>
+              <p className="text-sm text-slate-600 dark:text-slate-400">Avg. Purchase Price</p>
+              <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                {spotPriceService.formatCHF(avgCost)}
+              </p>
             </div>
-
-            {/* Grade Distribution */}
             <div>
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Grade Distribution</h3>
-              <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={gradeData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                  <XAxis dataKey="grade" stroke="#94a3b8" />
-                  <YAxis stroke="#94a3b8" />
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px' }}
-                    labelStyle={{ color: '#f8fafc' }}
-                  />
-                  <Bar dataKey="count" fill="#06b6d4" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+              <p className="text-sm text-slate-600 dark:text-slate-400">Avg. Bullion Value</p>
+              <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                {spotPriceService.formatCHF(avgValue)}
+              </p>
+            </div>
+          </div>
+
+          <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-slate-600 dark:text-slate-400">Total Invested</span>
+              <span className="font-semibold text-slate-900 dark:text-white">{spotPriceService.formatCHF(totalCost)}</span>
+            </div>
+            <div className="flex justify-between items-center mt-2">
+              <span className="text-sm text-slate-600 dark:text-slate-400">Total Bullion Value</span>
+              <span className="font-semibold text-emerald-600 dark:text-emerald-400">{spotPriceService.formatCHF(totalValue)}</span>
+            </div>
+            <div className="flex justify-between items-center mt-2">
+              <span className="text-sm text-slate-600 dark:text-slate-400">Unrealized P/L</span>
+              <span className={`font-semibold ${totalValue - totalCost >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                {spotPriceService.formatCHF(totalValue - totalCost)} ({((totalValue - totalCost) / totalCost * 100).toFixed(2)}%)
+              </span>
             </div>
           </div>
         </CardContent>
-      )}
-    </Card>
+      </Card>
+
+      {/* Year Distribution */}
+      <Card className="bg-slate-100 dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+        <CardHeader>
+          <CardTitle className="text-slate-900 dark:text-white">Distribution by Year</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3 max-h-64 overflow-y-auto">
+            {Object.entries(yearGroups)
+              .sort(([a], [b]) => parseInt(b) - parseInt(a))
+              .map(([year, stats]) => (
+                <div key={year} className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm font-medium text-slate-900 dark:text-white">{year}</span>
+                      <span className="text-xs text-slate-600 dark:text-slate-400">
+                        {stats.count} coin{stats.count !== 1 ? 's' : ''}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400">
+                      <span>Cost: {spotPriceService.formatCHF(stats.totalCost)}</span>
+                      <span className="text-emerald-600 dark:text-emerald-400">
+                        Value: {spotPriceService.formatCHF(stats.totalValue)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

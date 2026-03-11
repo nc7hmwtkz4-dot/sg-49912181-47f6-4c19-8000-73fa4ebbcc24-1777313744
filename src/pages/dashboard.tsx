@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Package, TrendingUp, ShoppingCart, BarChart3, Tag, RefreshCw } from "lucide-react";
 import { userCoinService } from "@/services/userCoinService";
 import { getListingStats } from "@/services/listingService";
-import { spotPriceService } from "@/lib/spotPrices";
+import { spotPriceService, type SpotPrices } from "@/lib/spotPrices";
 
 interface Stats {
   totalCoins: number;
@@ -45,11 +45,7 @@ export default function Dashboard() {
     totalStartingPrice: 0,
     totalListingValue: 0
   });
-  const [spotPrices, setSpotPrices] = useState<{
-    gold: number;
-    silver: number;
-    platinum: number;
-  } | null>(null);
+  const [spotPrices, setSpotPrices] = useState<SpotPrices | null>(null);
 
   const fetchSpotPrices = async () => {
     const prices = await spotPriceService.getSpotPrices();
