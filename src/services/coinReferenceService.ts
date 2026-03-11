@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
+type CoinReferenceRow = Database["public"]["Tables"]["coins_reference"]["Row"];
 type CoinReferenceInsert = Database["public"]["Tables"]["coins_reference"]["Insert"];
 
 export const coinReferenceService = {
@@ -29,10 +30,9 @@ export const coinReferenceService = {
       // Get unique SKUs from user's coins
       const { data: userCoinsData } = await supabase
         .from("user_coins")
-        .select("sku, coin_name, country_code, km_number, denomination, year, metal_content, metal_purity, weight")
+        .select("sku, coin_name")
         .eq("user_id", user.data.user.id)
         .ilike("sku", `%${searchTerm}%`)
-        .order("sku")
         .limit(50);
 
       // Get unique SKUs from user's sales
@@ -41,11 +41,10 @@ export const coinReferenceService = {
         .select("sku")
         .eq("user_id", user.data.user.id)
         .ilike("sku", `%${searchTerm}%`)
-        .order("sku")
         .limit(50);
 
       // Combine and deduplicate results
-      const combinedResults: CoinReference[] = [];
+      const combinedResults: CoinReferenceRow[] = [];
       const seenSKUs = new Set<string>();
 
       // Add official references first
@@ -61,19 +60,19 @@ export const coinReferenceService = {
       // Add user's coins (create reference-like objects)
       if (userCoinsData) {
         userCoinsData.forEach(coin => {
-          if (!seenSKUs.has(coin.sku)) {
+          if (coin.sku && !seenSKUs.has(coin.sku)) {
             combinedResults.push({
               sku: coin.sku,
               coin_name: coin.coin_name || `Coin ${coin.sku}`,
-              country_code: coin.country_code,
-              km_number: coin.km_number,
-              denomination: coin.denomination,
-              year: coin.year,
-              metal_content: coin.metal_content,
-              metal_purity: coin.metal_purity,
-              weight: coin.weight,
+              country_code: null,
+              km_number: null,
+              denomination: null,
+              year: null,
+              metal_content: null,
+              metal_purity: null,
+              weight: null,
               created_at: new Date().toISOString()
-            } as CoinReference);
+            } as CoinReferenceRow);
             seenSKUs.add(coin.sku);
           }
         });
@@ -82,16 +81,26 @@ export const coinReferenceService = {
       // Add unique SKUs from sales (minimal info)
       if (userSalesData) {
         userSalesData.forEach(sale => {
-          if (!seenSKUs.has(sale.sku)) {
+          if (sale.sku && !seenSKUs.has(sale.sku)) {
             combinedResults.push({
               sku: sale.sku,
               coin_name: `Coin ${sale.sku}`,
+              country_code: null,
+              km_number: null,
+              denomination: null,
+              year: null,
+              metal_content: null,
+              metal_purity: null,
+              weight: null,
               created_at: new Date().toISOString()
-            } as CoinReference);
+            } as CoinReferenceRow);
             seenSKUs.add(sale.sku);
           }
         });
       }
+
+      // Sort results by SKU
+      combinedResults.sort((a, b) => a.sku.localeCompare(b.sku));
 
       return { data: combinedResults, error: refError };
     } catch (error) {
