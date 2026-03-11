@@ -1,6 +1,3 @@
-// Conversion constants
-export const TROY_OZ_TO_GRAMS = 31.1034768;
-
 export interface SpotPrices {
   gold: number;
   silver: number;
@@ -9,8 +6,11 @@ export interface SpotPrices {
 }
 
 /**
- * Fetches current spot prices for precious metals
- * Tries to fetch from internal API route first to protect keys, falls back to direct API if needed
+ * Fetches current spot prices for precious metals in CHF per gram
+ * Uses internal API route which scrapes from:
+ * - gold-price.info for gold
+ * - silver-price.info for silver
+ * - platinum-price.com for platinum
  * @returns Spot prices in CHF per gram
  */
 export const fetchSpotPrices = async (): Promise<SpotPrices> => {
@@ -59,7 +59,9 @@ export function calculateBullionValue(
     return 0;
   }
   
-  const pureWeight = weight * (purity / 100);
+  // Handle both percentage (0-100) and decimal (0-1) purity values
+  const normalizedPurity = purity > 1 ? purity / 100 : purity;
+  const pureWeight = weight * normalizedPurity;
   return pureWeight * pricePerGram;
 }
 

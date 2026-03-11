@@ -1,8 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { supabase } from "@/integrations/supabase/client";
+import * as cheerio from "cheerio";
 
-const METAL_PRICE_API_KEY = "a4c341c9c8b69969cba65382941825cf";
-const TROY_OZ_TO_GRAMS = 31.1034768;
 const CACHE_DURATION_HOURS = 24; // Strict 24-hour caching
 
 export interface SpotPrices {
@@ -10,6 +9,95 @@ export interface SpotPrices {
   silver: number;
   platinum: number;
   timestamp: string;
+}
+
+/**
+ * Scrapes gold price in CHF per gram from gold-price.info
+ */
+async function fetchGoldPrice(): Promise<number> {
+  try {
+    const response = await fetch("https://gold-price.info/");
+    const html = await response.text();
+    const $ = cheerio.load(html);
+    
+    // Look for CHF per gram price
+    // The site structure may vary, so we'll try multiple selectors
+    let price = 0;
+    
+    // Try to find the CHF per gram value in the page
+    $("tr").each((_, element) => {
+      const text = $(element).text();
+      if (text.includes("CHF") && text.includes("gram")) {
+        const priceMatch = text.match(/CHF\s*([\d,.]+)/);
+        if (priceMatch) {
+          price = parseFloat(priceMatch[1].replace(",", ""));
+        }
+      }
+    });
+    
+    return price;
+  } catch (error) {
+    console.error("Error fetching gold price:", error);
+    return 0;
+  }
+}
+
+/**
+ * Scrapes silver price in CHF per gram from silver-price.info
+ */
+async function fetchSilverPrice(): Promise<number> {
+  try {
+    const response = await fetch("https://silver-price.info/");
+    const html = await response.text();
+    const $ = cheerio.load(html);
+    
+    let price = 0;
+    
+    // Try to find the CHF per gram value in the page
+    $("tr").each((_, element) => {
+      const text = $(element).text();
+      if (text.includes("CHF") && text.includes("gram")) {
+        const priceMatch = text.match(/CHF\s*([\d,.]+)/);
+        if (priceMatch) {
+          price = parseFloat(priceMatch[1].replace(",", ""));
+        }
+      }
+    });
+    
+    return price;
+  } catch (error) {
+    console.error("Error fetching silver price:", error);
+    return 0;
+  }
+}
+
+/**
+ * Scrapes platinum price in CHF per gram from platinum-price.com
+ */
+async function fetchPlatinumPrice(): Promise<number> {
+  try {
+    const response = await fetch("https://platinum-price.com/");
+    const html = await response.text();
+    const $ = cheerio.load(html);
+    
+    let price = 0;
+    
+    // Try to find the CHF per gram value in the page
+    $("tr").each((_, element) => {
+      const text = $(element).text();
+      if (text.includes("CHF") && text.includes("gram")) {
+        const priceMatch = text.match(/CHF\s*([\d,.]+)/);
+        if (priceMatch) {
+          price = parseFloat(priceMatch[1].replace(",", ""));
+        }
+      }
+    });
+    
+    return price;
+  } catch (error) {
+    console.error("Error fetching platinum price:", error);
+    return 0;
+  }
 }
 
 export default async function handler(
@@ -42,26 +130,24 @@ export default async function handler(
     }
 
     // Cache is stale or doesn't exist - fetch fresh data
-    console.log("Fetching fresh metal prices from API (cache expired or missing)");
+    console.log("Fetching fresh metal prices from web sources (cache expired or missing)");
     
-    const apiUrl = `https://api.metalpriceapi.com/v1/latest?api_key=${METAL_PRICE_API_KEY}&base=CHF&currencies=XAU,XAG,XPT,XCU`;
-    const response = await fetch(apiUrl);
+    // Fetch prices in parallel for better performance
+    const [gold, silver, platinum] = await Promise.all([
+      fetchGoldPrice(),
+      fetchSilverPrice(),
+      fetchPlatinumPrice()
+    ]);
 
-    if (!response.ok) {
-      throw new Error(`Metal Price API error: ${response.status}`);
+    // Validate that we got reasonable prices
+    if (gold === 0 || silver === 0) {
+      throw new Error("Failed to fetch valid prices from sources");
     }
 
-    const data = await response.json();
-
-    if (!data.rates || !data.rates.XAU || !data.rates.XAG) {
-      throw new Error("Invalid API response format");
-    }
-
-    // Convert from CHF per Troy Ounce to CHF per Gram
     const spotPrices: SpotPrices = {
-      gold: data.rates.XAU / TROY_OZ_TO_GRAMS,
-      silver: data.rates.XAG / TROY_OZ_TO_GRAMS,
-      platinum: data.rates.XPT ? data.rates.XPT / TROY_OZ_TO_GRAMS : 0,
+      gold,
+      silver,
+      platinum: platinum || 0, // Platinum is optional
       timestamp: new Date().toISOString()
     };
 
@@ -86,7 +172,25 @@ export default async function handler(
   } catch (error) {
     console.error("Spot prices API error:", error);
     
-    // Return fallback prices if everything fails
+    // Try to return cached prices even if expired as fallback
+    const { data: fallbackCache } = await supabase
+      .from("spot_prices_cache")
+      .select("*")
+      .order("timestamp", { ascending: false })
+      .limit(1)
+      .single();
+
+    if (fallbackCache) {
+      console.log("Using stale cache as fallback");
+      return res.status(200).json({
+        gold: fallbackCache.gold,
+        silver: fallbackCache.silver,
+        platinum: fallbackCache.platinum,
+        timestamp: fallbackCache.timestamp
+      });
+    }
+
+    // Return reasonable fallback prices if everything fails
     res.status(200).json({
       gold: 80.5,
       silver: 0.95,
