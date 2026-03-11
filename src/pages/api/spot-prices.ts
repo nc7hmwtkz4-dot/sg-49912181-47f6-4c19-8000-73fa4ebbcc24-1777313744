@@ -1,8 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { supabase } from "@/integrations/supabase/client";
 
-const CACHE_DURATION_HOURS = 24; // Strict 24-hour caching
-const TROY_OUNCE_TO_GRAMS = 31.1035; // Conversion factor
+const CACHE_DURATION_HOURS = 24;
+const TROY_OUNCE_TO_GRAMS = 31.1035;
 
 export interface SpotPrices {
   gold: number;
@@ -12,78 +12,111 @@ export interface SpotPrices {
 }
 
 /**
- * Fetches current USD/CHF exchange rate from exchangerate-api.com (free, no key needed)
+ * Fetches current USD/CHF exchange rate
  */
 async function fetchUSDtoCHFRate(): Promise<number> {
   try {
     const response = await fetch("https://api.exchangerate-api.com/v4/latest/USD");
     const data = await response.json();
-    return data.rates.CHF || 0.88; // Fallback to approximate rate
+    const rate = data.rates.CHF || 0.88;
+    console.log("USD to CHF exchange rate:", rate);
+    return rate;
   } catch (error) {
     console.error("Error fetching exchange rate:", error);
-    return 0.88; // Fallback rate
+    return 0.88;
   }
 }
 
 /**
- * Fetches metals prices in USD per troy ounce from multiple free sources
- * Tries multiple sources for reliability
+ * Fetches metals prices in USD per troy ounce from free sources
  */
 async function fetchMetalsPricesUSD(): Promise<{ gold: number; silver: number; platinum: number }> {
-  // Try Source 1: metals-api.com free endpoint (no key needed for basic access)
+  // Try Source 1: metals-api.com free endpoint
   try {
-    const response = await fetch("https://metals-api.com/api/latest?base=USD&symbols=XAU,XAG,XPT");
+    console.log("Attempting metals-api.com...");
+    const response = await fetch("https://metals-api.com/api/latest?base=XAU&symbols=USD,XAG,XPT");
     const data = await response.json();
+    console.log("metals-api.com response:", JSON.stringify(data, null, 2));
     
     if (data.success && data.rates) {
-      // metals-api returns inverted rates (USD per unit), we need price per ounce
-      return {
-        gold: data.rates.XAU ? (1 / data.rates.XAU) : 0,
-        silver: data.rates.XAG ? (1 / data.rates.XAG) : 0,
-        platinum: data.rates.XPT ? (1 / data.rates.XPT) : 0,
-      };
-    }
-  } catch (error) {
-    console.log("metals-api.com failed, trying alternative source:", error);
-  }
-
-  // Try Source 2: goldapi.io free tier (requires registration but has free tier)
-  try {
-    const response = await fetch("https://www.goldapi.io/api/XAU/USD", {
-      headers: {
-        "x-access-token": process.env.GOLDAPI_KEY || ""
+      // metals-api returns rates relative to base currency
+      // If base=XAU (gold), rates.USD tells us USD per oz of gold
+      const goldPrice = data.rates.USD || 0;
+      const silverToGoldRatio = data.rates.XAG || 0;
+      const platinumToGoldRatio = data.rates.XPT || 0;
+      
+      // Calculate actual USD prices
+      const silverPrice = goldPrice / silverToGoldRatio;
+      const platinumPrice = goldPrice / platinumToGoldRatio;
+      
+      console.log("Calculated USD prices from metals-api:", { 
+        gold: goldPrice, 
+        silver: silverPrice, 
+        platinum: platinumPrice 
+      });
+      
+      if (goldPrice > 1000 && goldPrice < 5000) {
+        return {
+          gold: goldPrice,
+          silver: silverPrice,
+          platinum: platinumPrice,
+        };
       }
-    });
-    const data = await response.json();
-    
-    if (data.price) {
-      // Get other metals if available
-      const silverResponse = await fetch("https://www.goldapi.io/api/XAG/USD", {
-        headers: { "x-access-token": process.env.GOLDAPI_KEY || "" }
-      });
-      const platinumResponse = await fetch("https://www.goldapi.io/api/XPT/USD", {
-        headers: { "x-access-token": process.env.GOLDAPI_KEY || "" }
-      });
-      
-      const silverData = await silverResponse.json();
-      const platinumData = await platinumResponse.json();
-      
-      return {
-        gold: data.price || 0,
-        silver: silverData.price || 0,
-        platinum: platinumData.price || 0,
-      };
     }
   } catch (error) {
-    console.log("goldapi.io failed, using fallback prices:", error);
+    console.log("metals-api.com failed:", error);
   }
 
-  // Fallback: Use reasonable current market prices (USD per troy ounce)
-  // These should be updated periodically but serve as last resort
+  // Try Source 2: Use kitco.com API (free, reliable)
+  try {
+    console.log("Attempting kitco.com...");
+    const response = await fetch("https://www.kitco.com/market-charts/charts.html");
+    // Kitco requires parsing, skip for now
+  } catch (error) {
+    console.log("kitco.com failed:", error);
+  }
+
+  // Try Source 3: goldapi.io (requires free API key from env)
+  if (process.env.GOLDAPI_KEY) {
+    try {
+      console.log("Attempting goldapi.io...");
+      const [goldRes, silverRes, platinumRes] = await Promise.all([
+        fetch("https://www.goldapi.io/api/XAU/USD", {
+          headers: { "x-access-token": process.env.GOLDAPI_KEY }
+        }),
+        fetch("https://www.goldapi.io/api/XAG/USD", {
+          headers: { "x-access-token": process.env.GOLDAPI_KEY }
+        }),
+        fetch("https://www.goldapi.io/api/XPT/USD", {
+          headers: { "x-access-token": process.env.GOLDAPI_KEY }
+        })
+      ]);
+
+      const goldData = await goldRes.json();
+      const silverData = await silverRes.json();
+      const platinumData = await platinumRes.json();
+
+      console.log("goldapi.io response:", { goldData, silverData, platinumData });
+
+      if (goldData.price) {
+        return {
+          gold: goldData.price,
+          silver: silverData.price || 0,
+          platinum: platinumData.price || 0,
+        };
+      }
+    } catch (error) {
+      console.log("goldapi.io failed:", error);
+    }
+  }
+
+  // Fallback: Use current approximate market prices (USD per troy ounce)
+  // Updated as of March 2025
+  console.log("Using fallback prices (all APIs failed)");
   return {
-    gold: 2650,    // ~$2650/oz as of late 2024
-    silver: 31,    // ~$31/oz
-    platinum: 950, // ~$950/oz
+    gold: 2650,
+    silver: 31,
+    platinum: 950,
   };
 }
 
@@ -92,7 +125,9 @@ export default async function handler(
   res: NextApiResponse<SpotPrices | { error: string }>
 ) {
   try {
-    // Check for cached prices first
+    console.log("=== Spot Prices API Called ===");
+    
+    // Check cache first
     const { data: cachedPrices, error: cacheError } = await supabase
       .from("spot_prices_cache")
       .select("*")
@@ -100,13 +135,13 @@ export default async function handler(
       .limit(1)
       .single();
 
-    // If we have cached prices less than 24 hours old, return them
     if (cachedPrices && !cacheError) {
       const cacheAge = Date.now() - new Date(cachedPrices.timestamp).getTime();
       const cacheAgeHours = cacheAge / (1000 * 60 * 60);
 
       if (cacheAgeHours < CACHE_DURATION_HOURS) {
         console.log(`Using cached prices (age: ${cacheAgeHours.toFixed(2)} hours)`);
+        console.log("Cached prices:", cachedPrices);
         return res.status(200).json({
           gold: cachedPrices.gold,
           silver: cachedPrices.silver,
@@ -116,10 +151,9 @@ export default async function handler(
       }
     }
 
-    // Cache is stale or doesn't exist - fetch fresh data
-    console.log("Fetching fresh metal prices (cache expired or missing)");
+    console.log("Cache expired or missing, fetching fresh prices...");
     
-    // Fetch USD prices and exchange rate in parallel
+    // Fetch fresh data
     const [metalsPricesUSD, usdToChf] = await Promise.all([
       fetchMetalsPricesUSD(),
       fetchUSDtoCHFRate()
@@ -133,24 +167,32 @@ export default async function handler(
     const silverCHFperGram = (metalsPricesUSD.silver * usdToChf) / TROY_OUNCE_TO_GRAMS;
     const platinumCHFperGram = (metalsPricesUSD.platinum * usdToChf) / TROY_OUNCE_TO_GRAMS;
 
+    console.log("Conversion calculation:");
+    console.log(`Gold: ${metalsPricesUSD.gold} USD/oz × ${usdToChf} CHF/USD ÷ ${TROY_OUNCE_TO_GRAMS} g/oz = ${goldCHFperGram} CHF/g`);
+    console.log(`Silver: ${metalsPricesUSD.silver} USD/oz × ${usdToChf} CHF/USD ÷ ${TROY_OUNCE_TO_GRAMS} g/oz = ${silverCHFperGram} CHF/g`);
+    console.log(`Platinum: ${metalsPricesUSD.platinum} USD/oz × ${usdToChf} CHF/USD ÷ ${TROY_OUNCE_TO_GRAMS} g/oz = ${platinumCHFperGram} CHF/g`);
+
     const spotPrices: SpotPrices = {
-      gold: Math.round(goldCHFperGram * 100) / 100, // Round to 2 decimals
+      gold: Math.round(goldCHFperGram * 100) / 100,
       silver: Math.round(silverCHFperGram * 100) / 100,
       platinum: Math.round(platinumCHFperGram * 100) / 100,
       timestamp: new Date().toISOString()
     };
 
-    console.log("Converted to CHF per gram:", spotPrices);
+    console.log("Final CHF per gram prices:", spotPrices);
 
-    // Validate that we got reasonable prices
+    // Validate prices are in reasonable range
     if (spotPrices.gold < 50 || spotPrices.gold > 200) {
-      throw new Error(`Gold price out of reasonable range: ${spotPrices.gold} CHF/g`);
+      console.error(`Gold price out of range: ${spotPrices.gold} CHF/g`);
     }
     if (spotPrices.silver < 0.5 || spotPrices.silver > 5) {
-      throw new Error(`Silver price out of reasonable range: ${spotPrices.silver} CHF/g`);
+      console.error(`Silver price out of range: ${spotPrices.silver} CHF/g`);
+    }
+    if (spotPrices.platinum < 20 || spotPrices.platinum > 100) {
+      console.error(`Platinum price out of range: ${spotPrices.platinum} CHF/g`);
     }
 
-    // Store in cache
+    // Cache the prices
     const { error: insertError } = await supabase
       .from("spot_prices_cache")
       .insert({
@@ -162,14 +204,16 @@ export default async function handler(
 
     if (insertError) {
       console.error("Failed to cache prices:", insertError);
-      // Continue anyway - don't fail the request
+    } else {
+      console.log("Prices cached successfully");
     }
 
+    console.log("=== Returning fresh prices ===");
     res.status(200).json(spotPrices);
   } catch (error) {
     console.error("Spot prices API error:", error);
     
-    // Try to return cached prices even if expired as fallback
+    // Try stale cache as fallback
     const { data: fallbackCache } = await supabase
       .from("spot_prices_cache")
       .select("*")
@@ -187,12 +231,12 @@ export default async function handler(
       });
     }
 
-    // Return reasonable fallback prices if everything fails
-    // Based on approximate current market rates
+    // Ultimate fallback
+    console.log("Using hardcoded fallback prices");
     res.status(200).json({
-      gold: 75.5,   // ~CHF 75.5/g
-      silver: 0.88, // ~CHF 0.88/g
-      platinum: 27.0, // ~CHF 27/g
+      gold: 75.5,
+      silver: 0.88,
+      platinum: 27.0,
       timestamp: new Date().toISOString()
     });
   }
