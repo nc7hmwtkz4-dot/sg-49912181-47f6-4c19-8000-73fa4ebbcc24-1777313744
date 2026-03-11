@@ -130,6 +130,24 @@ export default function Collection() {
   // Image viewer state
   const [viewImage, setViewImage] = useState<{ url: string; alt: string } | null>(null);
 
+  // Format timestamp for display
+  const formatTimestamp = (timestamp: string) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    
+    if (diffHours < 1) {
+      const diffMins = Math.floor(diffMs / (1000 * 60));
+      return `Updated ${diffMins} minute${diffMins !== 1 ? 's' : ''} ago`;
+    } else if (diffHours < 24) {
+      return `Updated ${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
+    } else {
+      const diffDays = Math.floor(diffHours / 24);
+      return `Updated ${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
+    }
+  };
+
   const loadCoins = async () => {
     setIsLoading(true);
     
@@ -592,9 +610,16 @@ export default function Collection() {
             <h1 className="text-4xl font-bold text-white mb-2">
               Inventory
             </h1>
-            <p className="text-slate-400 text-lg">
-              {coins.length} coins in collection
-            </p>
+            <div className="flex items-center gap-4">
+              <p className="text-slate-400 text-lg">
+                {coins.length} coins in collection
+              </p>
+              {spotPrices && (
+                <p className="text-slate-500 text-sm">
+                  • Spot prices: {formatTimestamp(spotPrices.timestamp)}
+                </p>
+              )}
+            </div>
           </div>
 
           {/* Action Buttons */}
