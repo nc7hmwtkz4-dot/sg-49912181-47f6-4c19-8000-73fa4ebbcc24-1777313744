@@ -7,17 +7,18 @@ export interface SpotPrices {
 
 /**
  * Fetches current spot prices for precious metals in CHF per gram
- * Uses internal API route which scrapes from:
- * - gold-price.info for gold
- * - silver-price.info for silver
- * - platinum-price.com for platinum
+ * Uses hybrid approach:
+ * 1. Fetches USD prices per troy ounce from free metals APIs
+ * 2. Fetches USD/CHF exchange rate
+ * 3. Converts to CHF per gram
+ * Prices are cached for 24 hours
  * @returns Spot prices in CHF per gram
  */
 export const fetchSpotPrices = async (): Promise<SpotPrices> => {
   try {
     const response = await fetch('/api/spot-prices');
     const data = await response.json();
-    console.log("Client-side Spot Prices Data:", data);
+    console.log("Spot Prices (CHF per gram):", data);
     return data;
   } catch (error) {
     console.error('Error fetching spot prices:', error);
