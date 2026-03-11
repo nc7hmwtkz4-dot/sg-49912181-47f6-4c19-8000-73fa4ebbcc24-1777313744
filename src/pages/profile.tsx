@@ -57,13 +57,16 @@ export default function SettingsPage() {
 
   const loadUserProfile = async () => {
     try {
+      console.log("🔄 Loading user profile...");
       const authUser = await authService.getCurrentUser();
       
       if (!authUser) {
+        console.log("❌ No auth user found, redirecting...");
         router.push("/");
         return;
       }
 
+      console.log("👤 Auth user loaded:", authUser.id);
       setUser(authUser);
       setFullName((authUser.user_metadata?.full_name as string) || "");
       setEmail(authUser.email || "");
@@ -75,11 +78,26 @@ export default function SettingsPage() {
         .eq("id", authUser.id)
         .single();
 
+      console.log("💾 Profile data from database:", { profile, error: profileError });
+
       if (!profileError && profile) {
-        setGoldPrice(profile.gold_price_chf_per_gram?.toString() || "85.00");
-        setSilverPrice(profile.silver_price_chf_per_gram?.toString() || "0.95");
-        setPlatinumPrice(profile.platinum_price_chf_per_gram?.toString() || "28.00");
+        const loadedGold = profile.gold_price_chf_per_gram?.toString() || "85.00";
+        const loadedSilver = profile.silver_price_chf_per_gram?.toString() || "0.95";
+        const loadedPlatinum = profile.platinum_price_chf_per_gram?.toString() || "28.00";
+        
+        console.log("📊 Setting state with loaded values:", {
+          gold: loadedGold,
+          silver: loadedSilver,
+          platinum: loadedPlatinum,
+          timestamp: profile.prices_last_updated
+        });
+
+        setGoldPrice(loadedGold);
+        setSilverPrice(loadedSilver);
+        setPlatinumPrice(loadedPlatinum);
         setPricesLastUpdated(profile.prices_last_updated || null);
+      } else {
+        console.log("⚠️ No profile data found or error, using defaults");
       }
 
       // Check if user has 2FA enabled
@@ -88,7 +106,7 @@ export default function SettingsPage() {
         setHas2FA(enabled);
       }
     } catch (err) {
-      console.error("Error loading profile:", err);
+      console.error("❌ Error loading profile:", err);
     } finally {
       setLoading(false);
     }
@@ -190,10 +208,15 @@ export default function SettingsPage() {
     setIsUpdatingPrices(true);
     setPricesMessage(null);
 
+    console.log("🔄 Starting metal prices update...");
+    console.log("📝 Form values:", { goldPrice, silverPrice, platinumPrice });
+
     try {
       const gold = parseFloat(goldPrice);
       const silver = parseFloat(silverPrice);
       const platinum = parseFloat(platinumPrice);
+
+      console.log("🔢 Parsed numbers:", { gold, silver, platinum });
 
       // Validate prices
       if (isNaN(gold) || gold <= 0) {
@@ -206,8 +229,11 @@ export default function SettingsPage() {
         throw new Error("Platinum price must be a positive number");
       }
 
+      console.log("✅ Validation passed");
+      console.log("👤 User ID:", user?.id);
+
       // Update prices in database
-      const { error: updateError } = await supabase
+      const { data, error: updateError } = await supabase
         .from("profiles")
         .update({
           gold_price_chf_per_gram: gold,
@@ -215,7 +241,10 @@ export default function SettingsPage() {
           platinum_price_chf_per_gram: platinum,
           prices_last_updated: new Date().toISOString()
         })
-        .eq("id", user.id);
+        .eq("id", user?.id)
+        .select();
+
+      console.log("💾 Database update result:", { data, error: updateError });
 
       if (updateError) throw updateError;
 
@@ -224,10 +253,19 @@ export default function SettingsPage() {
         text: "Metal prices updated successfully!"
       });
 
+      console.log("✨ Success! Reloading user profile...");
+
       // Reload user data to get updated timestamp
       await loadUserProfile();
+
+      console.log("🔄 Profile reloaded. New state:", {
+        goldPrice,
+        silverPrice,
+        platinumPrice,
+        pricesLastUpdated
+      });
     } catch (error: unknown) {
-      console.error("Error updating metal prices:", error);
+      console.error("❌ Error updating metal prices:", error);
       setPricesMessage({
         type: "error",
         text: error instanceof Error ? error.message : "Failed to update metal prices. Please try again."
