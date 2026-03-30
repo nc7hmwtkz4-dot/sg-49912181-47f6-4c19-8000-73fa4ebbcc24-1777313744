@@ -1123,7 +1123,7 @@ export default function Collection() {
               <SelectItem value="all" className="text-white">All Countries</SelectItem>
               {uniqueCountries.map(code => (
                 <SelectItem key={code} value={code} className="text-white">
-                  {COUNTRY_CODES[countryCode]}
+                  {COUNTRY_CODES[code as keyof typeof COUNTRY_CODES] || code}
                 </SelectItem>
               ))}
             </SelectContent>

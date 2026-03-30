@@ -1,4 +1,4 @@
- 
+/* eslint-disable @typescript-eslint/no-empty-object-type */
 export type Json =
   | string
   | number
@@ -15,6 +15,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      buyers: {
+        Row: {
+          address: string | null
+          city: string | null
+          created_at: string | null
+          email: string | null
+          first_name: string
+          id: string
+          last_name: string
+          notes: string | null
+          phone: string | null
+          postcode: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          address?: string | null
+          city?: string | null
+          created_at?: string | null
+          email?: string | null
+          first_name: string
+          id?: string
+          last_name: string
+          notes?: string | null
+          phone?: string | null
+          postcode?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          address?: string | null
+          city?: string | null
+          created_at?: string | null
+          email?: string | null
+          first_name?: string
+          id?: string
+          last_name?: string
+          notes?: string | null
+          phone?: string | null
+          postcode?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       coins_reference: {
         Row: {
           coin_name: string | null
@@ -295,6 +340,7 @@ export type Database = {
       }
       user_sales: {
         Row: {
+          buyer_id: string | null
           buyer_info: string | null
           coin_id: string
           coin_name: string | null
@@ -311,6 +357,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          buyer_id?: string | null
           buyer_info?: string | null
           coin_id: string
           coin_name?: string | null
@@ -327,6 +374,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          buyer_id?: string | null
           buyer_info?: string | null
           coin_id?: string
           coin_name?: string | null
@@ -343,6 +391,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "user_sales_buyer_id_fkey"
+            columns: ["buyer_id"]
+            isOneToOne: false
+            referencedRelation: "buyers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "user_sales_coin_id_fkey"
             columns: ["coin_id"]
