@@ -2,7 +2,7 @@ import { ReactNode, useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/router";
-import { LogIn, LogOut, User } from "lucide-react";
+import { LogIn, LogOut, User, LayoutDashboard, Coins, ShoppingCart, TrendingUp, Users } from "lucide-react";
 import { ThemeSwitch } from "./ThemeSwitch";
 import { Button } from "./ui/button";
 import { AuthModal } from "./AuthModal";
@@ -20,6 +20,14 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 interface LayoutProps {
   children: ReactNode;
 }
+
+const menuItems = [
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/collection", label: "Collection", icon: Coins },
+  { href: "/listings", label: "Listings", icon: ShoppingCart },
+  { href: "/sales", label: "Sales", icon: TrendingUp },
+  { href: "/buyers", label: "Buyers", icon: Users },
+];
 
 export function Layout({ children }: LayoutProps) {
   const router = useRouter();
@@ -126,6 +134,17 @@ export function Layout({ children }: LayoutProps) {
                   }`}
                 >
                   Sales
+                </Link>
+
+                <Link 
+                  href="/buyers"
+                  className={`px-4 py-2 rounded-lg transition-all font-medium ${
+                    router.pathname === "/buyers"
+                      ? "bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-lg"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
+                  }`}
+                >
+                  Buyers
                 </Link>
               </div>
             )}
