@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { SEO } from "@/components/SEO";
-import Layout from "@/components/Layout";
+import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -60,13 +60,25 @@ export default function BuyersPage() {
       userSalesService.getUserSales()
     ]);
 
+    let mappedBuyers: Buyer[] = [];
     if (buyersResult.data) {
-      setBuyers(buyersResult.data);
+      mappedBuyers = buyersResult.data.map((b: any) => ({
+        id: b.id,
+        firstName: b.first_name,
+        lastName: b.last_name,
+        email: b.email,
+        phone: b.phone || undefined,
+        address: b.address || undefined,
+        postcode: b.postcode || undefined,
+        city: b.city || undefined,
+        createdAt: b.created_at
+      }));
+      setBuyers(mappedBuyers);
     }
 
     if (salesResult.data) {
       setSales(salesResult.data);
-      calculateAnalytics(buyersResult.data || [], salesResult.data);
+      calculateAnalytics(mappedBuyers, salesResult.data);
     }
 
     setLoading(false);
@@ -170,12 +182,12 @@ export default function BuyersPage() {
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
-      currency: "USD"
+      currency: "CHF"
     }).format(value);
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
+    return new Date(dateString).toLocaleDateString("de-CH", {
       year: "numeric",
       month: "short",
       day: "numeric"
@@ -196,7 +208,9 @@ export default function BuyersPage() {
       <div className="container mx-auto px-4 py-8 space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-4xl font-bold tracking-tight">Buyers Analytics</h1>
+            <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-brand-primary to-brand-secondary bg-clip-text text-transparent">
+              Buyers Analytics
+            </h1>
             <p className="text-muted-foreground mt-2">
               Understand your buyers&apos; preferences and purchasing patterns
             </p>
@@ -205,55 +219,55 @@ export default function BuyersPage() {
 
         {/* Overview Statistics */}
         <div className="grid gap-4 md:grid-cols-4">
-          <Card>
+          <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Buyers</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-blue-600 dark:text-blue-400">Total Buyers</CardTitle>
+              <Users className="h-4 w-4 text-blue-600 dark:text-blue-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{buyers.length}</div>
-              <p className="text-xs text-muted-foreground">
+              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{buyers.length}</div>
+              <p className="text-xs text-blue-600/70 dark:text-blue-400/70">
                 {activeBuyers} active buyers
               </p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-0 shadow-lg bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950 dark:to-emerald-950">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-green-600 dark:text-green-400">Total Revenue</CardTitle>
+              <DollarSign className="h-4 w-4 text-green-600 dark:text-green-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(totalRevenue)}</div>
-              <p className="text-xs text-muted-foreground">
+              <div className="text-2xl font-bold text-green-600 dark:text-green-400">{formatCurrency(totalRevenue)}</div>
+              <p className="text-xs text-green-600/70 dark:text-green-400/70">
                 From all buyers
               </p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-0 shadow-lg bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-950 dark:to-amber-950">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Transactions</CardTitle>
-              <ShoppingBag className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-orange-600 dark:text-orange-400">Total Transactions</CardTitle>
+              <ShoppingBag className="h-4 w-4 text-orange-600 dark:text-orange-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{totalTransactions}</div>
-              <p className="text-xs text-muted-foreground">
+              <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">{totalTransactions}</div>
+              <p className="text-xs text-orange-600/70 dark:text-orange-400/70">
                 Completed sales
               </p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-0 shadow-lg bg-gradient-to-br from-purple-50 to-fuchsia-50 dark:from-purple-950 dark:to-fuchsia-950">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Avg. Transaction</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-purple-600 dark:text-purple-400">Avg. Transaction</CardTitle>
+              <TrendingUp className="h-4 w-4 text-purple-600 dark:text-purple-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
+              <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
                 {formatCurrency(totalTransactions > 0 ? totalRevenue / totalTransactions : 0)}
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-purple-600/70 dark:text-purple-400/70">
                 Per transaction
               </p>
             </CardContent>
@@ -261,7 +275,7 @@ export default function BuyersPage() {
         </div>
 
         {/* Buyers Analytics Table */}
-        <Card>
+        <Card className="border-0 shadow-lg">
           <CardHeader>
             <CardTitle>Buyer Performance</CardTitle>
             <CardDescription>
@@ -299,9 +313,9 @@ export default function BuyersPage() {
                   </TableHeader>
                   <TableBody>
                     {analytics.map((buyerAnalytics) => (
-                      <TableRow key={buyerAnalytics.buyer.id}>
+                      <TableRow key={buyerAnalytics.buyer.id} className="hover:bg-brand-muted/30">
                         <TableCell className="font-medium">
-                          {buyerAnalytics.buyer.first_name} {buyerAnalytics.buyer.last_name}
+                          {buyerAnalytics.buyer.firstName} {buyerAnalytics.buyer.lastName}
                         </TableCell>
                         <TableCell>
                           <div className="flex flex-col gap-1 text-sm">
@@ -320,11 +334,11 @@ export default function BuyersPage() {
                           </div>
                         </TableCell>
                         <TableCell className="text-right">
-                          <Badge variant="secondary">
+                          <Badge variant="secondary" className="bg-brand-muted text-brand-primary border-brand-primary/20">
                             {buyerAnalytics.totalPurchases}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-right font-medium">
+                        <TableCell className="text-right font-medium text-brand-primary">
                           {formatCurrency(buyerAnalytics.totalSpent)}
                         </TableCell>
                         <TableCell className="text-right text-muted-foreground">
@@ -366,8 +380,8 @@ export default function BuyersPage() {
       <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>
-              {selectedBuyer?.buyer.first_name} {selectedBuyer?.buyer.last_name}
+            <DialogTitle className="text-2xl text-brand-primary">
+              {selectedBuyer?.buyer.firstName} {selectedBuyer?.buyer.lastName}
             </DialogTitle>
             <DialogDescription>
               Detailed purchasing history and preferences
@@ -377,26 +391,26 @@ export default function BuyersPage() {
           {selectedBuyer && (
             <div className="space-y-6">
               {/* Contact Information */}
-              <Card>
+              <Card className="bg-gradient-to-br from-brand-muted/30 to-transparent border-brand-primary/20">
                 <CardHeader>
                   <CardTitle className="text-base">Contact Information</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
                   {selectedBuyer.buyer.email && (
                     <div className="flex items-center gap-2">
-                      <Mail className="h-4 w-4 text-muted-foreground" />
+                      <Mail className="h-4 w-4 text-brand-primary" />
                       <span>{selectedBuyer.buyer.email}</span>
                     </div>
                   )}
                   {selectedBuyer.buyer.phone && (
                     <div className="flex items-center gap-2">
-                      <Phone className="h-4 w-4 text-muted-foreground" />
+                      <Phone className="h-4 w-4 text-brand-primary" />
                       <span>{selectedBuyer.buyer.phone}</span>
                     </div>
                   )}
                   {(selectedBuyer.buyer.address || selectedBuyer.buyer.city || selectedBuyer.buyer.postcode) && (
                     <div className="flex items-start gap-2">
-                      <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
+                      <MapPin className="h-4 w-4 text-brand-primary mt-0.5" />
                       <div>
                         {selectedBuyer.buyer.address && <div>{selectedBuyer.buyer.address}</div>}
                         {(selectedBuyer.buyer.city || selectedBuyer.buyer.postcode) && (
@@ -414,10 +428,10 @@ export default function BuyersPage() {
               <div className="grid gap-4 md:grid-cols-3">
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium">Total Spent</CardTitle>
+                    <CardTitle className="text-sm font-medium text-gray-500">Total Spent</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">
+                    <div className="text-2xl font-bold text-green-600">
                       {formatCurrency(selectedBuyer.totalSpent)}
                     </div>
                   </CardContent>
@@ -425,10 +439,10 @@ export default function BuyersPage() {
 
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium">Total Purchases</CardTitle>
+                    <CardTitle className="text-sm font-medium text-gray-500">Total Purchases</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">
+                    <div className="text-2xl font-bold text-blue-600">
                       {selectedBuyer.totalPurchases}
                     </div>
                   </CardContent>
@@ -436,10 +450,10 @@ export default function BuyersPage() {
 
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium">Avg. Purchase</CardTitle>
+                    <CardTitle className="text-sm font-medium text-gray-500">Avg. Purchase</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">
+                    <div className="text-2xl font-bold text-purple-600">
                       {formatCurrency(selectedBuyer.averagePurchase)}
                     </div>
                   </CardContent>
@@ -457,8 +471,8 @@ export default function BuyersPage() {
                       <div className="space-y-2">
                         {selectedBuyer.topPurchases.map((item, idx) => (
                           <div key={idx} className="flex justify-between items-center text-sm">
-                            <span className="truncate flex-1">{item.coinName}</span>
-                            <Badge variant="outline">{item.count}x</Badge>
+                            <span className="truncate flex-1 mr-2">{item.coinName}</span>
+                            <Badge variant="outline" className="bg-brand-muted">{item.count}x</Badge>
                           </div>
                         ))}
                       </div>
@@ -476,7 +490,7 @@ export default function BuyersPage() {
                         {selectedBuyer.preferredDenominations.map((item, idx) => (
                           <div key={idx} className="flex justify-between items-center text-sm">
                             <span>{item.denomination}</span>
-                            <Badge variant="outline">{item.count}x</Badge>
+                            <Badge variant="outline" className="bg-brand-muted">{item.count}x</Badge>
                           </div>
                         ))}
                       </div>
@@ -494,7 +508,7 @@ export default function BuyersPage() {
                         {selectedBuyer.preferredCountries.map((item, idx) => (
                           <div key={idx} className="flex justify-between items-center text-sm">
                             <span>{item.country}</span>
-                            <Badge variant="outline">{item.count}x</Badge>
+                            <Badge variant="outline" className="bg-brand-muted">{item.count}x</Badge>
                           </div>
                         ))}
                       </div>
@@ -521,15 +535,15 @@ export default function BuyersPage() {
                       </TableHeader>
                       <TableBody>
                         {selectedBuyer.purchases.map((purchase) => (
-                          <TableRow key={purchase.id}>
+                          <TableRow key={purchase.id} className="hover:bg-brand-muted/30">
                             <TableCell>{formatDate(purchase.saleDate)}</TableCell>
                             <TableCell className="font-medium">
                               {purchase.coinName}
                             </TableCell>
-                            <TableCell className="font-mono text-sm">
+                            <TableCell className="font-mono text-sm text-gray-500">
                               {purchase.sku}
                             </TableCell>
-                            <TableCell className="text-right">
+                            <TableCell className="text-right font-medium text-brand-primary">
                               {formatCurrency(purchase.salePrice)}
                             </TableCell>
                           </TableRow>
