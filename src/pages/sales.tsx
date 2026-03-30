@@ -4,7 +4,7 @@ import { Layout } from "@/components/Layout";
 import { spotPriceService } from "@/lib/spotPrices";
 import { userCoinService } from "@/services/userCoinService";
 import { userSalesService } from "@/services/userSalesService";
-import { Coin, Sale, SheldonGrade } from "@/types/coin";
+import { Coin, Sale, SheldonGrade, Buyer } from "@/types/coin";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,23 +13,37 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, TrendingUp, TrendingDown, DollarSign } from "lucide-react";
+import { Plus, TrendingUp, TrendingDown, DollarSign, Users, Edit } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 
 export default function Sales() {
   const [coins, setCoins] = useState<Coin[]>([]);
   const [sales, setSales] = useState<Sale[]>([]);
+  const [buyers, setBuyers] = useState<Buyer[]>([]);
+  const [filteredSales, setFilteredSales] = useState<Sale[]>([]);
+  const [selectedYear, setSelectedYear] = useState<string>("all");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isBuyerDialogOpen, setIsBuyerDialogOpen] = useState(false);
+  const [isLinkBuyerDialogOpen, setIsLinkBuyerDialogOpen] = useState(false);
+  const [editingBuyer, setEditingBuyer] = useState<Buyer | null>(null);
+  const [selectedSaleForBuyer, setSelectedSaleForBuyer] = useState<Sale | null>(null);
   const [formData, setFormData] = useState<Partial<Sale>>({});
+  const [buyerFormData, setBuyerFormData] = useState<Partial<Buyer>>({});
   const [selectedCoinId, setSelectedCoinId] = useState<string>("");
+  const [selectedBuyerId, setSelectedBuyerId] = useState<string>("");
 
   useEffect(() => {
     loadData();
   }, []);
 
+  useEffect(() => {
+    filterSalesByYear();
+  }, [sales, selectedYear]);
+
   const loadData = async () => {
     const { data: coinsData } = await userCoinService.getUserCoins();
     const { data: salesData } = await userSalesService.getUserSales();
+    const { data: buyersData } = await userSalesService.getBuyers();
     
     if (coinsData) {
       const mappedCoins: Coin[] = coinsData.map((c) => ({
@@ -54,6 +68,21 @@ export default function Sales() {
       setCoins(mappedCoins);
     }
 
+    if (buyersData) {
+      const mappedBuyers: Buyer[] = buyersData.map((b) => ({
+        id: b.id,
+        firstName: b.first_name,
+        lastName: b.last_name,
+        email: b.email,
+        phone: b.phone || undefined,
+        address: b.address || undefined,
+        postcode: b.postcode || undefined,
+        city: b.city || undefined,
+        createdAt: b.created_at
+      }));
+      setBuyers(mappedBuyers);
+    }
+
     if (salesData) {
       const mappedSales: Sale[] = salesData.map((s) => ({
         id: s.id,
@@ -61,16 +90,44 @@ export default function Sales() {
         saleDate: s.sale_date,
         salePrice: s.sale_price,
         buyerInfo: s.buyer_info,
+        buyerId: s.buyer_id || undefined,
         notes: s.notes,
         sku: s.sku || "",
         coinName: s.coin_name || "",
         purchasePrice: s.purchase_price || 0,
         profit: s.profit || 0,
-        markupPercentage: s.markup_percentage || 0
+        markupPercentage: s.markup_percentage || 0,
+        buyer: s.buyer ? {
+          id: s.buyer.id,
+          firstName: s.buyer.first_name,
+          lastName: s.buyer.last_name,
+          email: s.buyer.email,
+          phone: s.buyer.phone || undefined,
+          address: s.buyer.address || undefined,
+          postcode: s.buyer.postcode || undefined,
+          city: s.buyer.city || undefined,
+          createdAt: s.buyer.created_at
+        } : undefined
       }));
       setSales(mappedSales);
     }
   };
+
+  const filterSalesByYear = () => {
+    if (selectedYear === "all") {
+      setFilteredSales(sales);
+    } else {
+      const filtered = sales.filter(sale => {
+        const saleYear = new Date(sale.saleDate).getFullYear().toString();
+        return saleYear === selectedYear;
+      });
+      setFilteredSales(filtered);
+    }
+  };
+
+  const availableYears = Array.from(new Set(sales.map(sale => 
+    new Date(sale.saleDate).getFullYear().toString()
+  ))).sort((a, b) => parseInt(b) - parseInt(a));
 
   const availableCoins = coins.filter(coin => !coin.isSold);
 
@@ -82,12 +139,11 @@ export default function Sales() {
       return;
     }
 
-    // Pass 0 for calculated fields to satisfy Typescript requirements
-    // The database trigger will overwrite these with correct values
     const newSale = {
       coin_id: selectedCoinId,
       sale_date: formData.saleDate,
       sale_price: formData.salePrice,
+      buyer_id: selectedBuyerId || null,
       buyer_info: formData.buyerInfo || "",
       notes: formData.notes || "",
       purchase_price: 0,
@@ -114,9 +170,95 @@ export default function Sales() {
     setIsAddDialogOpen(false);
   };
 
+  const handleBuyerSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!buyerFormData.firstName || !buyerFormData.lastName || !buyerFormData.email) {
+      alert("Please fill in all required fields");
+      return;
+    }
+
+    const buyerData = {
+      first_name: buyerFormData.firstName,
+      last_name: buyerFormData.lastName,
+      email: buyerFormData.email,
+      phone: buyerFormData.phone || null,
+      address: buyerFormData.address || null,
+      postcode: buyerFormData.postcode || null,
+      city: buyerFormData.city || null
+    };
+
+    if (editingBuyer) {
+      const { error } = await userSalesService.updateBuyer(editingBuyer.id, buyerData);
+      if (error) {
+        alert(`Failed to update buyer: ${error.message}`);
+        return;
+      }
+    } else {
+      const { error } = await userSalesService.addBuyer(buyerData);
+      if (error) {
+        alert(`Failed to add buyer: ${error.message}`);
+        return;
+      }
+    }
+
+    await loadData();
+    resetBuyerForm();
+    setIsBuyerDialogOpen(false);
+  };
+
+  const handleLinkBuyer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!selectedSaleForBuyer || !selectedBuyerId) {
+      alert("Please select a buyer");
+      return;
+    }
+
+    const { error } = await userSalesService.updateSale(selectedSaleForBuyer.id, {
+      buyer_id: selectedBuyerId
+    });
+
+    if (error) {
+      alert(`Failed to link buyer: ${error.message}`);
+      return;
+    }
+
+    await loadData();
+    setIsLinkBuyerDialogOpen(false);
+    setSelectedSaleForBuyer(null);
+    setSelectedBuyerId("");
+  };
+
   const resetForm = () => {
     setFormData({});
     setSelectedCoinId("");
+    setSelectedBuyerId("");
+  };
+
+  const resetBuyerForm = () => {
+    setBuyerFormData({});
+    setEditingBuyer(null);
+  };
+
+  const openEditBuyer = (buyer: Buyer) => {
+    setEditingBuyer(buyer);
+    setBuyerFormData({
+      firstName: buyer.firstName,
+      lastName: buyer.lastName,
+      email: buyer.email,
+      phone: buyer.phone,
+      address: buyer.address,
+      postcode: buyer.postcode,
+      city: buyer.city
+    });
+    setIsBuyerDialogOpen(true);
+  };
+
+  const openLinkBuyerDialog = (sale: Sale) => {
+    setSelectedSaleForBuyer(sale);
+    setSelectedBuyerId(sale.buyerId || "");
+    setIsLinkBuyerDialogOpen(true);
   };
 
   const getCoinById = (coinId: string): Coin | undefined => {
@@ -135,27 +277,13 @@ export default function Sales() {
     return ((sale.salePrice - coin.purchasePrice) / coin.purchasePrice) * 100;
   };
 
-  const totalRevenue = sales.reduce((sum, sale) => sum + sale.salePrice, 0);
-  const totalProfit = sales.reduce((sum, sale) => sum + calculateProfit(sale), 0);
-  const totalCost = sales.reduce((sum, sale) => {
+  const totalRevenue = filteredSales.reduce((sum, sale) => sum + sale.salePrice, 0);
+  const totalProfit = filteredSales.reduce((sum, sale) => sum + calculateProfit(sale), 0);
+  const totalCost = filteredSales.reduce((sum, sale) => {
     const coin = getCoinById(sale.coinId);
     return sum + (coin?.purchasePrice || 0);
   }, 0);
   const averageMarkup = totalCost > 0 ? ((totalRevenue - totalCost) / totalCost) * 100 : 0;
-
-  console.log("Sales Page Total Profit Calculation:");
-  console.log("Sales count:", sales.length);
-  console.log("Sales data:", sales.map(s => {
-    const coin = getCoinById(s.coinId);
-    const profit = s.salePrice - (coin?.purchasePrice || 0);
-    return {
-      id: s.id,
-      salePrice: s.salePrice,
-      purchasePrice: coin?.purchasePrice,
-      calculatedProfit: profit
-    };
-  }));
-  console.log("Total Profit:", totalProfit);
 
   return (
     <Layout>
@@ -171,128 +299,326 @@ export default function Sales() {
               Sales Records
             </h1>
             <p className="text-gray-600 dark:text-gray-400 text-lg">
-              {sales.length} total sales • {spotPriceService.formatCHF(totalProfit)} profit
+              {filteredSales.length} {selectedYear !== "all" ? `sales in ${selectedYear}` : "total sales"} • {spotPriceService.formatCHF(totalProfit)} profit
             </p>
           </div>
 
-          <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
-            setIsAddDialogOpen(open);
-            if (!open) resetForm();
-          }}>
-            <DialogTrigger asChild>
-              <Button 
-                className="bg-gradient-to-r from-brand-primary to-brand-secondary hover:opacity-90 shadow-lg" 
-                disabled={availableCoins.length === 0}
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Record Sale
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle className="text-2xl">Record New Sale</DialogTitle>
-              </DialogHeader>
-              
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div>
-                  <Label htmlFor="coin" className="text-sm font-medium">Select Coin *</Label>
-                  <Select 
-                    value={selectedCoinId} 
-                    onValueChange={setSelectedCoinId}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Choose a coin to sell" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-60">
-                      {availableCoins.map(coin => (
-                        <SelectItem key={coin.id} value={coin.id}>
-                          {coin.sku} - {coin.year} ({coin.mintmark || "No mintmark"}) - Grade {coin.sheldonGrade} - Purchased at {spotPriceService.formatCHF(coin.purchasePrice)}
-                        </SelectItem>
+          <div className="flex gap-2">
+            <Dialog open={isBuyerDialogOpen} onOpenChange={(open) => {
+              setIsBuyerDialogOpen(open);
+              if (!open) resetBuyerForm();
+            }}>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="border-brand-primary text-brand-primary hover:bg-brand-muted">
+                  <Users className="w-4 h-4 mr-2" />
+                  Manage Buyers
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle className="text-2xl">{editingBuyer ? "Edit Buyer" : "Add New Buyer"}</DialogTitle>
+                </DialogHeader>
+                
+                <form onSubmit={handleBuyerSubmit} className="space-y-6">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="firstName" className="text-sm font-medium">First Name *</Label>
+                      <Input
+                        id="firstName"
+                        value={buyerFormData.firstName || ""}
+                        onChange={(e) => setBuyerFormData({...buyerFormData, firstName: e.target.value})}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="lastName" className="text-sm font-medium">Last Name *</Label>
+                      <Input
+                        id="lastName"
+                        value={buyerFormData.lastName || ""}
+                        onChange={(e) => setBuyerFormData({...buyerFormData, lastName: e.target.value})}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="email" className="text-sm font-medium">Email *</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        value={buyerFormData.email || ""}
+                        onChange={(e) => setBuyerFormData({...buyerFormData, email: e.target.value})}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="phone" className="text-sm font-medium">Phone</Label>
+                      <Input
+                        id="phone"
+                        type="tel"
+                        value={buyerFormData.phone || ""}
+                        onChange={(e) => setBuyerFormData({...buyerFormData, phone: e.target.value})}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="address" className="text-sm font-medium">Address</Label>
+                    <Input
+                      id="address"
+                      value={buyerFormData.address || ""}
+                      onChange={(e) => setBuyerFormData({...buyerFormData, address: e.target.value})}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="postcode" className="text-sm font-medium">Postcode</Label>
+                      <Input
+                        id="postcode"
+                        value={buyerFormData.postcode || ""}
+                        onChange={(e) => setBuyerFormData({...buyerFormData, postcode: e.target.value})}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="city" className="text-sm font-medium">City</Label>
+                      <Input
+                        id="city"
+                        value={buyerFormData.city || ""}
+                        onChange={(e) => setBuyerFormData({...buyerFormData, city: e.target.value})}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 justify-end pt-4 border-t">
+                    <Button type="button" variant="outline" onClick={() => setIsBuyerDialogOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button type="submit" className="bg-gradient-to-r from-brand-primary to-brand-secondary hover:opacity-90">
+                      {editingBuyer ? "Update Buyer" : "Add Buyer"}
+                    </Button>
+                  </div>
+                </form>
+
+                {buyers.length > 0 && (
+                  <div className="mt-6 pt-6 border-t">
+                    <h3 className="font-semibold mb-4">Existing Buyers</h3>
+                    <div className="space-y-2 max-h-60 overflow-y-auto">
+                      {buyers.map(buyer => (
+                        <div key={buyer.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-brand-muted/30">
+                          <div>
+                            <p className="font-medium">{buyer.firstName} {buyer.lastName}</p>
+                            <p className="text-sm text-gray-500">{buyer.email}</p>
+                            {buyer.city && <p className="text-sm text-gray-500">{buyer.city}</p>}
+                          </div>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => openEditBuyer(buyer)}
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                        </div>
                       ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="saleDate" className="text-sm font-medium">Sale Date *</Label>
-                    <Input
-                      id="saleDate"
-                      type="date"
-                      value={formData.saleDate || ""}
-                      onChange={(e) => setFormData({...formData, saleDate: e.target.value})}
-                      required
-                    />
+                    </div>
                   </div>
-
-                  <div>
-                    <Label htmlFor="salePrice" className="text-sm font-medium">Sale Price (CHF) *</Label>
-                    <Input
-                      id="salePrice"
-                      type="number"
-                      step="0.01"
-                      value={formData.salePrice || ""}
-                      onChange={(e) => setFormData({...formData, salePrice: parseFloat(e.target.value)})}
-                      placeholder="e.g., 35.50"
-                      required
-                    />
-                  </div>
-                </div>
-
-                {selectedCoinId && (
-                  <Card className="bg-gradient-to-br from-brand-muted to-white dark:from-gray-800 dark:to-gray-900 border-brand-primary/20">
-                    <CardContent className="pt-6">
-                      <div className="space-y-2">
-                        <p className="font-medium text-gray-700 dark:text-gray-300">
-                          Purchase Price: {spotPriceService.formatCHF(getCoinById(selectedCoinId)?.purchasePrice || 0)}
-                        </p>
-                        {formData.salePrice && (
-                          <>
-                            <p className={`font-medium ${(formData.salePrice - (getCoinById(selectedCoinId)?.purchasePrice || 0)) >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
-                              Profit: {spotPriceService.formatCHF(formData.salePrice - (getCoinById(selectedCoinId)?.purchasePrice || 0))}
-                            </p>
-                            <p className="font-medium text-brand-primary">
-                              Markup: {(((formData.salePrice - (getCoinById(selectedCoinId)?.purchasePrice || 0)) / (getCoinById(selectedCoinId)?.purchasePrice || 1)) * 100).toFixed(2)}%
-                            </p>
-                          </>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
                 )}
+              </DialogContent>
+            </Dialog>
 
-                <div>
-                  <Label htmlFor="buyerInfo" className="text-sm font-medium">Buyer Information</Label>
-                  <Input
-                    id="buyerInfo"
-                    value={formData.buyerInfo || ""}
-                    onChange={(e) => setFormData({...formData, buyerInfo: e.target.value})}
-                    placeholder="Name, platform, or reference"
-                  />
-                </div>
+            <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
+              setIsAddDialogOpen(open);
+              if (!open) resetForm();
+            }}>
+              <DialogTrigger asChild>
+                <Button 
+                  className="bg-gradient-to-r from-brand-primary to-brand-secondary hover:opacity-90 shadow-lg" 
+                  disabled={availableCoins.length === 0}
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Record Sale
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle className="text-2xl">Record New Sale</DialogTitle>
+                </DialogHeader>
+                
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  <div>
+                    <Label htmlFor="coin" className="text-sm font-medium">Select Coin *</Label>
+                    <Select 
+                      value={selectedCoinId} 
+                      onValueChange={setSelectedCoinId}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Choose a coin to sell" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-60">
+                        {availableCoins.map(coin => (
+                          <SelectItem key={coin.id} value={coin.id}>
+                            {coin.sku} - {coin.year} ({coin.mintmark || "No mintmark"}) - Grade {coin.sheldonGrade} - Purchased at {spotPriceService.formatCHF(coin.purchasePrice)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                <div>
-                  <Label htmlFor="notes" className="text-sm font-medium">Notes</Label>
-                  <Textarea
-                    id="notes"
-                    value={formData.notes || ""}
-                    onChange={(e) => setFormData({...formData, notes: e.target.value})}
-                    placeholder="Additional sale details"
-                    rows={3}
-                  />
-                </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="saleDate" className="text-sm font-medium">Sale Date *</Label>
+                      <Input
+                        id="saleDate"
+                        type="date"
+                        value={formData.saleDate || ""}
+                        onChange={(e) => setFormData({...formData, saleDate: e.target.value})}
+                        required
+                      />
+                    </div>
 
-                <div className="flex gap-2 justify-end pt-4 border-t">
-                  <Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button type="submit" className="bg-gradient-to-r from-brand-primary to-brand-secondary hover:opacity-90">
-                    Record Sale
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
+                    <div>
+                      <Label htmlFor="salePrice" className="text-sm font-medium">Sale Price (CHF) *</Label>
+                      <Input
+                        id="salePrice"
+                        type="number"
+                        step="0.01"
+                        value={formData.salePrice || ""}
+                        onChange={(e) => setFormData({...formData, salePrice: parseFloat(e.target.value)})}
+                        placeholder="e.g., 35.50"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  {selectedCoinId && (
+                    <Card className="bg-gradient-to-br from-brand-muted to-white dark:from-gray-800 dark:to-gray-900 border-brand-primary/20">
+                      <CardContent className="pt-6">
+                        <div className="space-y-2">
+                          <p className="font-medium text-gray-700 dark:text-gray-300">
+                            Purchase Price: {spotPriceService.formatCHF(getCoinById(selectedCoinId)?.purchasePrice || 0)}
+                          </p>
+                          {formData.salePrice && (
+                            <>
+                              <p className={`font-medium ${(formData.salePrice - (getCoinById(selectedCoinId)?.purchasePrice || 0)) >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+                                Profit: {spotPriceService.formatCHF(formData.salePrice - (getCoinById(selectedCoinId)?.purchasePrice || 0))}
+                              </p>
+                              <p className="font-medium text-brand-primary">
+                                Markup: {(((formData.salePrice - (getCoinById(selectedCoinId)?.purchasePrice || 0)) / (getCoinById(selectedCoinId)?.purchasePrice || 1)) * 100).toFixed(2)}%
+                              </p>
+                            </>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  <div>
+                    <Label htmlFor="buyer" className="text-sm font-medium">Select Buyer (Optional)</Label>
+                    <Select 
+                      value={selectedBuyerId} 
+                      onValueChange={setSelectedBuyerId}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Choose a buyer (optional)" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-60">
+                        <SelectItem value="">No buyer selected</SelectItem>
+                        {buyers.map(buyer => (
+                          <SelectItem key={buyer.id} value={buyer.id}>
+                            {buyer.firstName} {buyer.lastName} - {buyer.email}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="buyerInfo" className="text-sm font-medium">Buyer Information (Legacy)</Label>
+                    <Input
+                      id="buyerInfo"
+                      value={formData.buyerInfo || ""}
+                      onChange={(e) => setFormData({...formData, buyerInfo: e.target.value})}
+                      placeholder="Name, platform, or reference"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="notes" className="text-sm font-medium">Notes</Label>
+                    <Textarea
+                      id="notes"
+                      value={formData.notes || ""}
+                      onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                      placeholder="Additional sale details"
+                      rows={3}
+                    />
+                  </div>
+
+                  <div className="flex gap-2 justify-end pt-4 border-t">
+                    <Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button type="submit" className="bg-gradient-to-r from-brand-primary to-brand-secondary hover:opacity-90">
+                      Record Sale
+                    </Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </div>
+
+        <Dialog open={isLinkBuyerDialogOpen} onOpenChange={setIsLinkBuyerDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Link Buyer to Sale</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleLinkBuyer} className="space-y-4">
+              <div>
+                <Label htmlFor="linkBuyer" className="text-sm font-medium">Select Buyer</Label>
+                <Select 
+                  value={selectedBuyerId} 
+                  onValueChange={setSelectedBuyerId}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose a buyer" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-60">
+                    <SelectItem value="">Remove buyer link</SelectItem>
+                    {buyers.map(buyer => (
+                      <SelectItem key={buyer.id} value={buyer.id}>
+                        {buyer.firstName} {buyer.lastName} - {buyer.email}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex gap-2 justify-end pt-4">
+                <Button type="button" variant="outline" onClick={() => setIsLinkBuyerDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" className="bg-gradient-to-r from-brand-primary to-brand-secondary hover:opacity-90">
+                  Link Buyer
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        <div className="flex gap-4 items-center">
+          <Label htmlFor="yearFilter" className="text-sm font-medium whitespace-nowrap">Filter by Year:</Label>
+          <Select value={selectedYear} onValueChange={setSelectedYear}>
+            <SelectTrigger className="w-40">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Years</SelectItem>
+              {availableYears.map(year => (
+                <SelectItem key={year} value={year}>{year}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="grid md:grid-cols-4 gap-4">
@@ -355,7 +681,7 @@ export default function Sales() {
             </CardHeader>
             <CardContent>
               <p className="text-3xl font-bold text-orange-600 dark:text-orange-400">
-                {sales.length}
+                {filteredSales.length}
               </p>
             </CardContent>
           </Card>
@@ -367,7 +693,7 @@ export default function Sales() {
             <CardDescription className="text-base">Complete record of all coin sales in CHF</CardDescription>
           </CardHeader>
           <CardContent>
-            {sales.length > 0 ? (
+            {filteredSales.length > 0 ? (
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -379,10 +705,11 @@ export default function Sales() {
                       <TableHead className="font-semibold">Profit</TableHead>
                       <TableHead className="font-semibold">Markup</TableHead>
                       <TableHead className="font-semibold">Buyer</TableHead>
+                      <TableHead className="font-semibold">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {sales.map(sale => {
+                    {filteredSales.map(sale => {
                       const coin = getCoinById(sale.coinId);
                       const profit = calculateProfit(sale);
                       const markup = calculateMarkup(sale);
@@ -425,7 +752,25 @@ export default function Sales() {
                             </Badge>
                           </TableCell>
                           <TableCell className="text-sm">
-                            {sale.buyerInfo || "-"}
+                            {sale.buyer ? (
+                              <div>
+                                <p className="font-medium">{sale.buyer.firstName} {sale.buyer.lastName}</p>
+                                <p className="text-gray-500">{sale.buyer.email}</p>
+                              </div>
+                            ) : sale.buyerInfo ? (
+                              <span className="text-gray-500">{sale.buyerInfo}</span>
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => openLinkBuyerDialog(sale)}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
                           </TableCell>
                         </TableRow>
                       );
@@ -436,16 +781,14 @@ export default function Sales() {
             ) : (
               <div className="text-center py-16">
                 <TrendingUp className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500 dark:text-gray-400 text-lg mb-4">No sales recorded yet</p>
-                {availableCoins.length > 0 ? (
+                <p className="text-gray-500 dark:text-gray-400 text-lg mb-4">
+                  {selectedYear !== "all" ? `No sales in ${selectedYear}` : "No sales recorded yet"}
+                </p>
+                {availableCoins.length > 0 && selectedYear === "all" && (
                   <Button onClick={() => setIsAddDialogOpen(true)} className="bg-gradient-to-r from-brand-primary to-brand-secondary hover:opacity-90">
                     <Plus className="w-4 h-4 mr-2" />
                     Record Your First Sale
                   </Button>
-                ) : (
-                  <p className="text-gray-500 dark:text-gray-400 text-sm">
-                    Add coins to your collection first
-                  </p>
                 )}
               </div>
             )}

@@ -1,90 +1,117 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
-type UserSale = Database["public"]["Tables"]["user_sales"]["Row"];
-type UserSaleInsert = Database["public"]["Tables"]["user_sales"]["Insert"];
+type SaleInsert = Database["public"]["Tables"]["user_sales"]["Insert"];
+type SaleUpdate = Database["public"]["Tables"]["user_sales"]["Update"];
+type BuyerInsert = Database["public"]["Tables"]["buyers"]["Insert"];
+type BuyerUpdate = Database["public"]["Tables"]["buyers"]["Update"];
 
 export const userSalesService = {
-  /**
-   * Get all sales for the current user
-   */
-  async getUserSales(): Promise<{ data: UserSale[] | null; error: Error | null }> {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        return { data: null, error: new Error("User not authenticated") };
-      }
-
-      const { data, error } = await supabase
-        .from("user_sales")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("sale_date", { ascending: false });
-
-      if (error) {
-        console.error("Error fetching user sales:", error);
-        return { data: null, error: new Error(error.message) };
-      }
-
-      return { data: data || [], error: null };
-    } catch (err) {
-      console.error("Unexpected error fetching user sales:", err);
-      return { data: null, error: err as Error };
+  getUserSales: async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return { data: null, error: { message: "Not authenticated" } };
     }
+
+    const { data, error } = await supabase
+      .from("user_sales")
+      .select(`
+        *,
+        buyer:buyers(*)
+      `)
+      .eq("user_id", user.id)
+      .order("sale_date", { ascending: false });
+
+    console.log("Sales with buyers:", { data, error });
+    return { data, error };
   },
 
-  /**
-   * Record a new sale
-   */
-  async addSale(sale: Omit<UserSaleInsert, "user_id" | "id" | "created_at">): Promise<{ data: UserSale | null; error: Error | null }> {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        return { data: null, error: new Error("User not authenticated") };
-      }
-
-      const { data, error } = await supabase
-        .from("user_sales")
-        .insert({
-          ...sale,
-          user_id: user.id
-        })
-        .select()
-        .single();
-
-      if (error) {
-        console.error("Error adding sale:", error);
-        return { data: null, error: new Error(error.message) };
-      }
-
-      return { data, error: null };
-    } catch (err) {
-      console.error("Unexpected error adding sale:", err);
-      return { data: null, error: err as Error };
+  addSale: async (sale: Omit<SaleInsert, "id" | "user_id" | "created_at">) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return { data: null, error: { message: "Not authenticated" } };
     }
+
+    const { data, error } = await supabase
+      .from("user_sales")
+      .insert({
+        ...sale,
+        user_id: user.id
+      })
+      .select()
+      .single();
+
+    console.log("Add sale:", { data, error });
+    return { data, error };
   },
 
-  /**
-   * Delete a sale record
-   */
-  async deleteSale(id: string): Promise<{ error: Error | null }> {
-    try {
-      const { error } = await supabase
-        .from("user_sales")
-        .delete()
-        .eq("id", id);
+  updateSale: async (id: string, updates: SaleUpdate) => {
+    const { data, error } = await supabase
+      .from("user_sales")
+      .update(updates)
+      .eq("id", id)
+      .select()
+      .single();
 
-      if (error) {
-        console.error("Error deleting sale:", error);
-        return { error: new Error(error.message) };
-      }
+    console.log("Update sale:", { data, error });
+    return { data, error };
+  },
 
-      return { error: null };
-    } catch (err) {
-      console.error("Unexpected error deleting sale:", err);
-      return { error: err as Error };
+  // Buyer management functions
+  getBuyers: async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return { data: null, error: { message: "Not authenticated" } };
     }
+
+    const { data, error } = await supabase
+      .from("buyers")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("last_name", { ascending: true });
+
+    console.log("Get buyers:", { data, error });
+    return { data, error };
+  },
+
+  addBuyer: async (buyer: Omit<BuyerInsert, "id" | "user_id" | "created_at">) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return { data: null, error: { message: "Not authenticated" } };
+    }
+
+    const { data, error } = await supabase
+      .from("buyers")
+      .insert({
+        ...buyer,
+        user_id: user.id
+      })
+      .select()
+      .single();
+
+    console.log("Add buyer:", { data, error });
+    return { data, error };
+  },
+
+  updateBuyer: async (id: string, updates: BuyerUpdate) => {
+    const { data, error } = await supabase
+      .from("buyers")
+      .update(updates)
+      .eq("id", id)
+      .select()
+      .single();
+
+    console.log("Update buyer:", { data, error });
+    return { data, error };
+  },
+
+  deleteBuyer: async (id: string) => {
+    const { error } = await supabase
+      .from("buyers")
+      .delete()
+      .eq("id", id);
+
+    console.log("Delete buyer:", { error });
+    return { error };
   }
 };

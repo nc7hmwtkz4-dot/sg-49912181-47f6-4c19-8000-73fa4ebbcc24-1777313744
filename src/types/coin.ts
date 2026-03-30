@@ -20,6 +20,18 @@ export interface Coin {
   listingId?: string;
 }
 
+export interface Buyer {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  address?: string;
+  postcode?: string;
+  city?: string;
+  createdAt: string;
+}
+
 export interface Sale {
   id: string;
   coinId: string;
@@ -32,6 +44,8 @@ export interface Sale {
   markupPercentage?: number;
   buyerInfo: string;
   notes: string;
+  buyerId?: string;
+  buyer?: Buyer;
 }
 
 export const SHELDON_GRADES = [
