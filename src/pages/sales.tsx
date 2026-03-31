@@ -569,7 +569,13 @@ export default function Sales() {
           </div>
         </div>
 
-        <Dialog open={isLinkBuyerDialogOpen} onOpenChange={setIsLinkBuyerDialogOpen}>
+        <Dialog open={isLinkBuyerDialogOpen} onOpenChange={(open) => {
+          setIsLinkBuyerDialogOpen(open);
+          if (!open) {
+            setSelectedSaleForBuyer(null);
+            setSelectedBuyerId("");
+          }
+        }}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Link Buyer to Sale</DialogTitle>
