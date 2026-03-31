@@ -256,6 +256,10 @@ export default function Sales() {
   };
 
   const openLinkBuyerDialog = (sale: Sale) => {
+    if (!sale || !sale.id) {
+      console.error("Invalid sale data", sale);
+      return;
+    }
     setSelectedSaleForBuyer(sale);
     setSelectedBuyerId(sale.buyerId || "");
     setIsLinkBuyerDialogOpen(true);
@@ -580,7 +584,7 @@ export default function Sales() {
             <DialogHeader>
               <DialogTitle>Link Buyer to Sale</DialogTitle>
             </DialogHeader>
-            {selectedSaleForBuyer && (
+            {selectedSaleForBuyer && selectedSaleForBuyer.id && (
               <form onSubmit={handleLinkBuyer} className="space-y-4">
                 <div>
                   <Label htmlFor="linkBuyer" className="text-sm font-medium">Select Buyer</Label>
