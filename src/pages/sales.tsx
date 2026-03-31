@@ -86,42 +86,50 @@ export default function Sales() {
         setBuyers(mappedBuyers);
       }
 
-      if (salesData) {
-        const mappedSales: Sale[] = salesData.map((s) => {
-          if (!s || !s.id) {
-            console.error("Invalid sale data:", s);
-            return null;
-          }
-          
-          return {
-            id: s.id,
-            coinId: s.coin_id || "",
-            saleDate: s.sale_date || new Date().toISOString(),
-            salePrice: s.sale_price || 0,
-            buyerInfo: s.buyer_info || "",
-            buyerId: s.buyer_id || undefined,
-            notes: s.notes || "",
-            sku: s.sku || "",
-            coinName: s.coin_name || "",
-            purchasePrice: s.purchase_price || 0,
-            profit: s.profit || 0,
-            markupPercentage: s.markup_percentage || 0,
-            buyer: s.buyer ? {
-              id: s.buyer.id,
-              firstName: s.buyer.first_name || "",
-              lastName: s.buyer.last_name || "",
-              email: s.buyer.email || "",
-              phone: s.buyer.phone || undefined,
-              address: s.buyer.address || undefined,
-              postcode: s.buyer.postcode || undefined,
-              city: s.buyer.city || undefined,
-              createdAt: s.buyer.created_at || new Date().toISOString()
-            } : undefined
-          };
-        }).filter(Boolean) as Sale[];
+      if (salesData && Array.isArray(salesData)) {
+        const mappedSales: Sale[] = salesData
+          .filter((s) => s && s.id)
+          .map((s) => {
+            let buyerData = undefined;
+            
+            if (s.buyer) {
+              const rawBuyer = Array.isArray(s.buyer) ? s.buyer[0] : s.buyer;
+              if (rawBuyer && rawBuyer.id) {
+                buyerData = {
+                  id: rawBuyer.id,
+                  firstName: rawBuyer.first_name || "",
+                  lastName: rawBuyer.last_name || "",
+                  email: rawBuyer.email || "",
+                  phone: rawBuyer.phone || undefined,
+                  address: rawBuyer.address || undefined,
+                  postcode: rawBuyer.postcode || undefined,
+                  city: rawBuyer.city || undefined,
+                  createdAt: rawBuyer.created_at || new Date().toISOString()
+                };
+              }
+            }
+            
+            return {
+              id: s.id,
+              coinId: s.coin_id || "",
+              saleDate: s.sale_date || new Date().toISOString(),
+              salePrice: s.sale_price || 0,
+              buyerInfo: s.buyer_info || "",
+              buyerId: s.buyer_id || undefined,
+              notes: s.notes || "",
+              sku: s.sku || "",
+              coinName: s.coin_name || "",
+              purchasePrice: s.purchase_price || 0,
+              profit: s.profit || 0,
+              markupPercentage: s.markup_percentage || 0,
+              buyer: buyerData
+            };
+          });
         
         console.log("Mapped sales:", mappedSales);
         setSales(mappedSales);
+      } else {
+        setSales([]);
       }
     } catch (error) {
       console.error("Error loading data:", error);
