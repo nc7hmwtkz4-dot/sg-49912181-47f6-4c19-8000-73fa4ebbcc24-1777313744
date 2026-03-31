@@ -280,13 +280,18 @@ export default function Sales() {
   };
 
   const openLinkBuyerDialog = (sale: Sale) => {
+    console.log("Opening link buyer dialog for sale:", sale);
     if (!sale || !sale.id) {
       console.error("Invalid sale data", sale);
+      alert("Error: Invalid sale data. Please refresh the page.");
       return;
     }
+    console.log("Setting selected sale:", sale);
+    console.log("Current buyer ID:", sale.buyerId);
     setSelectedSaleForBuyer(sale);
     setSelectedBuyerId(sale.buyerId || "");
     setIsLinkBuyerDialogOpen(true);
+    console.log("Link buyer dialog should now be open");
   };
 
   const getCoinById = (coinId: string): Coin | undefined => {
