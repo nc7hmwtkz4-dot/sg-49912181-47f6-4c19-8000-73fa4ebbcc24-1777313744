@@ -233,25 +233,23 @@ export default function Sales() {
 
   const handleLinkBuyer = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!selectedSaleForBuyer || !selectedBuyerId) {
-      alert("Please select a buyer");
-      return;
-    }
+    if (!selectedSaleForBuyer) return;
+
+    const buyerIdToSet = selectedBuyerId === "none" ? null : selectedBuyerId;
 
     const { error } = await userSalesService.updateSale(selectedSaleForBuyer.id, {
-      buyer_id: selectedBuyerId
+      buyer_id: buyerIdToSet || null
     });
 
     if (error) {
-      alert(`Failed to link buyer: ${error.message}`);
-      return;
+      console.error("Error linking buyer:", error);
+      alert("Failed to link buyer");
+    } else {
+      setIsLinkBuyerDialogOpen(false);
+      setSelectedSaleForBuyer(null);
+      setSelectedBuyerId("");
+      await loadData();
     }
-
-    await loadData();
-    setIsLinkBuyerDialogOpen(false);
-    setSelectedSaleForBuyer(null);
-    setSelectedBuyerId("");
   };
 
   const resetForm = () => {
@@ -289,7 +287,7 @@ export default function Sales() {
     console.log("Setting selected sale:", sale);
     console.log("Current buyer ID:", sale.buyerId);
     setSelectedSaleForBuyer(sale);
-    setSelectedBuyerId(sale.buyerId || "");
+    setSelectedBuyerId(sale.buyerId || "none");
     setIsLinkBuyerDialogOpen(true);
     console.log("Link buyer dialog should now be open");
   };
@@ -606,7 +604,7 @@ export default function Sales() {
           setIsLinkBuyerDialogOpen(open);
           if (!open) {
             setSelectedSaleForBuyer(null);
-            setSelectedBuyerId("");
+            setSelectedBuyerId("none");
           }
         }}>
           <DialogContent>
@@ -618,14 +616,14 @@ export default function Sales() {
                 <div>
                   <Label htmlFor="linkBuyer" className="text-sm font-medium">Select Buyer</Label>
                   <Select 
-                    value={selectedBuyerId} 
+                    value={selectedBuyerId || "none"} 
                     onValueChange={setSelectedBuyerId}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Choose a buyer" />
                     </SelectTrigger>
                     <SelectContent className="max-h-60">
-                      <SelectItem value="">Remove buyer link</SelectItem>
+                      <SelectItem value="none">Remove buyer link</SelectItem>
                       {buyers.map(buyer => (
                         <SelectItem key={buyer.id} value={buyer.id}>
                           {buyer.firstName} {buyer.lastName} - {buyer.email}
