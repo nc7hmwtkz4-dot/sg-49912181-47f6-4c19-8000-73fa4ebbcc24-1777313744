@@ -580,35 +580,37 @@ export default function Sales() {
             <DialogHeader>
               <DialogTitle>Link Buyer to Sale</DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleLinkBuyer} className="space-y-4">
-              <div>
-                <Label htmlFor="linkBuyer" className="text-sm font-medium">Select Buyer</Label>
-                <Select 
-                  value={selectedBuyerId} 
-                  onValueChange={setSelectedBuyerId}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose a buyer" />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-60">
-                    <SelectItem value="">Remove buyer link</SelectItem>
-                    {buyers.map(buyer => (
-                      <SelectItem key={buyer.id} value={buyer.id}>
-                        {buyer.firstName} {buyer.lastName} - {buyer.email}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex gap-2 justify-end pt-4">
-                <Button type="button" variant="outline" onClick={() => setIsLinkBuyerDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit" className="bg-gradient-to-r from-brand-primary to-brand-secondary hover:opacity-90">
-                  Link Buyer
-                </Button>
-              </div>
-            </form>
+            {selectedSaleForBuyer && (
+              <form onSubmit={handleLinkBuyer} className="space-y-4">
+                <div>
+                  <Label htmlFor="linkBuyer" className="text-sm font-medium">Select Buyer</Label>
+                  <Select 
+                    value={selectedBuyerId} 
+                    onValueChange={setSelectedBuyerId}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose a buyer" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-60">
+                      <SelectItem value="">Remove buyer link</SelectItem>
+                      {buyers.map(buyer => (
+                        <SelectItem key={buyer.id} value={buyer.id}>
+                          {buyer.firstName} {buyer.lastName} - {buyer.email}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex gap-2 justify-end pt-4">
+                  <Button type="button" variant="outline" onClick={() => setIsLinkBuyerDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" className="bg-gradient-to-r from-brand-primary to-brand-secondary hover:opacity-90">
+                    Link Buyer
+                  </Button>
+                </div>
+              </form>
+            )}
           </DialogContent>
         </Dialog>
 
