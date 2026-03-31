@@ -30,7 +30,7 @@ export default function Sales() {
   const [formData, setFormData] = useState<Partial<Sale>>({});
   const [buyerFormData, setBuyerFormData] = useState<Partial<Buyer>>({});
   const [selectedCoinId, setSelectedCoinId] = useState<string>("");
-  const [selectedBuyerId, setSelectedBuyerId] = useState<string>("");
+  const [selectedBuyerId, setSelectedBuyerId] = useState<string>("none");
 
   useEffect(() => {
     loadData();
@@ -167,7 +167,7 @@ export default function Sales() {
       coin_id: selectedCoinId,
       sale_date: formData.saleDate,
       sale_price: formData.salePrice,
-      buyer_id: selectedBuyerId || null,
+      buyer_id: selectedBuyerId && selectedBuyerId !== "none" ? selectedBuyerId : null,
       buyer_info: formData.buyerInfo || "",
       notes: formData.notes || "",
       purchase_price: 0,
@@ -255,7 +255,7 @@ export default function Sales() {
   const resetForm = () => {
     setFormData({});
     setSelectedCoinId("");
-    setSelectedBuyerId("");
+    setSelectedBuyerId("none");
   };
 
   const resetBuyerForm = () => {
@@ -555,7 +555,7 @@ export default function Sales() {
                         <SelectValue placeholder="Choose a buyer (optional)" />
                       </SelectTrigger>
                       <SelectContent className="max-h-60">
-                        <SelectItem value="">No buyer selected</SelectItem>
+                        <SelectItem value="none">No buyer selected</SelectItem>
                         {buyers.map(buyer => (
                           <SelectItem key={buyer.id} value={buyer.id}>
                             {buyer.firstName} {buyer.lastName} - {buyer.email}
