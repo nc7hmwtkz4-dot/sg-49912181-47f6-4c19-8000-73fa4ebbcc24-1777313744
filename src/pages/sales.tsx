@@ -41,75 +41,91 @@ export default function Sales() {
   }, [sales, selectedYear]);
 
   const loadData = async () => {
-    const { data: coinsData } = await userCoinService.getUserCoins();
-    const { data: salesData } = await userSalesService.getUserSales();
-    const { data: buyersData } = await userSalesService.getBuyers();
-    
-    if (coinsData) {
-      const mappedCoins: Coin[] = coinsData.map((c) => ({
-        id: c.id,
-        sku: c.sku,
-        coinName: c.coin_name,
-        countryCode: c.country_code,
-        kmNumber: c.km_number,
-        year: c.year,
-        mintmark: c.mintmark,
-        metal: c.metal as "gold" | "silver" | "copper" | "platinum" | "palladium" | "other",
-        purity: c.purity,
-        weight: c.weight,
-        sheldonGrade: c.grade as SheldonGrade,
-        purchasePrice: c.purchase_price,
-        purchaseDate: c.purchase_date,
-        notes: c.notes,
-        obverseImageUrl: c.obverse_image_url,
-        reverseImageUrl: c.reverse_image_url,
-        isSold: c.is_sold
-      }));
-      setCoins(mappedCoins);
-    }
+    try {
+      const { data: coinsData } = await userCoinService.getUserCoins();
+      const { data: salesData } = await userSalesService.getUserSales();
+      const { data: buyersData } = await userSalesService.getBuyers();
+      
+      console.log("Raw sales data:", salesData);
+      
+      if (coinsData) {
+        const mappedCoins: Coin[] = coinsData.map((c) => ({
+          id: c.id,
+          sku: c.sku,
+          coinName: c.coin_name,
+          countryCode: c.country_code,
+          kmNumber: c.km_number,
+          year: c.year,
+          mintmark: c.mintmark,
+          metal: c.metal as "gold" | "silver" | "copper" | "platinum" | "palladium" | "other",
+          purity: c.purity,
+          weight: c.weight,
+          sheldonGrade: c.grade as SheldonGrade,
+          purchasePrice: c.purchase_price,
+          purchaseDate: c.purchase_date,
+          notes: c.notes,
+          obverseImageUrl: c.obverse_image_url,
+          reverseImageUrl: c.reverse_image_url,
+          isSold: c.is_sold
+        }));
+        setCoins(mappedCoins);
+      }
 
-    if (buyersData) {
-      const mappedBuyers: Buyer[] = buyersData.map((b) => ({
-        id: b.id,
-        firstName: b.first_name,
-        lastName: b.last_name,
-        email: b.email,
-        phone: b.phone || undefined,
-        address: b.address || undefined,
-        postcode: b.postcode || undefined,
-        city: b.city || undefined,
-        createdAt: b.created_at
-      }));
-      setBuyers(mappedBuyers);
-    }
+      if (buyersData) {
+        const mappedBuyers: Buyer[] = buyersData.map((b) => ({
+          id: b.id,
+          firstName: b.first_name,
+          lastName: b.last_name,
+          email: b.email,
+          phone: b.phone || undefined,
+          address: b.address || undefined,
+          postcode: b.postcode || undefined,
+          city: b.city || undefined,
+          createdAt: b.created_at
+        }));
+        setBuyers(mappedBuyers);
+      }
 
-    if (salesData) {
-      const mappedSales: Sale[] = salesData.map((s) => ({
-        id: s.id,
-        coinId: s.coin_id,
-        saleDate: s.sale_date,
-        salePrice: s.sale_price,
-        buyerInfo: s.buyer_info,
-        buyerId: s.buyer_id || undefined,
-        notes: s.notes,
-        sku: s.sku || "",
-        coinName: s.coin_name || "",
-        purchasePrice: s.purchase_price || 0,
-        profit: s.profit || 0,
-        markupPercentage: s.markup_percentage || 0,
-        buyer: s.buyer ? {
-          id: s.buyer.id,
-          firstName: s.buyer.first_name,
-          lastName: s.buyer.last_name,
-          email: s.buyer.email,
-          phone: s.buyer.phone || undefined,
-          address: s.buyer.address || undefined,
-          postcode: s.buyer.postcode || undefined,
-          city: s.buyer.city || undefined,
-          createdAt: s.buyer.created_at
-        } : undefined
-      }));
-      setSales(mappedSales);
+      if (salesData) {
+        const mappedSales: Sale[] = salesData.map((s) => {
+          if (!s || !s.id) {
+            console.error("Invalid sale data:", s);
+            return null;
+          }
+          
+          return {
+            id: s.id,
+            coinId: s.coin_id || "",
+            saleDate: s.sale_date || new Date().toISOString(),
+            salePrice: s.sale_price || 0,
+            buyerInfo: s.buyer_info || "",
+            buyerId: s.buyer_id || undefined,
+            notes: s.notes || "",
+            sku: s.sku || "",
+            coinName: s.coin_name || "",
+            purchasePrice: s.purchase_price || 0,
+            profit: s.profit || 0,
+            markupPercentage: s.markup_percentage || 0,
+            buyer: s.buyer ? {
+              id: s.buyer.id,
+              firstName: s.buyer.first_name || "",
+              lastName: s.buyer.last_name || "",
+              email: s.buyer.email || "",
+              phone: s.buyer.phone || undefined,
+              address: s.buyer.address || undefined,
+              postcode: s.buyer.postcode || undefined,
+              city: s.buyer.city || undefined,
+              createdAt: s.buyer.created_at || new Date().toISOString()
+            } : undefined
+          };
+        }).filter(Boolean) as Sale[];
+        
+        console.log("Mapped sales:", mappedSales);
+        setSales(mappedSales);
+      }
+    } catch (error) {
+      console.error("Error loading data:", error);
+      alert("Failed to load data. Please refresh the page.");
     }
   };
 
@@ -722,6 +738,10 @@ export default function Sales() {
                   </TableHeader>
                   <TableBody>
                     {filteredSales.map(sale => {
+                      if (!sale || !sale.id) {
+                        return null;
+                      }
+                      
                       const coin = getCoinById(sale.coinId);
                       const profit = calculateProfit(sale);
                       const markup = calculateMarkup(sale);
@@ -729,7 +749,7 @@ export default function Sales() {
                       return (
                         <TableRow key={sale.id} className="hover:bg-brand-muted/30">
                           <TableCell className="font-medium">
-                            {new Date(sale.saleDate).toLocaleDateString('de-CH')}
+                            {sale.saleDate ? new Date(sale.saleDate).toLocaleDateString('de-CH') : '-'}
                           </TableCell>
                           <TableCell>
                             <div className="font-medium">{coin ? `${coin.sku}` : "Unknown"}</div>
