@@ -1,6 +1,6 @@
 ---
 title: Numista API Integration & Search
-status: in_progress
+status: done
 priority: high
 type: feature
 tags: [api, search, backend]
