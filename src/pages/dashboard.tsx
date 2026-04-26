@@ -517,7 +517,7 @@ export default function Dashboard() {
                     cx="50%"
                     cy="50%"
                     outerRadius={100}
-                    label={(entry) => `${entry.metal} (${Math.round(entry.percentage)}%)`}
+                    label={(entry: any) => `${entry.metal} (${Math.round(entry.percentage)}%)`}
                   >
                     {stats.metalDistribution.map((entry, index) => (
                       <Cell 
