@@ -1,5 +1,6 @@
 export interface Coin {
   id: string;
+  referenceCoinId?: string;
   sku: string;
   coinName: string; // e.g., "5 Francs - Léopold II petit..."
   countryCode: string;

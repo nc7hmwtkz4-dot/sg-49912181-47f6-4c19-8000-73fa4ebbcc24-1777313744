@@ -74,7 +74,7 @@ export default function Dashboard() {
           countryCount[country] = (countryCount[country] || 0) + 1;
           
           // Count by metal
-          const metal = coin.metal || "Unknown";
+          const metal = coin.coins_reference?.metal || "Unknown";
           metalCount[metal] = (metalCount[metal] || 0) + 1;
         });
 
@@ -85,11 +85,11 @@ export default function Dashboard() {
           unsoldCoins.forEach(coin => {
             totalInvestment += coin.purchase_price;
 
-            if (coin.metal && coin.weight && coin.purity) {
+            if (coin.coins_reference?.metal && coin.coins_reference?.weight && coin.coins_reference?.purity) {
               const coinBullionValue = spotPriceService.calculateBullionValue(
-                coin.weight,
-                coin.purity,
-                coin.metal,
+                coin.coins_reference.weight,
+                coin.coins_reference.purity,
+                coin.coins_reference.metal,
                 spotPrices
               );
               bullionValue += coinBullionValue;
