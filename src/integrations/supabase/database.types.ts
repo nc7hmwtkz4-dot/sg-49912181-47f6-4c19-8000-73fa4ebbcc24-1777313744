@@ -1,4 +1,4 @@
- 
+/* eslint-disable @typescript-eslint/no-empty-object-type */
 export type Json =
   | string
   | number
@@ -72,12 +72,15 @@ export type Database = {
           image_url: string | null
           km_number: string
           metal: string
+          numista_id: number | null
           obverse_image_url: string | null
           purity: number
           reverse_image_url: string | null
           sku: string
           updated_at: string | null
           weight: number
+          weight_net: number | null
+          year_issued: number | null
         }
         Insert: {
           coin_name?: string | null
@@ -90,12 +93,15 @@ export type Database = {
           image_url?: string | null
           km_number: string
           metal: string
+          numista_id?: number | null
           obverse_image_url?: string | null
           purity: number
           reverse_image_url?: string | null
           sku: string
           updated_at?: string | null
           weight: number
+          weight_net?: number | null
+          year_issued?: number | null
         }
         Update: {
           coin_name?: string | null
@@ -108,12 +114,15 @@ export type Database = {
           image_url?: string | null
           km_number?: string
           metal?: string
+          numista_id?: number | null
           obverse_image_url?: string | null
           purity?: number
           reverse_image_url?: string | null
           sku?: string
           updated_at?: string | null
           weight?: number
+          weight_net?: number | null
+          year_issued?: number | null
         }
         Relationships: []
       }
@@ -192,21 +201,17 @@ export type Database = {
           id: string
           image_url: string | null
           is_sold: boolean | null
-          km_number: string
           listing_id: string | null
-          metal: string
           mintmark: string | null
           notes: string | null
           obverse_image_url: string | null
           purchase_date: string
           purchase_price: number
-          purity: number
-          reference_coin_id: string | null
+          reference_coin_id: string
           reverse_image_url: string | null
           sku: string
           updated_at: string | null
           user_id: string
-          weight: number
           year: number
         }
         Insert: {
@@ -217,21 +222,17 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_sold?: boolean | null
-          km_number: string
           listing_id?: string | null
-          metal: string
           mintmark?: string | null
           notes?: string | null
           obverse_image_url?: string | null
           purchase_date: string
           purchase_price: number
-          purity: number
-          reference_coin_id?: string | null
+          reference_coin_id: string
           reverse_image_url?: string | null
           sku: string
           updated_at?: string | null
           user_id: string
-          weight: number
           year: number
         }
         Update: {
@@ -242,21 +243,17 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_sold?: boolean | null
-          km_number?: string
           listing_id?: string | null
-          metal?: string
           mintmark?: string | null
           notes?: string | null
           obverse_image_url?: string | null
           purchase_date?: string
           purchase_price?: number
-          purity?: number
-          reference_coin_id?: string | null
+          reference_coin_id?: string
           reverse_image_url?: string | null
           sku?: string
           updated_at?: string | null
           user_id?: string
-          weight?: number
           year?: number
         }
         Relationships: [
@@ -347,11 +344,14 @@ export type Database = {
           created_at: string | null
           id: string
           markup_percentage: number
+          net_profit: number | null
           notes: string | null
+          platform_fees: number | null
           profit: number
           purchase_price: number
           sale_date: string
           sale_price: number
+          shipping_cost: number | null
           sku: string | null
           updated_at: string | null
           user_id: string
@@ -364,11 +364,14 @@ export type Database = {
           created_at?: string | null
           id?: string
           markup_percentage: number
+          net_profit?: number | null
           notes?: string | null
+          platform_fees?: number | null
           profit: number
           purchase_price: number
           sale_date: string
           sale_price: number
+          shipping_cost?: number | null
           sku?: string | null
           updated_at?: string | null
           user_id: string
@@ -381,11 +384,14 @@ export type Database = {
           created_at?: string | null
           id?: string
           markup_percentage?: number
+          net_profit?: number | null
           notes?: string | null
+          platform_fees?: number | null
           profit?: number
           purchase_price?: number
           sale_date?: string
           sale_price?: number
+          shipping_cost?: number | null
           sku?: string | null
           updated_at?: string | null
           user_id?: string
