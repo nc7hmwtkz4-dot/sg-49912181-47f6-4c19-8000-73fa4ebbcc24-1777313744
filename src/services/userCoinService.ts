@@ -5,11 +5,24 @@ type UserCoin = Database["public"]["Tables"]["user_coins"]["Row"];
 type UserCoinInsert = Database["public"]["Tables"]["user_coins"]["Insert"];
 type UserCoinUpdate = Database["public"]["Tables"]["user_coins"]["Update"];
 
+// Extended type with coins_reference data
+export interface UserCoinWithReference extends UserCoin {
+  coins_reference?: {
+    metal: string;
+    purity: number;
+    weight: number;
+    weight_net: number;
+    km_number: string;
+    numista_id: number | null;
+    year_issued: number | null;
+  };
+}
+
 export const userCoinService = {
   /**
-   * Get all coins for the current user
+   * Get all coins for the current user with reference data
    */
-  async getUserCoins(): Promise<{ data: UserCoin[] | null; error: Error | null }> {
+  async getUserCoins(): Promise<{ data: UserCoinWithReference[] | null; error: Error | null }> {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       
@@ -19,7 +32,18 @@ export const userCoinService = {
 
       const { data, error } = await supabase
         .from("user_coins")
-        .select("*")
+        .select(`
+          *,
+          coins_reference!user_coins_reference_coin_id_fkey(
+            metal,
+            purity,
+            weight,
+            weight_net,
+            km_number,
+            numista_id,
+            year_issued
+          )
+        `)
         .eq("user_id", user.id)
         .order("sku", { ascending: true });
 
@@ -114,9 +138,9 @@ export const userCoinService = {
   },
 
   /**
-   * Get coins by SKU for the current user
+   * Get coins by SKU for the current user with reference data
    */
-  async getCoinsBySku(sku: string): Promise<{ data: UserCoin[] | null; error: Error | null }> {
+  async getCoinsBySku(sku: string): Promise<{ data: UserCoinWithReference[] | null; error: Error | null }> {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       
@@ -126,7 +150,18 @@ export const userCoinService = {
 
       const { data, error } = await supabase
         .from("user_coins")
-        .select("*")
+        .select(`
+          *,
+          coins_reference!user_coins_reference_coin_id_fkey(
+            metal,
+            purity,
+            weight,
+            weight_net,
+            km_number,
+            numista_id,
+            year_issued
+          )
+        `)
         .eq("user_id", user.id)
         .eq("sku", sku)
         .order("year", { ascending: true });

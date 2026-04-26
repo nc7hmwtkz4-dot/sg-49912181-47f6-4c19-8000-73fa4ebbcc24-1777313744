@@ -8,11 +8,14 @@ export interface ListingWithCoin extends Listing {
     sku: string;
     coinName: string;
     year: number;
-    metal: string;
     sheldonGrade: string;
     purchasePrice: number;
     obverseImageUrl?: string;
     reverseImageUrl?: string;
+    metal?: string;
+    purity?: number;
+    weight?: number;
+    weightNet?: number;
   };
 }
 
@@ -95,7 +98,7 @@ export async function createListing(data: CreateListingData): Promise<{ data: Li
   }
 }
 
-// Get all active listings for current user
+// Get all active listings for current user with reference data
 export async function getActiveListings(): Promise<{ data: ListingWithCoin[]; error: Error | null }> {
   try {
     const { data: { user } } = await supabase.auth.getUser();
@@ -111,11 +114,16 @@ export async function getActiveListings(): Promise<{ data: ListingWithCoin[]; er
           sku,
           coin_name,
           year,
-          metal,
           grade,
           purchase_price,
           obverse_image_url,
-          reverse_image_url
+          reverse_image_url,
+          coins_reference!user_coins_reference_coin_id_fkey(
+            metal,
+            purity,
+            weight,
+            weight_net
+          )
         )
       `)
       .eq("user_id", user.id)
@@ -133,24 +141,36 @@ export async function getActiveListings(): Promise<{ data: ListingWithCoin[]; er
         sku: string;
         coin_name: string;
         year: number;
-        metal: string;
         grade: string;
         purchase_price: number;
         obverse_image_url?: string;
         reverse_image_url?: string;
+        coins_reference?: {
+          metal: string;
+          purity: number;
+          weight: number;
+          weight_net: number;
+        };
       } | undefined;
       
+      const refData = Array.isArray(rawCoin?.coins_reference) 
+        ? rawCoin.coins_reference[0] 
+        : rawCoin?.coins_reference;
+
       return {
         ...listing,
         coin: rawCoin ? {
           sku: rawCoin.sku,
           coinName: rawCoin.coin_name,
           year: rawCoin.year,
-          metal: rawCoin.metal,
           sheldonGrade: rawCoin.grade,
           purchasePrice: rawCoin.purchase_price,
           obverseImageUrl: rawCoin.obverse_image_url,
-          reverseImageUrl: rawCoin.reverse_image_url
+          reverseImageUrl: rawCoin.reverse_image_url,
+          metal: refData?.metal,
+          purity: refData?.purity,
+          weight: refData?.weight,
+          weightNet: refData?.weight_net
         } : undefined
       };
     });
@@ -283,7 +303,9 @@ export async function markListingAsSold(
   listingId: string,
   salePrice: number,
   saleDate: string,
-  buyerInfo?: string,
+  buyerId?: string,
+  shippingCost?: number,
+  platformFees?: number,
   notes?: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
@@ -319,7 +341,9 @@ export async function markListingAsSold(
     }
 
     const purchasePrice = coin.purchase_price;
-    const profit = salePrice - purchasePrice;
+    const shipping = shippingCost || 0;
+    const fees = platformFees || 0;
+    const profit = salePrice - purchasePrice - shipping - fees;
     const markupPercentage = purchasePrice > 0 ? (profit / purchasePrice) * 100 : 0;
 
     // Step 3: Update the coin to mark as sold and clear listing_id
@@ -337,7 +361,7 @@ export async function markListingAsSold(
       return { success: false, error: "Failed to update coin status" };
     }
 
-    // Step 4: Create sale record
+    // Step 4: Create sale record with new cost fields
     const { error: saleError } = await supabase
       .from("user_sales")
       .insert({
@@ -348,9 +372,11 @@ export async function markListingAsSold(
         sale_date: saleDate,
         sale_price: salePrice,
         purchase_price: purchasePrice,
+        shipping_cost: shipping,
+        platform_fees: fees,
         profit: profit,
         markup_percentage: markupPercentage,
-        buyer_info: buyerInfo || "",
+        buyer_id: buyerId,
         notes: notes ? `Platform: ${listing.platform}\n${notes}` : `Platform: ${listing.platform}`
       });
 
@@ -370,7 +396,7 @@ export async function markListingAsSold(
       return { success: false, error: "Failed to delete listing" };
     }
 
-    console.log("Successfully marked listing as sold:", { coinId, salePrice, saleDate });
+    console.log("Successfully marked listing as sold:", { coinId, salePrice, saleDate, shippingCost, platformFees });
     return { success: true };
   } catch (error: unknown) {
     console.error("Unexpected error marking listing as sold:", error);
