@@ -1,6 +1,6 @@
 ---
 title: Financial Dashboard & Automated Spot Prices
-status: todo
+status: in_progress
 priority: high
 type: feature
 tags: [dashboard, charts, api]
@@ -10,7 +10,7 @@ tags: [dashboard, charts, api]
 Intégration d'une API tierce pour l'automatisation des cours des métaux et refonte du tableau de bord avec les calculs P/L du PRD.
 
 ## Checklist
-- [ ] Intégrer une API externe (ex: GoldAPI ou équivalent gratuit) pour récupérer automatiquement les cours des métaux à jour.
+- [x] Intégrer une API externe (ex: GoldAPI ou équivalent gratuit) pour récupérer automatiquement les cours des métaux à jour.
 - [ ] Implémenter le moteur de calcul P/L Latent (Poids net * Spot price - Prix d'achat) basé sur les prix automatisés.
 - [ ] Implémenter le moteur de calcul P/L Réalisé (Prix vente - Prix achat - Frais de port - Frais plateforme).
 - [ ] Ajouter les cartes statistiques : "Total Investi", "Valeur Métal Actuelle", "P/L Latent", "P/L Réalisé".
