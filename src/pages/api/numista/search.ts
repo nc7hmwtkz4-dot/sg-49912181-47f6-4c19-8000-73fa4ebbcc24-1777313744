@@ -146,14 +146,16 @@ export default async function handler(
         // Prepare data for insertion
         const insertData = {
           numista_id: coin.id,
-          title: coin.title,
+          sku: `NUMISTA-${coin.id}`, // Generate unique SKU from Numista ID
+          km_number: "N/A", // Default value, could be extracted from Numista if available
+          coin_name: coin.title,
           country_code: coin.issuer.code.substring(0, 2).toUpperCase(),
           year_issued: coin.min_year || null,
           metal: metal,
           purity: coin.composition?.purity || 1.0,
           weight: coin.weight || 0,
-          image_obverse_url: coin.obverse_thumbnail || null,
-          image_reverse_url: coin.reverse_thumbnail || null
+          obverse_image_url: coin.obverse_thumbnail || null,
+          reverse_image_url: coin.reverse_thumbnail || null
         };
 
         const { data: saved, error: insertError } = await supabase
