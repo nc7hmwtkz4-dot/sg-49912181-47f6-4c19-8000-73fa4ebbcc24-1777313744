@@ -128,7 +128,7 @@ export default function Sales() {
       }
 
       if (buyersData) {
-        const mappedBuyers: Buyer[] = buyersData.map((b) => ({
+        const mappedBuyers: Buyer[] = buyersData.map((b: any) => ({
           id: b.id,
           firstName: b.first_name,
           lastName: b.last_name,
@@ -137,6 +137,7 @@ export default function Sales() {
           address: b.address || undefined,
           postcode: b.postcode || undefined,
           city: b.city || undefined,
+          platform: b.platform || undefined,
           createdAt: b.created_at
         }));
         setBuyers(mappedBuyers);
@@ -160,6 +161,7 @@ export default function Sales() {
                   address: rawBuyer.address || undefined,
                   postcode: rawBuyer.postcode || undefined,
                   city: rawBuyer.city || undefined,
+                  platform: rawBuyer.platform || undefined,
                   createdAt: rawBuyer.created_at || new Date().toISOString()
                 };
               }
@@ -176,6 +178,8 @@ export default function Sales() {
               sku: s.sku || "",
               coinName: s.coin_name || "",
               purchasePrice: s.purchase_price || 0,
+              shippingCost: s.shipping_cost || 0,
+              platformFees: s.platform_fees || 0,
               profit: s.profit || 0,
               markupPercentage: s.markup_percentage || 0,
               buyer: buyerData
@@ -223,6 +227,8 @@ export default function Sales() {
       coin_id: selectedCoinId,
       sale_date: formData.saleDate,
       sale_price: formData.salePrice,
+      shipping_cost: formData.shippingCost || 0,
+      platform_fees: formData.platformFees || 0,
       buyer_id: selectedBuyerId && selectedBuyerId !== "none" ? selectedBuyerId : null,
       buyer_info: formData.buyerInfo || "",
       notes: formData.notes || "",
@@ -265,7 +271,8 @@ export default function Sales() {
       phone: buyerFormData.phone || null,
       address: buyerFormData.address || null,
       postcode: buyerFormData.postcode || null,
-      city: buyerFormData.city || null
+      city: buyerFormData.city || null,
+      platform: buyerFormData.platform || 'Direct'
     };
 
     if (editingBuyer) {
@@ -328,7 +335,8 @@ export default function Sales() {
       phone: buyer.phone,
       address: buyer.address,
       postcode: buyer.postcode,
-      city: buyer.city
+      city: buyer.city,
+      platform: buyer.platform
     });
     setIsBuyerDialogOpen(true);
   };
@@ -519,6 +527,24 @@ export default function Sales() {
                       />
                     </div>
                   </div>
+                  
+                  <div>
+                    <Label htmlFor="platform" className="text-sm font-medium">Platform / Origin</Label>
+                    <Select 
+                      value={buyerFormData.platform || "Direct"} 
+                      onValueChange={(val) => setBuyerFormData({...buyerFormData, platform: val})}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="e.g., Ricardo, eBay, Direct" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Direct">Direct Sale</SelectItem>
+                        <SelectItem value="Ricardo">Ricardo</SelectItem>
+                        <SelectItem value="eBay">eBay</SelectItem>
+                        <SelectItem value="Other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
                   <div className="flex gap-2 justify-end pt-4 border-t">
                     <Button type="button" variant="outline" onClick={() => setIsBuyerDialogOpen(false)}>
@@ -617,6 +643,32 @@ export default function Sales() {
                         onChange={(e) => setFormData({...formData, salePrice: parseFloat(e.target.value)})}
                         placeholder="e.g., 35.50"
                         required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="shippingCost" className="text-sm font-medium">Shipping Cost (CHF)</Label>
+                      <Input
+                        id="shippingCost"
+                        type="number"
+                        step="0.01"
+                        value={formData.shippingCost || ""}
+                        onChange={(e) => setFormData({...formData, shippingCost: parseFloat(e.target.value) || 0})}
+                        placeholder="e.g., 5.00"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="platformFees" className="text-sm font-medium">Platform Fees (CHF)</Label>
+                      <Input
+                        id="platformFees"
+                        type="number"
+                        step="0.01"
+                        value={formData.platformFees || ""}
+                        onChange={(e) => setFormData({...formData, platformFees: parseFloat(e.target.value) || 0})}
+                        placeholder="e.g., 2.50"
                       />
                     </div>
                   </div>

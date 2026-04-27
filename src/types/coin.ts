@@ -26,6 +26,7 @@ export interface Buyer {
   firstName: string;
   lastName: string;
   email: string;
+  platform?: string;
   phone?: string;
   address?: string;
   postcode?: string;
