@@ -2,13 +2,15 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/router";
 import { Layout } from "@/components/Layout";
 import { SEO } from "@/components/SEO";
-import { GroupedCoinTable } from "@/components/coin/GroupedCoinTable";
 import { FilterBar, type FilterState } from "@/components/coin/FilterBar";
 import { StatisticsPanel } from "@/components/coin/StatisticsPanel";
 import { CoinSearchModal } from "@/components/coin/CoinSearchModal";
 import { SaleCheckoutModal } from "@/components/coin/SaleCheckoutModal";
+import { GalleryView } from "@/components/coin/GalleryView";
+import { ListView } from "@/components/coin/ListView";
 import { Button } from "@/components/ui/button";
-import { Plus, Search } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Plus, Search, LayoutGrid, Table as TableIcon } from "lucide-react";
 import { userCoinService } from "@/services/userCoinService";
 import { supabase } from "@/integrations/supabase/client";
 import type { Coin, SheldonGrade } from "@/types/coin";
@@ -23,6 +25,14 @@ export default function Collection() {
   const [spotPrices, setSpotPrices] = useState<any>({});
   const [loading, setLoading] = useState(true);
   
+  // View mode state with localStorage persistence
+  const [viewMode, setViewMode] = useState<"gallery" | "list">(() => {
+    if (typeof window !== "undefined") {
+      return (localStorage.getItem("collection_view_mode") as "gallery" | "list") || "gallery";
+    }
+    return "gallery";
+  });
+  
   const initialFilters: FilterState = {
     grades: [],
     status: "all",
@@ -35,6 +45,12 @@ export default function Collection() {
   const [searchModalOpen, setSearchModalOpen] = useState(false);
   const [saleModalOpen, setSaleModalOpen] = useState(false);
   const [selectedCoinForSale, setSelectedCoinForSale] = useState<Coin | null>(null);
+
+  // Save view mode preference
+  const handleViewModeChange = (mode: "gallery" | "list") => {
+    setViewMode(mode);
+    localStorage.setItem("collection_view_mode", mode);
+  };
 
   const handleSellCoin = (coin: Coin) => {
     setSelectedCoinForSale(coin);
@@ -123,6 +139,55 @@ export default function Collection() {
     return spotPriceService.calculateBullionValue(coin.weight, coin.purity, coin.metal, spotPrices);
   }, [spotPrices]);
 
+  // Filter and sort coins
+  const filteredAndSortedCoins = coins
+    .filter(coin => {
+      if (filters.grades.length > 0 && !filters.grades.includes(coin.sheldonGrade)) return false;
+      if (filters.status === "in-collection" && coin.isSold) return false;
+      if (filters.status === "sold" && !coin.isSold) return false;
+      
+      if (filters.dateRange !== "all") {
+        const purchaseDate = new Date(coin.purchaseDate);
+        const now = new Date();
+        
+        switch (filters.dateRange) {
+          case "last-week": {
+            const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            if (purchaseDate < weekAgo) return false;
+            break;
+          }
+          case "last-month": {
+            const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+            if (purchaseDate < monthAgo) return false;
+            break;
+          }
+          case "last-3-months": {
+            const threeMonthsAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+            if (purchaseDate < threeMonthsAgo) return false;
+            break;
+          }
+        }
+      }
+      
+      return true;
+    })
+    .sort((a, b) => {
+      switch (sortBy) {
+        case "year-asc": return a.year - b.year;
+        case "year-desc": return b.year - a.year;
+        case "date-newest": return new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime();
+        case "date-oldest": return new Date(a.purchaseDate).getTime() - new Date(b.purchaseDate).getTime();
+        case "price-low": return a.purchasePrice - b.purchasePrice;
+        case "price-high": return b.purchasePrice - a.purchasePrice;
+        case "profit": {
+          const aProfit = calculateBullionValue(a) - a.purchasePrice;
+          const bProfit = calculateBullionValue(b) - b.purchasePrice;
+          return bProfit - aProfit;
+        }
+        default: return 0;
+      }
+    });
+
   return (
     <Layout>
       <SEO 
@@ -131,7 +196,7 @@ export default function Collection() {
       />
       
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-4">
           <h1 className="text-3xl font-bold">Ma Collection</h1>
           <div className="flex gap-2">
             <Button onClick={() => setSearchModalOpen(true)} variant="outline">
@@ -152,51 +217,71 @@ export default function Collection() {
         ) : (
           <>
             <StatisticsPanel coins={coins} />
-            <div className="flex flex-col gap-4">
-              <div className="flex justify-between items-center flex-wrap gap-4">
-                <FilterBar 
-                  filters={filters} 
-                  onFiltersChange={setFilters} 
-                  onReset={() => setFilters(initialFilters)} 
-                />
+            
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <FilterBar 
+                filters={filters} 
+                onFiltersChange={setFilters} 
+                onReset={() => setFilters(initialFilters)} 
+              />
+              
+              <div className="flex items-center gap-4">
                 <select 
-                  className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:w-[200px]"
+                  className="flex h-10 items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 w-[200px]"
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as any)}
                 >
-                  <option value="year-desc">Année (Récents d'abord)</option>
-                  <option value="year-asc">Année (Anciens d'abord)</option>
+                  <option value="year-desc">Année (Récents)</option>
+                  <option value="year-asc">Année (Anciens)</option>
                   <option value="date-newest">Achat (Récent)</option>
                   <option value="date-oldest">Achat (Ancien)</option>
-                  <option value="price-high">Prix (Décroissant)</option>
-                  <option value="price-low">Prix (Croissant)</option>
-                  <option value="grade">Grade</option>
+                  <option value="price-high">Prix (Haut-Bas)</option>
+                  <option value="price-low">Prix (Bas-Haut)</option>
                   <option value="profit">Profit P/L</option>
                 </select>
+                
+                <Tabs value={viewMode} onValueChange={(v) => handleViewModeChange(v as "gallery" | "list")}>
+                  <TabsList>
+                    <TabsTrigger value="gallery" className="gap-2">
+                      <LayoutGrid className="h-4 w-4" />
+                      Galerie
+                    </TabsTrigger>
+                    <TabsTrigger value="list" className="gap-2">
+                      <TableIcon className="h-4 w-4" />
+                      Liste
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
               </div>
             </div>
             
-            <GroupedCoinTable 
-              coins={coins}
-              filters={filters}
-              salesData={salesData}
-              sortBy={sortBy}
-              onEditCoin={(coin) => router.push(`/coin/${coin.sku}`)}
-              onDeleteCoin={async (id) => {
-                if (confirm("Voulez-vous vraiment supprimer cette pièce ?")) {
-                  await supabase.from('user_coins').delete().eq('id', id);
-                  loadData();
-                }
-              }}
-              onRecordSale={(id) => {
-                const coin = coins.find(c => c.id === id);
-                if (coin) handleSellCoin(coin);
-              }}
-              onCreateListing={(coin) => router.push(`/listings/new?coin=${coin.id}`)}
-              onViewListing={() => router.push('/listings')}
-              calculateBullionValue={calculateBullionValue}
-              onSellCoin={handleSellCoin}
-            />
+            {viewMode === "gallery" ? (
+              <GalleryView
+                coins={filteredAndSortedCoins}
+                onEditCoin={(coin) => router.push(`/coin/${coin.sku}`)}
+                onDeleteCoin={async (id) => {
+                  if (confirm("Voulez-vous vraiment supprimer cette pièce ?")) {
+                    await supabase.from('user_coins').delete().eq('id', id);
+                    loadData();
+                  }
+                }}
+                onSellCoin={handleSellCoin}
+                calculateBullionValue={calculateBullionValue}
+              />
+            ) : (
+              <ListView
+                coins={filteredAndSortedCoins}
+                onEditCoin={(coin) => router.push(`/coin/${coin.sku}`)}
+                onDeleteCoin={async (id) => {
+                  if (confirm("Voulez-vous vraiment supprimer cette pièce ?")) {
+                    await supabase.from('user_coins').delete().eq('id', id);
+                    loadData();
+                  }
+                }}
+                onSellCoin={handleSellCoin}
+                calculateBullionValue={calculateBullionValue}
+              />
+            )}
           </>
         )}
         
