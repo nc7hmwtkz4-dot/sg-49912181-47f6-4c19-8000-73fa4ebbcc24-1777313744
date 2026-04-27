@@ -154,7 +154,6 @@ export function GalleryView({ coins, onEditCoin, onDeleteCoin, onSellCoin, calcu
       {selectedImage && (
         <ImageViewer
           imageUrl={selectedImage.url}
-          title={selectedImage.title}
           onClose={() => setSelectedImage(null)}
         />
       )}
