@@ -20,6 +20,7 @@ export default function Collection() {
   const { toast } = useToast();
   const [coins, setCoins] = useState<Coin[]>([]);
   const [salesData, setSalesData] = useState<any[]>([]);
+  const [spotPrices, setSpotPrices] = useState<any>({});
   const [loading, setLoading] = useState(true);
   
   const initialFilters: FilterState = {
@@ -68,33 +69,43 @@ export default function Collection() {
     }
 
     if (coinsData) {
-      const mappedCoins: Coin[] = coinsData.map((coin) => ({
-        id: coin.id,
-        referenceCoinId: coin.reference_coin_id,
-        sku: coin.sku,
-        coinName: coin.coins_reference?.coin_name || "",
-        countryCode: coin.coins_reference?.country_code || "",
-        kmNumber: coin.coins_reference?.km_number || "",
-        year: coin.year,
-        mintmark: coin.mintmark || "",
-        metal: (coin.coins_reference?.metal || "other") as any,
-        purity: coin.coins_reference?.purity || 0,
-        weight: coin.coins_reference?.weight || 0,
-        sheldonGrade: coin.grade as SheldonGrade,
-        purchasePrice: coin.purchase_price,
-        purchaseDate: coin.purchase_date,
-        notes: coin.notes || "",
-        obverseImageUrl: coin.coins_reference?.obverse_image_url || "",
-        reverseImageUrl: coin.coins_reference?.reverse_image_url || "",
-        isSold: coin.is_sold,
-        listingId: coin.listing_id || undefined
-      }));
+      const mappedCoins: Coin[] = coinsData.map((c) => {
+        const coin = c as any;
+        return {
+          id: coin.id,
+          referenceCoinId: coin.reference_coin_id,
+          sku: coin.sku,
+          coinName: coin.coins_reference?.coin_name || coin.coins_reference?.title || "",
+          countryCode: coin.coins_reference?.country_code || "",
+          kmNumber: coin.coins_reference?.km_number || "",
+          year: coin.year,
+          mintmark: coin.mintmark || "",
+          metal: (coin.coins_reference?.metal || "other") as any,
+          purity: coin.coins_reference?.purity || 0,
+          weight: coin.coins_reference?.weight || 0,
+          sheldonGrade: coin.grade as SheldonGrade,
+          purchasePrice: coin.purchase_price,
+          purchaseDate: coin.purchase_date,
+          notes: coin.notes || "",
+          obverseImageUrl: coin.coins_reference?.obverse_image_url || "",
+          reverseImageUrl: coin.coins_reference?.reverse_image_url || "",
+          isSold: coin.is_sold,
+          listingId: coin.listing_id || undefined
+        };
+      });
       setCoins(mappedCoins);
     }
     
     const { data: salesResult } = await supabase.from('user_sales').select('*');
     if (salesResult) {
       setSalesData(salesResult);
+    }
+    
+    const { data: spotData } = await supabase.from('spot_prices_cache').select('*');
+    if (spotData) {
+      const prices: any = {};
+      spotData.forEach(p => { prices[p.metal.toLowerCase()] = p.price_per_gram; });
+      setSpotPrices(prices);
     }
     
     setLoading(false);
@@ -105,8 +116,8 @@ export default function Collection() {
   }, []);
 
   const calculateBullionValue = useCallback((coin: Coin) => {
-    return spotPriceService.calculateBullionValue(coin.metal, coin.weight, coin.purity);
-  }, []);
+    return spotPriceService.calculateBullionValue(coin.weight, coin.purity, coin.metal, spotPrices);
+  }, [spotPrices]);
 
   return (
     <Layout>
