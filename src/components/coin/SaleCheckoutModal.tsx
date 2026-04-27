@@ -9,14 +9,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { userSalesService } from "@/services/userSalesService";
 import { userCoinService } from "@/services/userCoinService";
 import { spotPriceService } from "@/lib/spotPrices";
-import type { CoinWithReference, Buyer } from "@/types/coin";
+import type { Coin, Buyer } from "@/types/coin";
 import { useToast } from "@/hooks/use-toast";
 import { TrendingUp, DollarSign, Users, Plus } from "lucide-react";
 
 interface SaleCheckoutModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  coin: CoinWithReference | null;
+  coin: Coin | null;
   onSaleCompleted?: () => void;
 }
 
@@ -257,7 +257,7 @@ export function SaleCheckoutModal({
                 </div>
                 <div>
                   <p className="text-muted-foreground">Métal</p>
-                  <p className="font-medium capitalize">{coin.coins_reference?.metal || "N/A"}</p>
+                  <p className="font-medium capitalize">{coin.metal || "N/A"}</p>
                 </div>
               </div>
             </CardContent>

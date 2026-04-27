@@ -1,9 +1,9 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/router";
 import { Layout } from "@/components/Layout";
 import { SEO } from "@/components/SEO";
 import { GroupedCoinTable } from "@/components/coin/GroupedCoinTable";
-import { FilterBar } from "@/components/coin/FilterBar";
+import { FilterBar, type FilterState } from "@/components/coin/FilterBar";
 import { StatisticsPanel } from "@/components/coin/StatisticsPanel";
 import { CoinSearchModal } from "@/components/coin/CoinSearchModal";
 import { SaleCheckoutModal } from "@/components/coin/SaleCheckoutModal";
@@ -11,156 +11,101 @@ import { Button } from "@/components/ui/button";
 import { Plus, Search } from "lucide-react";
 import { userCoinService } from "@/services/userCoinService";
 import { supabase } from "@/integrations/supabase/client";
-import type { CoinWithReference } from "@/types/coin";
+import type { Coin, SheldonGrade } from "@/types/coin";
 import { useToast } from "@/hooks/use-toast";
+import { spotPriceService } from "@/lib/spotPrices";
 
 export default function Collection() {
   const router = useRouter();
   const { toast } = useToast();
-  const [coins, setCoins] = useState<CoinWithReference[]>([]);
+  const [coins, setCoins] = useState<Coin[]>([]);
+  const [salesData, setSalesData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState({
-    search: "",
-    metal: "all",
+  
+  const initialFilters: FilterState = {
+    grades: [],
     status: "all",
-    sortBy: "purchase_date" as const,
-    sortOrder: "desc" as const,
-  });
+    dateRange: "all"
+  };
+  
+  const [filters, setFilters] = useState<FilterState>(initialFilters);
+  const [sortBy, setSortBy] = useState<"year-asc" | "year-desc" | "date-newest" | "date-oldest" | "price-low" | "price-high" | "grade" | "best-to-sell" | "profit">("year-desc");
+  
   const [searchModalOpen, setSearchModalOpen] = useState(false);
   const [saleModalOpen, setSaleModalOpen] = useState(false);
-  const [selectedCoinForSale, setSelectedCoinForSale] = useState<CoinWithReference | null>(null);
+  const [selectedCoinForSale, setSelectedCoinForSale] = useState<Coin | null>(null);
 
-  const filteredCoins = useMemo(() => {
-    return coins.filter(coin => {
-      const matchesSearch = filters.search === "" || 
-        coin.sku.toLowerCase().includes(filters.search.toLowerCase()) ||
-        coin.coinName.toLowerCase().includes(filters.search.toLowerCase()) ||
-        coin.countryCode.toLowerCase().includes(filters.search.toLowerCase());
-      const matchesMetal = filters.metal === "all" || coin.metal === filters.metal;
-      const matchesStatus = filters.status === "all" || coin.isSold === (filters.status === "sold");
-      
-      return matchesSearch && matchesMetal && matchesStatus;
-    });
-  }, [coins, filters]);
-
-  const sortedCoins = useMemo(() => {
-    return [...filteredCoins].sort((a, b) => {
-      let aVal: any, bVal: any;
-      
-      switch (filters.sortBy) {
-        case "purchase_date":
-          aVal = a.purchaseDate;
-          bVal = b.purchaseDate;
-          break;
-        case "coin_name":
-          aVal = a.coinName;
-          bVal = b.coinName;
-          break;
-        case "sku":
-          aVal = a.sku;
-          bVal = b.sku;
-          break;
-        case "metal":
-          aVal = a.metal;
-          bVal = b.metal;
-          break;
-        case "purity":
-          aVal = a.purity;
-          bVal = b.purity;
-          break;
-        case "weight":
-          aVal = a.weight;
-          bVal = b.weight;
-          break;
-        case "grade":
-          aVal = a.sheldonGrade;
-          bVal = b.sheldonGrade;
-          break;
-        case "obverse_image_url":
-          aVal = a.obverseImageUrl;
-          bVal = b.obverseImageUrl;
-          break;
-        case "reverse_image_url":
-          aVal = a.reverseImageUrl;
-          bVal = b.reverseImageUrl;
-          break;
-        case "is_sold":
-          aVal = a.isSold;
-          bVal = b.isSold;
-          break;
-      }
-      
-      const comparison = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
-      return filters.sortOrder === "desc" ? -comparison : comparison;
-    });
-  }, [filteredCoins, filters]);
-
-  const handleSellCoin = (coin: CoinWithReference) => {
+  const handleSellCoin = (coin: Coin) => {
     setSelectedCoinForSale(coin);
     setSaleModalOpen(true);
   };
 
   const handleSaleCompleted = () => {
-    loadCoins(); // Refresh the collection after sale
+    loadData();
     toast({
       title: "Vente enregistrée",
-      description: "La pièce a été marquée comme vendue"
+      description: "La pièce a été marquée comme vendue avec succès."
     });
   };
 
-  const loadCoins = async () => {
+  const loadData = async () => {
     setLoading(true);
     
-    // Check if user is authenticated first
     const { data: { session } } = await supabase.auth.getSession();
     
     if (!session) {
       setCoins([]);
-      setFilteredCoins([]);
       setLoading(false);
       return;
     }
 
-    const { data, error } = await userCoinService.getUserCoins();
+    const { data: coinsData, error: coinsError } = await userCoinService.getUserCoins();
     
-    if (error) {
-      console.error("Error loading coins:", error);
+    if (coinsError) {
+      console.error("Error loading coins:", coinsError);
       setLoading(false);
       return;
     }
 
-    if (data) {
-      // Map database coins to frontend Coin type
-      const mappedCoins: CoinWithReference[] = data.map((coin) => ({
+    if (coinsData) {
+      const mappedCoins: Coin[] = coinsData.map((coin) => ({
         id: coin.id,
         referenceCoinId: coin.reference_coin_id,
         sku: coin.sku,
-        coinName: coin.coin_name || "",
-        countryCode: coin.country_code,
+        coinName: coin.coins_reference?.coin_name || "",
+        countryCode: coin.coins_reference?.country_code || "",
         kmNumber: coin.coins_reference?.km_number || "",
         year: coin.year,
         mintmark: coin.mintmark || "",
-        metal: (coin.coins_reference?.metal || "other") as "gold" | "silver" | "copper" | "platinum" | "palladium" | "other",
+        metal: (coin.coins_reference?.metal || "other") as any,
         purity: coin.coins_reference?.purity || 0,
         weight: coin.coins_reference?.weight || 0,
         sheldonGrade: coin.grade as SheldonGrade,
         purchasePrice: coin.purchase_price,
         purchaseDate: coin.purchase_date,
         notes: coin.notes || "",
-        obverseImageUrl: coin.obverse_image_url || "",
-        reverseImageUrl: coin.reverse_image_url || "",
+        obverseImageUrl: coin.coins_reference?.obverse_image_url || "",
+        reverseImageUrl: coin.coins_reference?.reverse_image_url || "",
         isSold: coin.is_sold,
         listingId: coin.listing_id || undefined
       }));
-      
       setCoins(mappedCoins);
-      setFilteredCoins(mappedCoins);
     }
+    
+    const { data: salesResult } = await supabase.from('user_sales').select('*');
+    if (salesResult) {
+      setSalesData(salesResult);
+    }
+    
     setLoading(false);
   };
 
   useEffect(() => {
-    loadCoins();
+    loadData();
+  }, []);
+
+  const calculateBullionValue = useCallback((coin: Coin) => {
+    return spotPriceService.calculateBullionValue(coin.metal, coin.weight, coin.purity);
   }, []);
 
   return (
@@ -191,10 +136,50 @@ export default function Collection() {
           </div>
         ) : (
           <>
-            <StatisticsPanel coins={filteredCoins} />
-            <FilterBar filters={filters} onFiltersChange={setFilters} />
+            <StatisticsPanel coins={coins} />
+            <div className="flex flex-col gap-4">
+              <div className="flex justify-between items-center flex-wrap gap-4">
+                <FilterBar 
+                  filters={filters} 
+                  onFiltersChange={setFilters} 
+                  onReset={() => setFilters(initialFilters)} 
+                />
+                <select 
+                  className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:w-[200px]"
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as any)}
+                >
+                  <option value="year-desc">Année (Récents d'abord)</option>
+                  <option value="year-asc">Année (Anciens d'abord)</option>
+                  <option value="date-newest">Achat (Récent)</option>
+                  <option value="date-oldest">Achat (Ancien)</option>
+                  <option value="price-high">Prix (Décroissant)</option>
+                  <option value="price-low">Prix (Croissant)</option>
+                  <option value="grade">Grade</option>
+                  <option value="profit">Profit P/L</option>
+                </select>
+              </div>
+            </div>
+            
             <GroupedCoinTable 
-              coins={sortedCoins}
+              coins={coins}
+              filters={filters}
+              salesData={salesData}
+              sortBy={sortBy}
+              onEditCoin={(coin) => router.push(`/coin/${coin.sku}`)}
+              onDeleteCoin={async (id) => {
+                if (confirm("Voulez-vous vraiment supprimer cette pièce ?")) {
+                  await supabase.from('user_coins').delete().eq('id', id);
+                  loadData();
+                }
+              }}
+              onRecordSale={(id) => {
+                const coin = coins.find(c => c.id === id);
+                if (coin) handleSellCoin(coin);
+              }}
+              onCreateListing={(coin) => router.push(`/listings/new?coin=${coin.id}`)}
+              onViewListing={() => router.push('/listings')}
+              calculateBullionValue={calculateBullionValue}
               onSellCoin={handleSellCoin}
             />
           </>

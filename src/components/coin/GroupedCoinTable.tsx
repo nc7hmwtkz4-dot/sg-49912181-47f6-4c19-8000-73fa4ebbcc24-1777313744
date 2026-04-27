@@ -355,7 +355,7 @@ export function GroupedCoinTable({
                                       size="sm"
                                       variant="outline"
                                       className="border-slate-600 text-slate-300"
-                                      onClick={() => onRecordSale(coin.id)}
+                                      onClick={() => onSellCoin ? onSellCoin(coin) : onRecordSale(coin.id)}
                                     >
                                       <DollarSign className="w-4 h-4" />
                                     </Button>
