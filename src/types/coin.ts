@@ -26,28 +26,31 @@ export interface Buyer {
   firstName: string;
   lastName: string;
   email: string;
-  platform?: string;
   phone?: string;
   address?: string;
   postcode?: string;
   city?: string;
+  platform?: string;
   createdAt: string;
 }
 
 export interface Sale {
   id: string;
   coinId: string;
-  sku: string;
-  coinName: string;
   saleDate: string;
   salePrice: number;
-  purchasePrice: number;
-  profit: number;
-  markupPercentage?: number;
   buyerInfo: string;
-  notes: string;
   buyerId?: string;
+  notes: string;
+  // Included from joined query
+  sku: string;
+  coinName: string;
+  purchasePrice: number;
+  profit?: number;
+  markupPercentage?: number;
   buyer?: Buyer;
+  shippingCost?: number;
+  platformFees?: number;
 }
 
 export const SHELDON_GRADES = [
