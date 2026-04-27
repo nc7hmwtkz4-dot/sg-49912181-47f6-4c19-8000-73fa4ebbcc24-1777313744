@@ -13,8 +13,63 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, TrendingUp, TrendingDown, DollarSign, Users, Edit } from "lucide-react";
+import { Plus, TrendingUp, TrendingDown, DollarSign, Users, Edit, Download, BarChart3 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+
+const exportToCSV = (sales: Sale[], getCoinById: (id: string) => Coin | undefined) => {
+  const headers = [
+    "Date",
+    "SKU",
+    "Coin",
+    "Year",
+    "Grade",
+    "Purchase Price",
+    "Sale Price",
+    "Shipping Cost",
+    "Platform Fees",
+    "Net Profit",
+    "Markup %",
+    "Buyer Name",
+    "Buyer Email"
+  ];
+
+  const rows = sales.map(sale => {
+    const coin = getCoinById(sale.coinId);
+    const profit = sale.salePrice - (coin?.purchasePrice || 0) - (sale.shippingCost || 0) - (sale.platformFees || 0);
+    const markup = coin?.purchasePrice ? ((sale.salePrice - coin.purchasePrice) / coin.purchasePrice * 100).toFixed(2) : "0";
+    
+    return [
+      new Date(sale.saleDate).toLocaleDateString('de-CH'),
+      coin?.sku || "",
+      coin?.coinName || "Unknown",
+      coin?.year || "",
+      coin?.sheldonGrade || "",
+      coin?.purchasePrice?.toFixed(2) || "0",
+      sale.salePrice.toFixed(2),
+      (sale.shippingCost || 0).toFixed(2),
+      (sale.platformFees || 0).toFixed(2),
+      profit.toFixed(2),
+      markup,
+      sale.buyer ? `${sale.buyer.firstName} ${sale.buyer.lastName}` : sale.buyerInfo || "",
+      sale.buyer?.email || ""
+    ];
+  });
+
+  const csvContent = [
+    headers.join(","),
+    ...rows.map(row => row.map(cell => `"${cell}"`).join(","))
+  ].join("\n");
+
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const link = document.createElement("a");
+  const url = URL.createObjectURL(blob);
+  link.setAttribute("href", url);
+  link.setAttribute("download", `numivault_sales_${new Date().toISOString().split('T')[0]}.csv`);
+  link.style.visibility = "hidden";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
 
 export default function Sales() {
   const [coins, setCoins] = useState<Coin[]>([]);
@@ -309,6 +364,39 @@ export default function Sales() {
     return ((sale.salePrice - coin.purchasePrice) / coin.purchasePrice) * 100;
   };
 
+  // Calculate platform analytics
+  const platformAnalytics = filteredSales.reduce((acc, sale) => {
+    // Determine platform from buyer or legacy buyerInfo
+    let platform = "Unknown";
+    if (sale.buyer?.platform) {
+      platform = sale.buyer.platform;
+    } else if (sale.buyerInfo) {
+      const info = sale.buyerInfo.toLowerCase();
+      if (info.includes("ricardo")) platform = "Ricardo";
+      else if (info.includes("ebay")) platform = "eBay";
+      else if (info.includes("direct")) platform = "Direct";
+    }
+
+    if (!acc[platform]) {
+      acc[platform] = {
+        count: 0,
+        revenue: 0,
+        fees: 0,
+        netProfit: 0
+      };
+    }
+
+    const coin = getCoinById(sale.coinId);
+    const profit = sale.salePrice - (coin?.purchasePrice || 0) - (sale.shippingCost || 0) - (sale.platformFees || 0);
+    
+    acc[platform].count += 1;
+    acc[platform].revenue += sale.salePrice;
+    acc[platform].fees += (sale.shippingCost || 0) + (sale.platformFees || 0);
+    acc[platform].netProfit += profit;
+
+    return acc;
+  }, {} as Record<string, { count: number; revenue: number; fees: number; netProfit: number }>);
+
   const totalRevenue = filteredSales.reduce((sum, sale) => sum + sale.salePrice, 0);
   const totalProfit = filteredSales.reduce((sum, sale) => sum + calculateProfit(sale), 0);
   const totalCost = filteredSales.reduce((sum, sale) => {
@@ -336,6 +424,15 @@ export default function Sales() {
           </div>
 
           <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => exportToCSV(filteredSales, getCoinById)}
+              className="border-brand-primary text-brand-primary hover:bg-brand-muted"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Export CSV
+            </Button>
+
             <Dialog open={isBuyerDialogOpen} onOpenChange={(open) => {
               setIsBuyerDialogOpen(open);
               if (!open) resetBuyerForm();
@@ -601,50 +698,63 @@ export default function Sales() {
           </div>
         </div>
 
-        <Dialog open={isLinkBuyerDialogOpen} onOpenChange={(open) => {
-          setIsLinkBuyerDialogOpen(open);
-          if (!open) {
-            setSelectedSaleForBuyer(null);
-            setSelectedBuyerId("none");
-          }
-        }}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Link Buyer to Sale</DialogTitle>
-            </DialogHeader>
-            {selectedSaleForBuyer && selectedSaleForBuyer.id && (
-              <form onSubmit={handleLinkBuyer} className="space-y-4">
-                <div>
-                  <Label htmlFor="linkBuyer" className="text-sm font-medium">Select Buyer</Label>
-                  <Select 
-                    value={selectedBuyerId || "none"} 
-                    onValueChange={setSelectedBuyerId}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Choose a buyer" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-60">
-                      <SelectItem value="none">Remove buyer link</SelectItem>
-                      {buyers.map(buyer => (
-                        <SelectItem key={buyer.id} value={buyer.id}>
-                          {buyer.firstName} {buyer.lastName} - {buyer.email}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex gap-2 justify-end pt-4">
-                  <Button type="button" variant="outline" onClick={() => setIsLinkBuyerDialogOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button type="submit" className="bg-gradient-to-r from-brand-primary to-brand-secondary hover:opacity-90">
-                    Link Buyer
-                  </Button>
-                </div>
-              </form>
-            )}
-          </DialogContent>
-        </Dialog>
+        {/* Platform Analytics Card */}
+        {Object.keys(platformAnalytics).length > 0 && (
+          <Card className="border-0 shadow-lg">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5 text-brand-primary" />
+                <CardTitle>Platform Analytics</CardTitle>
+              </div>
+              <CardDescription>
+                Compare performance across sales channels
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                {Object.entries(platformAnalytics)
+                  .sort((a, b) => b[1].revenue - a[1].revenue)
+                  .map(([platform, stats]) => {
+                    const avgFeePercent = stats.revenue > 0 ? (stats.fees / stats.revenue * 100).toFixed(1) : "0.0";
+                    const profitMargin = stats.revenue > 0 ? (stats.netProfit / stats.revenue * 100).toFixed(1) : "0.0";
+                    
+                    return (
+                      <Card key={platform} className="bg-gradient-to-br from-brand-muted/30 to-transparent border-brand-primary/20">
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-base flex items-center justify-between">
+                            <span>{platform}</span>
+                            <Badge variant="secondary" className="bg-brand-muted text-brand-primary">
+                              {stats.count} sales
+                            </Badge>
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Revenue</span>
+                            <span className="font-medium text-green-600">{spotPriceService.formatCHF(stats.revenue)}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Fees</span>
+                            <span className="font-medium text-orange-600">{spotPriceService.formatCHF(stats.fees)} ({avgFeePercent}%)</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Net Profit</span>
+                            <span className="font-medium text-brand-primary">{spotPriceService.formatCHF(stats.netProfit)}</span>
+                          </div>
+                          <div className="pt-2 border-t">
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">Margin</span>
+                              <span className="font-semibold text-brand-primary">{profitMargin}%</span>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <div className="flex gap-4 items-center">
           <Label htmlFor="yearFilter" className="text-sm font-medium whitespace-nowrap">Filter by Year:</Label>
