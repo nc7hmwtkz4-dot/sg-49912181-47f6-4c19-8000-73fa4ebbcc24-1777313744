@@ -101,10 +101,14 @@ export default function Collection() {
       setSalesData(salesResult);
     }
     
-    const { data: spotData } = await supabase.from('spot_prices_cache').select('*');
-    if (spotData) {
-      const prices: any = {};
-      spotData.forEach(p => { prices[p.metal.toLowerCase()] = p.price_per_gram; });
+    const { data: spotData } = await supabase.from('spot_prices_cache').select('*').order('created_at', { ascending: false }).limit(1);
+    if (spotData && spotData.length > 0) {
+      const p = spotData[0];
+      const prices: any = {
+        gold: p.gold,
+        silver: p.silver,
+        platinum: p.platinum
+      };
       setSpotPrices(prices);
     }
     
