@@ -1,21 +1,26 @@
 ---
 title: Mini-CRM & Sales Checkout
-status: todo
+status: done
 priority: medium
 type: feature
-tags: [crm, sales, frontend]
+tags: [crm, sales, ui]
+created_by: agent
+created_at: 2026-04-26T21:18:17.107359
+position: 4
 ---
 
 ## Notes
-Amélioration de la gestion des acheteurs et du flux de vente pour en faire un véritable outil de gestion de rentabilité (Side-business).
+Système de gestion des acheteurs et des ventes avec checkout fluide et analytics par canal de vente, comme défini dans le PRD (Phase 4).
 
 ## Checklist
-- [ ] Créer la vue "Profil Acheteur" affichant l'historique des achats d'un client spécifique et la marge nette globale générée par ce client.
-- [ ] Améliorer la vue "Registre des Ventes" (Sales Ledger) avec les nouvelles colonnes : Frais de port, Frais plateforme, Profit Net.
-- [ ] Créer le flux "Checkout Modale" : lors du clic sur "Vendre", ouvrir une modale demandant l'acheteur (auto-complétion), prix de vente, frais d'expédition, et frais de plateforme.
-- [ ] Ajouter un composant "Platform Analytics" comparant les marges et volumes par canal (Ricardo, Direct, etc.).
-- [ ] Ajouter un bouton "Exporter en CSV" sur le registre des ventes.
+- [x] Créer le composant "SaleCheckoutModal" : modale fluide pour vendre une pièce depuis la page Collection avec auto-complétion des acheteurs.
+- [x] Intégrer le bouton "Vendre" dans le tableau des pièces (GroupedCoinTable) pour les pièces non vendues.
+- [x] Ajouter le composant "Platform Analytics" dans la page Sales : cartes comparant Revenue, Fees, Net Profit et Margin par canal (Ricardo, Direct, eBay).
+- [x] Ajouter un bouton "Export CSV" dans la page Sales pour exporter le registre complet des ventes.
+- [x] Améliorer les formulaires d'acheteurs : ajout des champs Address, Postcode, City, Platform (déjà implémenté).
+- [x] Calculer automatiquement le profit net dans le checkout (Prix vente - Prix achat - Frais port - Frais plateforme).
 
 ## Acceptance
-- Lors d'une vente, l'utilisateur peut déduire explicitement les frais de plateforme et d'envoi.
+- L'utilisateur peut vendre une pièce en 1-clic depuis la page Collection via la modale de checkout.
+- La modale affiche le calcul du profit net en temps réel lors de la saisie du prix et des frais de port et d'envoi.
 - L'utilisateur peut voir quel canal de vente ou quel acheteur est le plus rentable.

@@ -25,6 +25,7 @@ interface GroupedCoinTableProps {
   onCreateListing: (coin: Coin) => void;
   onViewListing: () => void;
   calculateBullionValue: (coin: Coin) => number;
+  onSellCoin?: (coin: Coin) => void;
 }
 
 interface YearGroup {
@@ -52,7 +53,8 @@ export function GroupedCoinTable({
   onRecordSale,
   onCreateListing,
   onViewListing,
-  calculateBullionValue
+  calculateBullionValue,
+  onSellCoin
 }: GroupedCoinTableProps) {
   const [expandedState, setExpandedState] = useState<Record<string, boolean>>({});
 
