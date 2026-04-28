@@ -91,7 +91,7 @@ export default async function handler(
     console.log("[Numista Search] No local results, querying Numista API...");
 
     const numistaResponse = await fetch(
-      `${NUMISTA_API_URL}?q=${encodeURIComponent(q)}&lang=fr`,
+      `${NUMISTA_API_URL}/search?q=${encodeURIComponent(q)}&lang=fr`,
       {
         headers: {
           "Numista-API-Key": NUMISTA_API_KEY,
