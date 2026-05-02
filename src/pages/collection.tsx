@@ -151,8 +151,8 @@ export default function Collection() {
           id: coin.id,
           referenceCoinId: coin.reference_coin_id,
           sku: coin.sku,
-          coinName: coin.coins_reference?.coin_name || coin.coins_reference?.title || "",
-          countryCode: coin.coins_reference?.country_code || "",
+          coinName: coin.coin_name || coin.coins_reference?.coin_name || "",
+          countryCode: coin.country_code || coin.coins_reference?.country_code || "",
           kmNumber: coin.coins_reference?.km_number || "",
           year: coin.year,
           mintmark: coin.mintmark || "",
@@ -163,8 +163,8 @@ export default function Collection() {
           purchasePrice: coin.purchase_price,
           purchaseDate: coin.purchase_date,
           notes: coin.notes || "",
-          obverseImageUrl: coin.coins_reference?.obverse_image_url || "",
-          reverseImageUrl: coin.coins_reference?.reverse_image_url || "",
+          obverseImageUrl: coin.obverse_image_url || coin.coins_reference?.obverse_image_url || "",
+          reverseImageUrl: coin.reverse_image_url || coin.coins_reference?.reverse_image_url || "",
           isSold: coin.is_sold,
           listingId: coin.listing_id || undefined
         };
