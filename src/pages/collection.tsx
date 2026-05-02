@@ -10,12 +10,72 @@ import { GalleryView } from "@/components/coin/GalleryView";
 import { ListView } from "@/components/coin/ListView";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Search, LayoutGrid, Table as TableIcon } from "lucide-react";
+import { Plus, Search, LayoutGrid, Table as TableIcon, Download } from "lucide-react";
 import { userCoinService } from "@/services/userCoinService";
 import { supabase } from "@/integrations/supabase/client";
 import type { Coin, SheldonGrade } from "@/types/coin";
 import { useToast } from "@/hooks/use-toast";
 import { spotPriceService } from "@/lib/spotPrices";
+
+// CSV Export function
+const exportToCSV = (coins: Coin[], calculateBullionValue: (coin: Coin) => number) => {
+  const headers = [
+    "SKU",
+    "Coin Name",
+    "Country",
+    "Year",
+    "Mintmark",
+    "Grade",
+    "Metal",
+    "Weight (g)",
+    "Purity",
+    "Purchase Price (CHF)",
+    "Purchase Date",
+    "Bullion Value (CHF)",
+    "P/L Latent (CHF)",
+    "P/L %",
+    "Status"
+  ];
+
+  const rows = coins.map(coin => {
+    const bullionValue = calculateBullionValue(coin);
+    const plLatent = bullionValue - coin.purchasePrice;
+    const plPercent = coin.purchasePrice > 0 ? ((plLatent / coin.purchasePrice) * 100).toFixed(2) : "0";
+    
+    return [
+      coin.sku,
+      coin.coinName,
+      coin.countryCode,
+      coin.year.toString(),
+      coin.mintmark || "",
+      coin.sheldonGrade,
+      coin.metal,
+      coin.weight.toFixed(3),
+      (coin.purity * 100).toFixed(1) + "%",
+      coin.purchasePrice.toFixed(2),
+      new Date(coin.purchaseDate).toLocaleDateString('de-CH'),
+      bullionValue.toFixed(2),
+      plLatent.toFixed(2),
+      plPercent,
+      coin.isSold ? "Vendu" : "En collection"
+    ];
+  });
+
+  const csvContent = [
+    headers.join(","),
+    ...rows.map(row => row.map(cell => `"${cell}"`).join(","))
+  ].join("\n");
+
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const link = document.createElement("a");
+  const url = URL.createObjectURL(blob);
+  link.setAttribute("href", url);
+  link.setAttribute("download", `numivault_collection_${new Date().toISOString().split('T')[0]}.csv`);
+  link.style.visibility = "hidden";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
 
 export default function Collection() {
   const router = useRouter();
@@ -199,6 +259,14 @@ export default function Collection() {
         <div className="flex items-center justify-between flex-wrap gap-4">
           <h1 className="text-3xl font-bold">Ma Collection</h1>
           <div className="flex gap-2">
+            <Button 
+              onClick={() => exportToCSV(filteredAndSortedCoins, calculateBullionValue)} 
+              variant="outline"
+              className="border-brand-primary text-brand-primary hover:bg-brand-muted"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Export CSV
+            </Button>
             <Button onClick={() => setSearchModalOpen(true)} variant="outline">
               <Search className="h-4 w-4 mr-2" />
               Rechercher une pièce
